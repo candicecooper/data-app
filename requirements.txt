@@ -1,9 +1,9 @@
 streamlit
-plotly
+plotly-express
 pandas
 numpy
-express numpy
 psycopg2-binary   # The Python adapter for PostgreSQL
 sqlalchemy        # Required by st.connection(type="sql")
 supabase
 st-supabase-connection
+
