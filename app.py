@@ -64,24 +64,6 @@ st.markdown(
         background-color: #475569;
     }
     
-    /* Expander/Sidebar styling */
-    .stExpander, .stSidebar {
-        border-radius: 12px;
-        background-color: #1E293B;
-    }
-    
-    /* Metric/Info Boxes */
-    div[data-testid="stMetric"], .stAlert {
-        background-color: #1E293B;
-        border-radius: 12px;
-        padding: 1rem;
-    }
-
-    /* Streamlit's default header fix for better dark mode contrast */
-    [data-testid="stHeader"] {
-        background-color: rgba(15, 23, 42, 0.8); /* Semi-transparent dark blue */
-    }
-    
     /* Custom style for the critical alert */
     .stAlert.stWarning {
         background-color: #433800 !important; /* Darker yellow/brown background */
@@ -89,6 +71,10 @@ st.markdown(
         border-left: 5px solid #FACC15;
     }
 
+    /* Radio button label color fix */
+    div[data-testid="stRadio"] label p {
+        color: #F1F5F9 !important;
+    }
     </style>
     """
 , unsafe_allow_html=True)
@@ -111,22 +97,22 @@ MOCK_STAFF = [
 
 # --- FBA and Data Constants (UPDATED) ---
 
-# 1. WOT Options (Removed 'Calm')
+# WOT Options (Calm removed, using descriptive states for dysregulation)
 WOT_OPTIONS = [
-    'Settled/Focused', 
-    'Stressed/Anxious', 
-    'Aggitated/Disregulated', 
-    'Escalated/Crisis'
+    'Settled/Focused (Coping)', 
+    'Stressed/Anxious (Pre-Escalation)', 
+    'Aggitated/Disregulated (Escalation)', 
+    'Escalated/Crisis (High Arousal)'
 ]
 
-# 2. Location Options (New List)
+# Location Options
 LOCATION_OPTIONS = [
     'JP room', 'JP spill out', 'PY room', 'PY spill out', 'SY room', 
     'SY spill out', 'Playground', 'Toilets', 'Student Kitchen', 'Yard', 
     'Admin', 'Gate', 'Van/Kia', 'Swimming', 'Excursion', 'Library'
 ]
 
-# 3. Severity Options (For the Critical check)
+# Severity Options (Critical triggers routing)
 SEVERITY_OPTIONS = [
     'Minor (Staff Managed)', 
     'Moderate (Leadership/Specialist Input)', 
@@ -134,7 +120,7 @@ SEVERITY_OPTIONS = [
     'Critical (External Contact/Mandatory Reporting)'
 ]
 
-# 5. Antecedent and Staff Response Options
+# Antecedent and Staff Response Options
 ANTECEDENT_OPTIONS = [
     'Transition/Change in Routine', 
     'Demand/Task Presentation (Academic)', 
@@ -156,6 +142,9 @@ STAFF_RESPONSE_OPTIONS = [
     'Physical intervention (Safety)', 
     'De-escalation procedure applied'
 ]
+
+# Type of Support Options (Radio Buttons)
+SUPPORT_TYPES = ['Independent', '1:1', 'Small Group', 'Large Group']
 
 # MOCK BEHAVIORS (Used in Quick Log)
 BEHAVIOR_OPTIONS = ['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)', 'Self-Injurious Behaviour', 'Outburst']
@@ -201,7 +190,7 @@ def initialize_state():
     if 'student' not in st.session_state:
         st.session_state.student = None
     if 'incident_logs' not in st.session_state:
-        st.session_state.incident_logs = pd.DataFrame(columns=['id', 'student_id', 'datetime', 'staff_role', 'severity', 'behavior', 'location', 'antecedent', 'staff_response', 'context'])
+        st.session_state.incident_logs = pd.DataFrame(columns=['id', 'student_id', 'datetime', 'staff_role', 'severity', 'behavior', 'location', 'antecedent', 'staff_response', 'wot', 'support_type', 'context'])
     # New state variables for Critical Incident Logic
     if 'log_submit_mode' not in st.session_state:
         st.session_state.log_submit_mode = 'quick'
@@ -214,14 +203,15 @@ def initialize_state():
 def handle_severity_change():
     """Checks severity selection and flags for critical incident, updating alert state."""
     # Check if the current severity selection is 'Critical'
-    if st.session_state.quick_log_severity == 'Critical (External Contact/Mandatory Reporting)':
+    is_critical = st.session_state.quick_log_severity == 'Critical (External Contact/Mandatory Reporting)'
+    
+    if is_critical:
         # 3. Alert user of Critical Incident screen
         st.session_state.critical_alert = True
+        st.session_state.log_submit_mode = 'critical'
     else:
         st.session_state.critical_alert = False
-    
-    # Also reset the submission mode when severity changes
-    st.session_state.log_submit_mode = 'quick'
+        st.session_state.log_submit_mode = 'quick'
 
 
 # --- View Functions ---
@@ -245,11 +235,11 @@ def render_critical_log_form(role, student):
     
     st.info("Since a **Critical** severity was selected, this detailed mandatory reporting screen must be completed before saving.")
     
-    # Pre-populate key data from the quick log session state
+    # Pre-populate key data from the quick log session state (if available)
     severity = st.session_state.get('quick_log_severity', 'Critical (External Contact/Mandatory Reporting)')
-    location = st.session_state.get('quick_log_location', 'Yard')
+    location = st.session_state.get('quick_log_location', 'N/A')
     
-    st.markdown(f"**Quick Log Data Captured:**")
+    st.markdown(f"**Initial Context Captured:**")
     st.markdown(f"- **Severity:** `{severity}` | **Location:** `{location}`")
     st.markdown("---")
     
@@ -272,103 +262,148 @@ def render_quick_log(role, student):
     """Renders the ABCH-based Quick Log Form."""
     staff_header("Quick Incident Log (ABCH)", role, student)
 
-    # Initialize log submission mode (in case user switches severity)
-    if 'log_submit_mode' not in st.session_state:
-        st.session_state.log_submit_mode = 'quick'
+    # Use the appropriate staff name for logging
+    staff_name = get_staff_name(role)
 
     with st.form("quick_incident_log_form", clear_on_submit=False):
         
-        col_date, col_time = st.columns(2)
+        # Row 1: Date, Time, Staff
+        col_date, col_time, col_staff = st.columns(3)
         with col_date:
             date = st.date_input("Date of Incident", value=datetime.now().date(), key="quick_log_date")
         with col_time:
             time_of_incident = st.time_input("Time of Incident", value=datetime.now().time(), key="quick_log_time")
+        with col_staff:
+            st.markdown("Staff Logging Incident")
+            st.caption(f"**{staff_name}** (Automatically assigned)")
+            # Hide the staff selector as it's typically set by the user's login/role
 
-        # Row 2: Behavior Type
-        behavior = st.multiselect(
-            "Target Behavior(s) Displayed",
-            options=BEHAVIOR_OPTIONS,
-            key="quick_log_behavior",
-            help="Select all relevant behaviors. If 'Other', include details in the context."
-        )
+        st.markdown("---")
+        
+        # Row 2: Severity, Location, and Type of Support
+        col_sev, col_loc, col_support = st.columns(3)
 
-        # Row 3: Severity and Location
-        col_sev, col_loc = st.columns(2)
         with col_sev:
-            # 3. Severity with handler for Critical Incident alert and routing
+            # Severity with handler for Critical Incident alert and routing
             severity = st.selectbox(
                 "Severity/Impact Level",
                 options=SEVERITY_OPTIONS,
                 key="quick_log_severity",
-                index=SEVERITY_OPTIONS.index('Minor (Staff Managed)') if 'Minor (Staff Managed)' in SEVERITY_OPTIONS else 0,
+                index=SEVERITY_OPTIONS.index('Minor (Staff Managed)'),
                 on_change=handle_severity_change, # Trigger callback on change
                 help="Select the level of impact/severity of the incident."
             )
-
+            
         with col_loc:
-            # 2. Location (Updated options)
+            # Location (Updated options)
             location = st.selectbox(
                 "Location of Incident",
-                options=LOCATION_OPTIONS, # Updated list
+                options=LOCATION_OPTIONS, 
                 key="quick_log_location",
                 help="Where did the incident occur?"
             )
-        
-        # 3. Alert Display for Critical Incident
-        if st.session_state.get('critical_alert'):
-            st.warning("⚠️ **CRITICAL INCIDENT FLAGGED** ⚠️\n\nSubmitting this log will take you *directly* to the **Critical Incident Reporting** screen, bypassing the quick log save.")
-            # Ensure the submission mode is set to critical
-            st.session_state.log_submit_mode = 'critical'
-        else:
-            st.session_state.log_submit_mode = 'quick'
             
-        # Row 4: Antecedent and WOT
-        col_ant, col_wot = st.columns(2)
-        with col_ant:
-            # 5. Antecedent choices
-            antecedent = st.selectbox(
-                "Antecedent (What happened immediately BEFORE?)",
-                options=ANTECEDENT_OPTIONS,
-                key="quick_log_antecedent",
-                help="Select the trigger event that occurred right before the behavior."
+        with col_support:
+             # Type of Support (Radio buttons)
+            support_type = st.radio(
+                "**Type of Support/Group**",
+                SUPPORT_TYPES,
+                key="quick_log_support_type",
+                index=None,
+                help="Select the context in which the incident occurred."
+            )
+
+        # Critical Alert Display
+        if st.session_state.get('critical_alert'):
+            st.warning("⚠️ **CRITICAL INCIDENT FLAGGED** ⚠️\n\nSubmitting this log will immediately route you to the **Critical Incident Reporting** screen.")
+            
+        st.markdown("---")
+
+        # Row 3: Behavior and WOT
+        col_behaviors, col_wot = st.columns(2)
+        with col_behaviors:
+            # Behavior
+            behavior = st.multiselect(
+                "Target Behavior(s) Displayed (B)",
+                options=BEHAVIOR_OPTIONS,
+                key="quick_log_behavior",
+                help="Select all relevant behaviors."
             )
         with col_wot:
-            # 1. WOT (Window of Tolerance) - Calm removed
+            # WOT (Window of Tolerance) - Calm removed
             wot = st.selectbox(
-                "Student's Window of Tolerance (WOT) at Time of Incident",
-                options=WOT_OPTIONS, # Updated list
+                "Student's Regulatory State (WOT)",
+                options=WOT_OPTIONS, 
                 key="quick_log_wot",
+                index=None,
                 help="Estimate the student's emotional state when the incident began."
             )
-            
-        # Row 5: Staff Response
-        # 5. Staff Response choices
-        staff_response = st.selectbox(
-            "Staff Response/Intervention Used",
-            options=STAFF_RESPONSE_OPTIONS,
-            key="quick_log_staff_response",
-            help="What was the primary staff action taken?"
+
+        st.markdown("---")
+
+        # Row 4: Antecedent and Staff Response (C)
+        col_ant, col_response = st.columns(2)
+        with col_ant:
+            # Antecedent choices (A)
+            antecedent = st.selectbox(
+                "Antecedent (What happened immediately BEFORE?) (A)",
+                options=ANTECEDENT_OPTIONS,
+                key="quick_log_antecedent",
+                index=None,
+                help="Select the trigger event."
+            )
+        with col_response:
+            # Staff Response choices (C)
+            staff_response = st.selectbox(
+                "Staff Response/Intervention Used (C)",
+                options=STAFF_RESPONSE_OPTIONS,
+                key="quick_log_staff_response",
+                index=None,
+                help="What was the primary staff action taken?"
+            )
+
+        st.markdown("---")
+        
+        # Row 5: Optional Context/Description (at the bottom)
+        st.markdown(
+            """
+            <div style='background-color: #2F3E50; padding: 10px; border-radius: 8px; margin-bottom: 5px;'>
+                <p style='color: #94A3B8; font-weight: bold; font-size: 1.1em;'>
+                    Optional: Description / Context of Incident
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        # 4. No blurb in description
+        context = st.text_area(
+            "Detailed Observation:",
+            value="",
+            placeholder="Type optional description here...",
+            height=100,
+            key="quick_log_context",
+            label_visibility="collapsed"
         )
 
-        # Row 6: Description
-        # 4. Remove Blurb from Description (set value to empty string)
-        context = st.text_area(
-            f"Context/Description of Incident (Must be objective and factual: Who, What, Where, When, What was done)",
-            value="", # Blurb removed
-            height=150,
-            key="quick_log_context",
-            help="Describe the incident objectively. Start the log where the antecedent occurred."
-        )
 
         # Submission Button
-        submitted = st.form_submit_button(
-            "Submit Incident Log", 
-            type="primary", 
-            use_container_width=True
-        )
+        col_submit, col_back = st.columns([1, 4])
+        with col_submit:
+            submitted = st.form_submit_button(
+                "Submit Incident Log", 
+                type="primary", 
+                use_container_width=True
+            )
 
         if submitted:
-            # 4. Critical Incident Routing Logic
+            # Check for required quick log fields
+            if not all([location, behavior, severity, antecedent, staff_response, wot, support_type]):
+                st.error("Please ensure all fields (except the optional Description) are completed before submission.")
+                st.session_state.log_submit_mode = 'quick' # Keep mode as quick if validation fails
+                st.experimental_rerun()
+                return
+
+            # 4. Critical Incident Routing Logic (Supersedes Quick Log Save)
             if st.session_state.log_submit_mode == 'critical':
                 # Route directly to the critical log screen
                 st.toast("⚠️ Routing to Critical Incident Log...")
@@ -388,6 +423,7 @@ def render_quick_log(role, student):
                         'antecedent': antecedent,
                         'staff_response': staff_response,
                         'wot': wot,
+                        'support_type': support_type,
                         'context': context,
                     }
                     
@@ -401,6 +437,11 @@ def render_quick_log(role, student):
                 except Exception as e:
                     st.error(f"Error submitting log: {e}")
                     
+        # Button outside the form to navigate back
+        if st.button("⬅ Back to Staff Dashboard", key="back_from_quick_log"):
+            navigate_to('staff_area', role=role)
+            st.experimental_rerun()
+            
 def render_student_analysis(student, role):
     """Renders the analysis dashboard for a selected student."""
     staff_header("Student Data Analysis", role, student)
@@ -414,6 +455,9 @@ def render_student_analysis(student, role):
 
     if student_incidents.empty:
         st.info(f"No incident data logged yet for {student['name']}.")
+        if st.button("Log Incident Now", key="log_now_from_analysis"):
+             navigate_to('quick_log', role=role, student_id=student['id'])
+             st.experimental_rerun()
         return
 
     # --- Metrics ---
@@ -459,6 +503,10 @@ def render_student_analysis(student, role):
         student_incidents.sort_values(by='datetime', ascending=False).drop(columns=['id', 'student_id']),
         use_container_width=True
     )
+    
+    if st.button("⬅ Back to Staff Dashboard", key="back_from_analysis", type="secondary"):
+         navigate_to('staff_area', role=role)
+         st.experimental_rerun()
 
 
 def render_staff_area(role):
@@ -556,7 +604,7 @@ def main():
             navigate_to('staff_area', role=current_role)
             st.experimental_rerun()
             
-    # NEW: Critical Log Routing
+    # Critical Log Routing
     elif st.session_state.page == 'critical_log':
         if current_student and current_role:
             render_critical_log_form(current_role, current_student)
@@ -568,9 +616,6 @@ def main():
     elif st.session_state.page == 'student_detail':
         if current_student and current_role:
             render_student_analysis(current_student, current_role)
-            if st.button("⬅ Back to Staff Dashboard", key="back_from_analysis", type="secondary"):
-                 navigate_to('staff_area', role=current_role)
-                 st.experimental_rerun()
         else:
             st.error("Student context missing. Please select a student.")
             navigate_to('staff_area', role=current_role)
