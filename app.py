@@ -173,8 +173,8 @@ def navigate_to(page, role=None, student_id=None):
         st.session_state.role = role
     if student_id:
         st.session_state.student = get_student_by_id(student_id)
-    else:
-        st.session_state.student = None
+    # Note: Do not set student to None here, only clear it if starting from scratch (landing)
+    # The student state should persist if navigating within staff area or log screens.
     
     # Reset critical state when navigating away from log pages
     if page != 'quick_log':
@@ -255,7 +255,7 @@ def render_critical_log_form(role, student):
             st.toast("✅ Critical Incident Report Finalised and Submitted!")
             # Navigate back to the staff area dashboard
             navigate_to('staff_area', role=role)
-            st.experimental_rerun()
+            st.rerun()
             
 
 def render_quick_log(role, student):
@@ -400,7 +400,7 @@ def render_quick_log(role, student):
             if not all([location, behavior, severity, antecedent, staff_response, wot, support_type]):
                 st.error("Please ensure all fields (except the optional Description) are completed before submission.")
                 st.session_state.log_submit_mode = 'quick' # Keep mode as quick if validation fails
-                st.experimental_rerun()
+                st.rerun()
                 return
 
             # 4. Critical Incident Routing Logic (Supersedes Quick Log Save)
@@ -408,7 +408,7 @@ def render_quick_log(role, student):
                 # Route directly to the critical log screen
                 st.toast("⚠️ Routing to Critical Incident Log...")
                 navigate_to('critical_log', role=role, student_id=student['id'])
-                st.experimental_rerun()
+                st.rerun()
             else:
                 # Original Quick Log Save Logic
                 try:
@@ -433,14 +433,14 @@ def render_quick_log(role, student):
 
                     st.toast("✅ Quick Incident Log Submitted!")
                     navigate_to('staff_area', role=role)
-                    st.experimental_rerun()
+                    st.rerun()
                 except Exception as e:
                     st.error(f"Error submitting log: {e}")
                     
         # Button outside the form to navigate back
         if st.button("⬅ Back to Staff Dashboard", key="back_from_quick_log"):
             navigate_to('staff_area', role=role)
-            st.experimental_rerun()
+            st.rerun()
             
 def render_student_analysis(student, role):
     """Renders the analysis dashboard for a selected student."""
@@ -457,7 +457,7 @@ def render_student_analysis(student, role):
         st.info(f"No incident data logged yet for {student['name']}.")
         if st.button("Log Incident Now", key="log_now_from_analysis"):
              navigate_to('quick_log', role=role, student_id=student['id'])
-             st.experimental_rerun()
+             st.rerun()
         return
 
     # --- Metrics ---
@@ -506,7 +506,7 @@ def render_student_analysis(student, role):
     
     if st.button("⬅ Back to Staff Dashboard", key="back_from_analysis", type="secondary"):
          navigate_to('staff_area', role=role)
-         st.experimental_rerun()
+         st.rerun()
 
 
 def render_staff_area(role):
@@ -515,25 +515,37 @@ def render_staff_area(role):
     
     students_in_area = get_student_list_by_role(role)
     
-    # Student Selection
-    st.subheader(f"Students Assigned to {role}")
-    
+    # Map student names to IDs for the selectbox
     student_options = {s['name']: s['id'] for s in students_in_area}
+    student_names = list(student_options.keys())
     
-    # If no students, provide feedback
     if not student_options:
         st.info("No students are currently assigned to this area in the mock data.")
+        st.session_state.student = None # Clear student state if no students
         return
 
+    # --- FIX APPLIED HERE: Use a dynamic key for the selectbox ---
+    # This prevents the widget from holding a stale index/value when switching roles (e.g., from ADM to JP).
+    
+    # 1. Determine the index: Try to maintain the currently selected student in state, otherwise default to 0.
+    default_index = 0
+    if st.session_state.student and st.session_state.student['name'] in student_names:
+        default_index = student_names.index(st.session_state.student['name'])
+    
+    # 2. Render the selectbox with the dynamic key
     selected_name = st.selectbox(
         "Select Student for Logging or Analysis",
-        options=list(student_options.keys()),
-        index=0,
-        key="selected_student_for_action"
+        options=student_names,
+        index=default_index,
+        key=f"selected_student_for_action_{role}" # DYNAMIC KEY
     )
     
+    # 3. Update the student state based on the selection
     selected_id = student_options[selected_name]
     selected_student = get_student_by_id(selected_id)
+    
+    # Ensure the session state student object is always up-to-date with the current selection
+    st.session_state.student = selected_student 
     
     st.markdown("---")
     
@@ -544,13 +556,13 @@ def render_staff_area(role):
         if st.button(f"➕ Log Incident for {selected_student['name']}", key="action_log", type="primary", use_container_width=True):
             # Navigate to quick log, passing student context
             navigate_to('quick_log', role=role, student_id=selected_id)
-            st.experimental_rerun()
+            st.rerun()
             
     with col_analyze:
         if st.button(f"📈 Analyze Data for {selected_student['name']}", key="action_analyze", use_container_width=True):
             # Navigate to student detail/analysis view
             navigate_to('student_detail', role=role, student_id=selected_id)
-            st.experimental_rerun()
+            st.rerun()
 
 
 def render_landing_page():
@@ -563,19 +575,19 @@ def render_landing_page():
     with col_jp:
         if st.button("Junior Primary (JP)", key="role_jp", type="primary", use_container_width=True):
             navigate_to('staff_area', role='JP')
-            st.experimental_rerun()
+            st.rerun()
     with col_py:
         if st.button("Primary Years (PY)", key="role_py", type="primary", use_container_width=True):
             navigate_to('staff_area', role='PY')
-            st.experimental_rerun()
+            st.rerun()
     with col_sy:
         if st.button("Senior Years (SY)", key="role_sy", type="primary", use_container_width=True):
             navigate_to('staff_area', role='SY')
-            st.experimental_rerun()
+            st.rerun()
     with col_adm:
         if st.button("Admin (ADM)", key="role_adm", type="secondary", use_container_width=True):
             navigate_to('staff_area', role='ADM')
-            st.experimental_rerun()
+            st.rerun()
             
     st.markdown("---")
     st.info("This application uses a detailed ABCH Quick Log for context-rich data collection, feeding directly into data-driven student analysis.")
@@ -602,7 +614,7 @@ def main():
         else:
             st.error("Missing context. Returning to dashboard.")
             navigate_to('staff_area', role=current_role)
-            st.experimental_rerun()
+            st.rerun()
             
     # Critical Log Routing
     elif st.session_state.page == 'critical_log':
@@ -611,7 +623,7 @@ def main():
         else:
             st.error("Missing context for Critical Log. Returning to dashboard.")
             navigate_to('staff_area', role=current_role)
-            st.experimental_rerun()
+            st.rerun()
 
     elif st.session_state.page == 'student_detail':
         if current_student and current_role:
@@ -619,7 +631,7 @@ def main():
         else:
             st.error("Student context missing. Please select a student.")
             navigate_to('staff_area', role=current_role)
-            st.experimental_rerun()
+            st.rerun()
 
 
     elif st.session_state.page == 'staff_area':
@@ -628,7 +640,7 @@ def main():
         else:
             st.error("Role not set.")
             navigate_to('landing')
-            st.experimental_rerun()
+            st.rerun()
 
     
 # Run the main function
