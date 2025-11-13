@@ -6,30 +6,6 @@ import uuid # Use uuid for robust unique IDs
 import plotly.express as px
 import numpy as np
 
-# --- MOCK DATA REQUIRED FOR LOGGING DROPDOWNS (TO BE REPLACED WITH DB CALLS) ---
-MOCK_STAFF = [
-    {'id': 's1', 'name': 'Emily Jones (JP)', 'role': 'JP', 'active': True, 'special': False},
-    {'id': 's2', 'name': 'Daniel Lee (PY)', 'role': 'PY', 'active': True, 'special': False},
-    {'id': 's3', 'name': 'Sarah Chen (SY)', 'role': 'SY', 'active': True, 'special': False},
-    {'id': 's4', 'name': 'Admin User (ADM)', 'role': 'ADM', 'active': True, 'special': False},
-    {'id': 's_trt', 'name': 'TRT', 'role': 'TRT', 'active': True, 'special': True},
-    {'id': 's_sso', 'name': 'External SSO', 'role': 'SSO', 'active': True, 'special': True},
-]
-
-# --- FBA and Data Constants (RESTORED DETAILED LOG CONSTANTS) ---
-BEHAVIORS_FBA = ['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)', 'Self-Injurious Behaviour', 'Outburst', 'Vocalisation/Noise', 'Other']
-ANTECEDENTS = ['Transition/Change in Routine', 'Demand/Instruction Given', 'Peer Interaction/Conflict', 'Preferred Item Denied/Removed', 'Unstructured Time (Play)', 'Environmental Noise/Stimuli', 'Illness/Pain', 'No Clear Antecedent', 'Other']
-BEHAVIOR_FUNCTIONS = ['Attention (Peer)', 'Attention (Staff)', 'Access to Tangible/Preferred Activity', 'Escape/Avoidance (Task/Demand)', 'Escape/Avoidance (Sensory)', 'Automatic/Sensory', 'Other/Unknown']
-CONSEQUENCES = ['Redirection/Prompt', 'Ignored/Withdrawn Attention', 'Time-Out/Exclusion', 'Restorative Practice', 'Loss of Privilege', 'Contact Home', 'First Aid Required', 'No Consequence Applied', 'Other']
-WINDOW_OF_TOLERANCE_OPTIONS = ['Regulation: Proactive/Green Zone', 'Escalation: Amber Zone', 'Crisis: Red Zone']
-
-# --- MOCK STUDENT DATA (Simpler structure matching previous implementation) ---
-MOCK_STUDENTS_LIST = [
-    {'id': 'stu001', 'name': 'Alex Johnson', 'year': 5, 'profile': 'High-needs, Plan A', 'program': 'JP'},
-    {'id': 'stu002', 'name': 'Ben Carter', 'year': 3, 'profile': 'Low-needs, Plan B', 'program': 'PY'},
-    {'id': 'stu003', 'name': 'Chloe Davis', 'year': 7, 'profile': 'Medium-needs, Plan C', 'program': 'SY'},
-]
-
 # --- Configuration and Aesthetics (High-Contrast Dark Look) ---
 
 st.set_page_config(
@@ -53,7 +29,6 @@ st.markdown(
     
     /* Input Fields */
     div[data-testid="stTextInput"] > div > input,
-    div[data-testid="stTextInput"] > div > textarea,
     div[data-testid="stTextArea"] > div > textarea,
     .stSelectbox div[role="listbox"],
     .stDateInput input, .stTimeInput input {
@@ -64,67 +39,22 @@ st.markdown(
         padding: 10px;
     }
 
-    /* Primary Buttons - Action Color */
+    /* Primary Button Styling (Used for role selection and submission) */
     .stButton>button {
-        background-color: #4C51BF; /* Indigo for action */
-        color: #F1F5F9;
-        border-radius: 8px;
-        border: none;
-        padding: 10px 20px;
+        background-color: #3B82F6; /* Blue 500 */
+        color: white;
         font-weight: bold;
+        border-radius: 8px;
+        padding: 10px 20px;
         transition: background-color 0.2s;
     }
     .stButton>button:hover {
-        background-color: #6366F1;
+        background-color: #2563EB; /* Blue 600 */
     }
     
-    /* Secondary/Navigation Buttons */
-    .secondary-nav button {
-        background-color: #334155;
-        color: #94A3B8;
-    }
-    .secondary-nav button:hover {
-        background-color: #475569;
-        color: #F1F5F9;
-    }
-
-    /* Info/Success Alerts */
-    div[data-testid="stAlert"] > div {
-        border-radius: 12px;
-        padding: 15px;
-    }
-
-    /* Metric Boxes (for Analysis Page) */
-    [data-testid="stMetric"] {
-        background-color: #1E293B;
-        padding: 15px;
-        border-radius: 12px;
-        border: 1px solid #334155;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    .st-emotion-cache-y32r2b { /* Metric label */
-        color: #94A3B8 !important;
-    }
-    .st-emotion-cache-e3on0p { /* Metric value */
-        color: #6366F1 !important;
-        font-weight: 700;
-    }
+    /* Headers and Dividers */
+    .stHorizontalSeparator { border-top: 2px solid #334155; }
     
-    /* Multi-select and checkbox styling */
-    .stMultiSelect div[role="listbox"] {
-        background-color: #1E293B;
-    }
-    .stMultiSelect div[role="button"] {
-        background-color: #0F172A;
-        border: 1px solid #334155;
-        border-radius: 8px;
-    }
-
-    /* Remove Streamlit footer */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-
     /* Custom form styling for better visual grouping */
     .form-section {
         border: 1px solid #334155;
@@ -133,15 +63,101 @@ st.markdown(
         margin-bottom: 20px;
         background-color: #1E293B;
     }
+
+    /* Metric/Card Styling */
+    div[data-testid="stMetric"] {
+        background-color: #1E293B;
+        padding: 20px;
+        border-radius: 12px;
+        border-left: 5px solid #3B82F6;
+    }
     </style>
-    """
-, unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
-# --- Helper Functions (Staff/Data) ---
+# --- MOCK DATA AND UTILITY FUNCTIONS (RESTORED ORIGINAL STRUCTURE) ---
 
-def get_active_staff():
+# Detailed Constants for the ABCH Form (FBA data)
+BEHAVIORS_FBA = ['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)', 'Self-Injurious Behaviour', 'Outburst', 'Vocalisation/Noise', 'Other']
+ANTECEDENTS = ['Transition/Change in Routine', 'Demand/Instruction Given', 'Peer Interaction/Conflict', 'Preferred Item Denied/Removed', 'Unstructured Time (Play)', 'Environmental Noise/Stimuli', 'Illness/Pain', 'No Clear Antecedent', 'Other']
+BEHAVIOR_FUNCTIONS = ['Attention (Peer)', 'Attention (Staff)', 'Access to Tangible/Preferred Activity', 'Escape/Avoidance (Task/Demand)', 'Escape/Avoidance (Sensory)', 'Automatic/Sensory', 'Other/Unknown']
+CONSEQUENCES = ['Redirection/Prompt', 'Ignored/Withdrawn Attention', 'Time-Out/Exclusion', 'Restorative Practice', 'Loss of Privilege', 'Contact Home', 'First Aid Required', 'No Consequence Applied', 'Other']
+WINDOW_OF_TOLERANCE_OPTIONS = ['Regulation: Proactive/Green Zone', 'Escalation: Amber Zone', 'Crisis: Red Zone']
+MOCK_STAFF = [
+    {'id': 's1', 'name': 'Emily Jones (JP)', 'role': 'JP', 'active': True},
+    {'id': 's2', 'name': 'Daniel Lee (PY)', 'role': 'PY', 'active': True},
+    {'id': 's3', 'name': 'Sarah Chen (SY)', 'role': 'SY', 'active': True},
+    {'id': 's4', 'name': 'Admin User (ADM)', 'role': 'ADM', 'active': True},
+]
+
+# Student Data used for Dashboard filtering
+MOCK_STUDENTS = {
+    'S001': {'name': 'Liam O’Connell', 'program': 'JP', 'risk': 'High', 'fba_status': 'Complete'},
+    'S002': {'name': 'Olivia Chen', 'program': 'PY', 'risk': 'Medium', 'fba_status': 'In Progress'},
+    'S003': {'name': 'Noah Smith', 'program': 'SY', 'risk': 'Low', 'fba_status': 'N/A'},
+    'S004': {'name': 'Ava Wilson', 'program': 'JP', 'risk': 'High', 'fba_status': 'Complete'},
+    'S005': {'name': 'Elijah Brown', 'program': 'PY', 'risk': 'Medium', 'fba_status': 'N/A'},
+    'S006': {'name': 'Sophia Davis', 'program': 'SY', 'risk': 'Low', 'fba_status': 'Complete'},
+}
+
+# Generate mock data for the analysis (more robust history)
+def generate_mock_logs(student_id):
+    """Generates a DataFrame of mock incident logs for a student."""
+    logs = []
+    
+    # Define a set of possible ABC fields for context
+    locations = ['Classroom', 'Playground', 'Library', 'Canteen', 'Oval']
+    
+    # Generate 50-100 entries spread over the last year
+    num_entries = random.randint(50, 100)
+    
+    for _ in range(num_entries):
+        incident_date = datetime.now() - timedelta(days=random.randint(1, 365), hours=random.randint(1, 24), minutes=random.randint(1, 60))
+        
+        behavior = random.choice(BEHAVIORS_FBA)
+        function = random.choice(BEHAVIOR_FUNCTIONS)
+        
+        logs.append({
+            'log_id': str(uuid.uuid4())[:8],
+            'student_id': student_id,
+            'date': incident_date.date(),
+            'time': incident_date.strftime('%H:%M'),
+            'location': random.choice(locations),
+            'antecedent': random.choice(ANTECEDENTS),
+            'behavior': behavior,
+            'duration_min': random.uniform(1, 15),
+            'severity': random.choice(['Low', 'Medium', 'High']),
+            'consequence': random.choice(CONSEQUENCES),
+            'hypothesized_function': function,
+            'logged_by': random.choice([s['name'] for s in MOCK_STAFF]),
+        })
+
+    df = pd.DataFrame(logs)
+    df['date'] = pd.to_datetime(df['date'])
+    return df.sort_values(by='date', ascending=False).reset_index(drop=True)
+
+# Helper function to get students for a specific program area
+def get_students_for_area(role):
+    """Filters mock students based on staff role/program area."""
+    program_code = role.split('/')[0] if '/' in role else role
+    
+    # SSO/TRT and ADM see all students
+    if role in ['SSO/TRT', 'ADM']:
+        return list(MOCK_STUDENTS.items())
+        
+    return [(k, v) for k, v in MOCK_STUDENTS.items() if v['program'] == program_code]
+
+def get_active_staff_names():
     """Returns a list of names of all active staff members."""
     return sorted([staff['name'] for staff in MOCK_STAFF if staff['active']])
+
+def find_staff_name_by_role(role_code):
+    """Finds a representative staff name for a given role code."""
+    for staff in MOCK_STAFF:
+        if staff['role'] == role_code:
+            return staff['name']
+    return 'Unknown Staff'
 
 def find_staff_role(staff_name):
     """Finds the role code based on the selected staff name."""
@@ -150,65 +166,89 @@ def find_staff_role(staff_name):
             return staff['role']
     return 'UNKNOWN'
 
-def get_students_for_area(role):
-    """Filters mock students based on staff role/program area."""
-    program_area_map = {
-        'JP': 'JP',
-        'PY': 'PY',
-        'SY': 'SY',
-        'SSO': 'ALL', # Special access to all
-        'TRT': 'ALL',
-        'ADM': 'ALL' # Admin access to all
-    }
-    
-    target_program = program_area_map.get(role, None)
-
-    if target_program == 'ALL':
-        return [(s['id'], s) for s in MOCK_STUDENTS_LIST]
-
-    return [(s['id'], s) for s in MOCK_STUDENTS_LIST if s.get('program') == target_program]
-
-# --- Navigation & State Management ---
+# --- State Management and Navigation ---
 
 def initialize_state():
     """Initializes necessary session state variables."""
     if 'page' not in st.session_state:
-        st.session_state.page = 'landing' # 'landing', 'staff_area', 'quick_log', 'student_detail'
+        st.session_state.page = 'landing'
     if 'role' not in st.session_state:
         st.session_state.role = None
     if 'student' not in st.session_state:
         st.session_state.student = None
-    
-    # REVERTED: Using a single mock_logs DataFrame structure
-    if 'mock_logs' not in st.session_state:
-        # Initial mock data for analysis
-        st.session_state.mock_logs = pd.DataFrame([
-            {'id': str(uuid.uuid4()), 'student_id': 'stu001', 'timestamp': datetime.now() - timedelta(hours=3), 'reported_by': 'Emily Jones (JP)', 'behavior': 'Verbal Refusal'},
-            {'id': str(uuid.uuid4()), 'student_id': 'stu001', 'timestamp': datetime.now() - timedelta(days=1), 'reported_by': 'Daniel Lee (PY)', 'behavior': 'Elopement'},
-            {'id': str(uuid.uuid4()), 'student_id': 'stu003', 'timestamp': datetime.now() - timedelta(days=2), 'reported_by': 'Sarah Chen (SY)', 'behavior': 'Property Destruction'},
-            {'id': str(uuid.uuid4()), 'student_id': 'stu001', 'timestamp': datetime.now() - timedelta(days=5), 'reported_by': 'Emily Jones (JP)', 'behavior': 'Verbal Refusal'},
-            {'id': str(uuid.uuid4()), 'student_id': 'stu002', 'timestamp': datetime.now() - timedelta(weeks=1), 'reported_by': 'Daniel Lee (PY)', 'behavior': 'Outburst'},
-        ])
+    if 'logs' not in st.session_state:
+        # Generate and store all mock logs once
+        all_logs = {}
+        for student_id in MOCK_STUDENTS.keys():
+            all_logs[student_id] = generate_mock_logs(student_id)
+        st.session_state.logs = all_logs
+    if 'quick_log_data' not in st.session_state:
+        st.session_state.quick_log_data = {}
 
-def navigate_to(page_name, **kwargs):
-    """Sets the session state page for navigation."""
-    st.session_state.page = page_name
-    
-    # Update other state variables if provided
-    if 'role' in kwargs:
-        st.session_state.role = kwargs['role']
-    if 'student' in kwargs:
-        st.session_state.student = kwargs['student']
-    
+def navigate_to(page, role=None, student=None):
+    """Sets session state to navigate to a new page."""
+    st.session_state.page = page
+    if role:
+        st.session_state.role = role
+        st.session_state.staff_name = find_staff_name_by_role(role) # Set staff name based on role
+    if student:
+        st.session_state.student = student
     st.rerun()
 
-# --- Page Renderers ---
+# --- Analysis Functions (Data Viz) ---
+
+def plot_incident_rate(df):
+    """Plots the weekly incident rate over time."""
+    df_weekly = df.set_index('date').resample('W-MON').size().reset_index(name='incident_count')
+    fig = px.line(
+        df_weekly, 
+        x='date', 
+        y='incident_count', 
+        title='Weekly Incident Rate Over Time',
+        template='plotly_dark'
+    )
+    fig.update_layout(xaxis_title="Week Start Date", yaxis_title="Incident Count", plot_bgcolor='#1E293B', paper_bgcolor='#1E293B')
+    st.plotly_chart(fig, use_container_width=True)
+
+def plot_behavior_distribution(df):
+    """Plots the distribution of behaviors as a bar chart."""
+    behavior_counts = df['behavior'].value_counts().reset_index()
+    behavior_counts.columns = ['Behavior', 'Count']
+    fig = px.bar(
+        behavior_counts, 
+        x='Behavior', 
+        y='Count', 
+        title='Distribution of Behaviors',
+        template='plotly_dark'
+    )
+    fig.update_layout(xaxis_title="Behavior", yaxis_title="Total Count", plot_bgcolor='#1E293B', paper_bgcolor='#1E293B')
+    st.plotly_chart(fig, use_container_width=True)
+    
+def plot_function_distribution(df):
+    """Plots the hypothesized function distribution as a pie chart."""
+    function_counts = df['hypothesized_function'].value_counts().reset_index()
+    function_counts.columns = ['Function', 'Count']
+    fig = px.pie(
+        function_counts, 
+        names='Function', 
+        values='Count', 
+        title='Hypothesized Function Distribution',
+        template='plotly_dark',
+        hole=0.3
+    )
+    fig.update_layout(plot_bgcolor='#1E293B', paper_bgcolor='#1E293B', showlegend=True)
+    st.plotly_chart(fig, use_container_width=True)
+
+# --- Page Rendering Functions (RESTORED BUTTONS) ---
 
 def render_landing_page():
-    """Renders the initial login/role selection page (retained select box fix)."""
-    st.title("🌟 Behaviour Support Data Tool")
-    st.subheader("Select Your Role to Access the System")
-    
+    """Renders the initial landing page for role selection using buttons."""
+    st.title("Behaviour Support & Data Analysis Tool")
+
+    st.markdown("### Welcome, please select your user role/program area to proceed.")
+    st.markdown("---")
+
+    # RESTORED: Five button layout
     roles = {
         "Junior Primary (JP)": 'JP',
         "Primary (PY)": 'PY',
@@ -216,112 +256,79 @@ def render_landing_page():
         "Support Staff (SSO/TRT)": 'SSO/TRT',
         "Administrator (ADM)": 'ADM'
     }
-    
-    with st.form("role_selection_form"):
-        # Use a selectbox for consolidated program/role selection
-        selected_display_role = st.selectbox(
-            "Select your **Role / Program Area**:",
-            options=list(roles.keys()),
-            index=None,
-            placeholder="Choose your access level...",
-        )
-        
-        submitted = st.form_submit_button("Access Staff Area", type="primary", use_container_width=True)
-        
-        if submitted and selected_display_role:
-            role_code = roles[selected_display_role]
-            # Store the role code for both analysis and logging context
-            st.session_state.role = role_code 
-            
-            # For simplicity in this mock, we'll store the name of a staff in that role for logging.
-            # In a real app, this would be the actual logged-in user's name.
-            mock_staff_name = next((s['name'] for s in MOCK_STAFF if s['role'] == role_code), 'Unknown Staff')
-            st.session_state.staff_name = mock_staff_name
 
-            navigate_to('staff_area', role=role_code)
-            st.rerun() # Rerun to navigate
-        elif submitted and not selected_display_role:
-            st.error("Please select a role/area to proceed.")
-
+    cols = st.columns(5)
+    for i, (display_name, role_code) in enumerate(roles.items()):
+        with cols[i]:
+            if st.button(display_name, key=f"role_{role_code}", use_container_width=True, type="primary"):
+                navigate_to('staff_area', role=role_code)
+                
     st.markdown("---")
-    st.info("This application supports data-driven decision-making for student behaviour support. Your role selection determines your permissions.")
+    st.info("This application uses a detailed ABCH Quick Log for context-rich data collection, feeding directly into data-driven student analysis.")
 
-def render_student_analysis(student_id, role):
-    """Renders the detailed analysis dashboard for a specific student."""
+def render_staff_area(role):
+    """Renders the dashboard/student selection area for staff."""
+    st.title(f"{role} Staff Dashboard")
+    st.subheader(f"Area Focus: {role}")
+    st.markdown("---")
+
+    students_in_area = get_students_for_area(role)
     
-    student = next((s for s in MOCK_STUDENTS_LIST if s['id'] == student_id), None)
-    if not student:
-        st.error("Student profile not found.")
-        navigate_to('staff_area', role=role)
+    if not students_in_area:
+        st.warning("No students are currently assigned to this program area.")
         return
 
-    st.header(f"📊 Student Analysis: {student['name']} (Year {student['year']})")
-    st.subheader(f"Profile: {student['profile']}")
+    st.markdown("### Select a Student for Quick Log or Analysis")
+
+    # Display students in cards
+    cols = st.columns(3)
     
-    st.button("↩ Back to Staff Dashboard", on_click=navigate_to, args=('staff_area',), kwargs={'role': role})
-    st.markdown("---")
-
-    # Access the single DataFrame for analysis (REVERTED)
-    student_logs = st.session_state.mock_logs[st.session_state.mock_logs['student_id'] == student_id]
-    
-    col1, col2, col3 = st.columns(3)
-    
-    # Calculate Total Incidents
-    total_incidents = len(student_logs)
-    col1.metric("Total Incidents Logged", total_incidents)
-
-    # Calculate Last Incident Date
-    last_incident = student_logs['timestamp'].max()
-    last_incident_str = last_incident.strftime('%Y-%m-%d') if pd.notna(last_incident) else "N/A"
-    col2.metric("Last Incident Date", last_incident_str)
-
-    # Calculate Top Behavior
-    behavior_counts = student_logs['behavior'].value_counts()
-    top_behavior = behavior_counts.index[0] if not behavior_counts.empty else "N/A"
-    top_behavior_count = behavior_counts.iloc[0] if not behavior_counts.empty else 0
-    col3.metric("Top Behavior", f"{top_behavior} ({top_behavior_count} logs)")
-
-    st.markdown("---")
-
-    st.subheader("Incident Trends by Behavior")
-    if not student_logs.empty:
-        # Group by behavior and count
-        df_plot = student_logs.groupby(student_logs['timestamp'].dt.to_period('W'))['behavior'].value_counts().reset_index(name='Count')
-        df_plot['Week'] = df_plot['timestamp'].astype(str)
+    for i, (student_id, data) in enumerate(students_in_area):
+        student_name = data['name']
+        student_program = data['program']
+        student_risk = data['risk']
+        fba_status = data['fba_status']
         
-        fig = px.bar(
-            df_plot,
-            x='Week',
-            y='Count',
-            color='behavior',
-            title=f"Weekly Incident Count for {student['name']}",
-            labels={'Week': 'Week Starting', 'Count': 'Incident Count', 'behavior': 'Behavior'},
-            template="plotly_dark"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("No incidents logged for this student yet.")
-    
+        # Get incident count for display
+        incident_count = len(st.session_state.logs.get(student_id, pd.DataFrame()))
+
+        with cols[i % 3]:
+            with st.container(border=True):
+                st.markdown(f"**{student_name}** ({student_id})")
+                st.markdown(f"Program: **{student_program}** | Risk: **{student_risk}**")
+                st.markdown(f"Logs: **{incident_count}** | FBA Status: *{fba_status}*")
+                
+                # Group buttons for logging and viewing
+                btn_col1, btn_col2 = st.columns(2)
+                
+                with btn_col1:
+                    if st.button("Log Incident", key=f"log_{student_id}", use_container_width=True):
+                        navigate_to('quick_log', student=student_id)
+                
+                with btn_col2:
+                    if st.button("View Analysis", key=f"view_{student_id}", use_container_width=True, type="secondary"):
+                        navigate_to('student_detail', student=student_id)
+                        
     st.markdown("---")
-    st.subheader("Raw Log Data (Last 10 Entries)")
-    st.dataframe(student_logs[['timestamp', 'reported_by', 'behavior']].sort_values('timestamp', ascending=False).head(10), use_container_width=True)
+    # Quick navigation back home
+    if st.button("← Change Role / Log Out", key='logout_button'):
+        navigate_to('landing')
 
 def render_quick_log(current_role, current_student):
     """
-    REVERTED: Renders the detailed ABCH (Antecedent-Behavior-Context-How to Respond) Quick Log form.
-    This form captures structured data for Functional Behaviour Assessments (FBA).
+    RESTORED: Renders the detailed ABCH Quick Log form.
     """
     
-    student = next((s for s in MOCK_STUDENTS_LIST if s['id'] == current_student), None)
+    student = MOCK_STUDENTS.get(current_student)
     student_name = student['name'] if student else "Unknown Student"
     
-    st.header(f"✍️ Quick Incident Log: {student_name}")
+    st.header(f"✍️ Quick Incident Log for: {student_name}")
     st.subheader(f"Data Capture for Functional Behaviour Assessment (ABCH Log)")
     
     # Navigation Buttons
     col_nav_a, col_nav_b, col_nav_c = st.columns([1, 1, 4])
     col_nav_a.button("↩ Dashboard", on_click=navigate_to, args=('staff_area',), kwargs={'role': current_role}, key='nav_ql_dash')
-    col_nav_b.button("Detailed View", on_click=navigate_to, args=('student_detail',), kwargs={'student': current_student, 'role': current_role}, key='nav_ql_detail')
+    col_nav_b.button("View Analysis", on_click=navigate_to, args=('student_detail',), kwargs={'student': current_student, 'role': current_role}, key='nav_ql_detail')
 
     st.markdown("---")
     
@@ -335,13 +342,8 @@ def render_quick_log(current_role, current_student):
         
         details_col1, details_col2, details_col3 = st.columns(3)
 
-        # Date of Incident
         log_date = details_col1.date_input("Date of Incident", value=datetime.now().date())
-        
-        # Time of Incident
         log_time = details_col2.time_input("Time of Incident", value=datetime.now().time())
-        
-        # Staff Logged By (Pre-filled from login state)
         logged_by_name = st.session_state.get('staff_name', 'Unknown Staff')
         details_col3.text_input("Logged By", value=logged_by_name, disabled=True)
         
@@ -394,7 +396,7 @@ def render_quick_log(current_role, current_student):
         # Staff Who Attended
         attending_staff = st.multiselect(
             "Other Staff Who Attended/Supported:",
-            options=get_active_staff(),
+            options=get_active_staff_names(),
             default=[],
             help="Select any other staff who were involved in managing the incident."
         )
@@ -453,133 +455,107 @@ def render_quick_log(current_role, current_student):
         submitted = st.form_submit_button("💾 Save Detailed Incident Log", type="primary", use_container_width=True)
         
         if submitted:
-            # Compile the full log entry
-            log_entry = {
-                'id': str(uuid.uuid4()),
+            # In a real app, you would save this comprehensive data to your database (e.g., Firestore)
+            # For this mock, we will only save minimal data to the mock logs for analysis
+            
+            # 1. Compile minimal log entry for the analysis DataFrame
+            new_log = {
+                'log_id': str(uuid.uuid4())[:8],
                 'student_id': current_student,
-                'student_name': student_name,
-                'timestamp': datetime.combine(log_date, log_time),
-                'reported_by': logged_by_name,
-                'role': find_staff_role(logged_by_name),
-                
-                # FBA Data
+                'date': log_date,
+                'time': log_time.strftime('%H:%M'),
+                'location': 'Recorded in context',
                 'antecedent': antecedent,
                 'behavior': behavior,
-                'consequences': consequences, # list
-                'function': function,
-                
-                # Context & Response
-                'attending_staff': attending_staff, # list
-                'window_of_tolerance': wot_level,
-                'context_notes': context_notes,
-                'how_to_respond': response_plan,
-                
-                # Outcomes
-                'outcome_send_home': st.session_state.get('o_a_send_home', False),
-                'outcome_leave_area': st.session_state.get('o_b_left_area', False),
-                'outcome_assault': st.session_state.get('o_c_assault', False),
-                'outcome_property_damage': st.session_state.get('o_d_property_damage', False),
-                'outcome_staff_injury': st.session_state.get('o_e_staff_injury', False),
-                'outcome_sapol_callout': st.session_state.get('o_f_sapol_callout', False),
-                'outcome_first_aid_self': st.session_state.get('o_g_first_aid_self', False),
-                'outcome_ambulance_callout': st.session_state.get('o_r_call_out_amb', False),
-                'outcome_formal_suspension': st.session_state.get('o_h_formal_susp', False),
-                
-                # Metadata
-                'is_abch_completed': True,
-                'log_type': 'Detailed ABCH Log'
+                'duration_min': 5.0, # Placeholder for analysis
+                'severity': 'Medium', # Placeholder for analysis
+                'consequence': consequences[0] if consequences else 'None Recorded',
+                'hypothesized_function': function,
+                'logged_by': logged_by_name,
             }
             
-            # Add the new log to the mock data store (In a real app, this is where you'd save to Firestore/DB)
-            st.session_state.mock_logs = pd.concat([st.session_state.mock_logs, pd.Series(log_entry).to_frame().T], ignore_index=True)
-            
-            # Display Success message and clean up
-            st.success(f"Log for {student_name} saved successfully! ID: {log_entry['id']}")
-            
-            # Clear checkboxes state for next submission
-            for key in ['o_a_send_home', 'o_b_left_area', 'o_c_assault', 'o_d_property_damage', 'o_e_staff_injury', 'o_f_sapol_callout', 'o_g_first_aid_self', 'o_r_call_out_amb', 'o_h_formal_susp']:
-                if key in st.session_state:
-                    # Setting the default back to False instead of deleting it helps with form reruns
-                    st.session_state[key] = False 
-            
-            # Re-running the page ensures the form is completely reset
-            navigate_to('staff_area', role=current_role)
-            
+            # 2. Add log entry to the mock data and navigate back
+            try:
+                df = st.session_state.logs[current_student]
+                new_row_df = pd.DataFrame([new_log])
+                new_row_df['date'] = pd.to_datetime(new_row_df['date']) 
+                st.session_state.logs[current_student] = pd.concat([new_row_df, df], ignore_index=True)
+                
+                st.success(f"Log entry for {student_name} submitted successfully! Only key fields saved to analysis data.")
+                
+                # Clear checkbox states for next entry (needed for persistent state between reruns)
+                for key in ['o_a_send_home', 'o_b_left_area', 'o_c_assault', 'o_d_property_damage', 'o_e_staff_injury', 'o_f_sapol_callout', 'o_g_first_aid_self', 'o_r_call_out_amb', 'o_h_formal_susp']:
+                    if key in st.session_state:
+                        st.session_state[key] = False 
+                
+                navigate_to('staff_area', role=current_role)
+                
+            except Exception as e:
+                st.error(f"Error saving log: {e}")
 
-def render_staff_area(current_role):
-    """Renders the main dashboard for staff, showing students and quick actions."""
-    
-    st.title(f"👋 Welcome, {current_role} Staff")
-    st.subheader("Select a Student or Initiate a Quick Log")
-    
-    # 1. Quick Log Button (Top Priority Action)
-    st.markdown("---")
-    st.markdown("### Quick Log Action")
-    
-    # Get students based on role
-    students_in_area = get_students_for_area(current_role)
-    student_names = [s['name'] for _, s in students_in_area]
-    
-    # Select student for quick log
-    selected_student_name = st.selectbox(
-        "Select Student for **Quick Incident Log**:",
-        options=[''] + student_names,
-        index=0,
-        key='ql_student_select'
-    )
-    
-    if st.button("Start Quick Log", disabled=not selected_student_name, type="primary"):
-        student_id = next(s_id for s_id, s_data in students_in_area if s_data['name'] == selected_student_name)
-        navigate_to('quick_log', role=current_role, student=student_id)
-        st.rerun()
+def render_student_analysis(student_id, role):
+    """Renders the detailed analysis page for a selected student."""
+    student_info = MOCK_STUDENTS.get(student_id)
+    if not student_info:
+        st.error("Student information not found.")
+        navigate_to('staff_area', role=role)
+        return
 
-    # 2. Student List/Analysis Access
+    st.title(f"Data Analysis for {student_info['name']} ({student_id})")
+    st.subheader(f"Risk: {student_info['risk']} | FBA Status: {student_info['fba_status']}")
     st.markdown("---")
-    st.markdown("### Student Management & Analysis")
     
-    # Display students in a list/table for easy navigation
-    student_data = []
-    for s_id, s in students_in_area:
-        # Get count of incidents for this student from the single mock_logs DataFrame (REVERTED)
-        count = len(st.session_state.mock_logs[st.session_state.mock_logs['student_id'] == s_id])
-        student_data.append({
-            'Name': s['name'],
-            'Year': s['year'],
-            'Profile': s['profile'],
-            'Incidents Logged': count,
-        })
+    df = st.session_state.logs.get(student_id)
+    
+    if df is None or df.empty:
+        st.warning("No incident logs available for this student to generate analysis.")
+        if st.button("← Back to Staff Dashboard"):
+            navigate_to('staff_area', role=role)
+        return
+
+    # --- Key Metrics ---
+    total_incidents = len(df)
+    last_incident = df['date'].max().strftime('%Y-%m-%d') if total_incidents > 0 else "N/A"
+    
+    # Calculate average duration for a key metric
+    avg_duration = df['duration_min'].mean()
+    
+    # Get the most common behavior
+    most_common_behavior = df['behavior'].mode()[0]
+    
+    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+    col_m1.metric("Total Incidents (12M)", total_incidents, help="Total number of recorded incidents in the last 12 months.")
+    col_m2.metric("Last Incident Date", last_incident)
+    col_m3.metric("Avg Duration (min)", f"{avg_duration:.1f}", help="Average duration of recorded incidents.")
+    col_m4.metric("Most Common Behavior", most_common_behavior)
+    
+    st.markdown("---")
+
+    # --- Data Visualizations ---
+    
+    st.markdown("### Incident Trends and Distribution")
+    
+    tab1, tab2, tab3 = st.tabs(["Incident Rate", "Behavior Frequency", "Function Analysis"])
+    
+    with tab1:
+        plot_incident_rate(df)
+    
+    with tab2:
+        plot_behavior_distribution(df)
+
+    with tab3:
+        plot_function_distribution(df)
         
-    df = pd.DataFrame(student_data)
+    st.markdown("---")
+
+    # --- Raw Data View ---
     
-    # Display the table
-    st.dataframe(
-        df[['Name', 'Year', 'Profile', 'Incidents Logged']], 
-        use_container_width=True,
-        hide_index=True
-    )
+    with st.expander("View Raw Incident Log Data"):
+        st.dataframe(df.drop(columns=['student_id']).head(20), use_container_width=True) # Show top 20 logs
 
-    # Use a separate row for action buttons tied to the list
     st.markdown("---")
-    st.subheader("Access Detailed Analysis")
-
-    analysis_col1, analysis_col2 = st.columns([2, 1])
-
-    student_for_analysis_name = analysis_col1.selectbox(
-        "Select a student to view their detailed data analysis dashboard:",
-        options=[''] + df['Name'].tolist(),
-        index=0,
-        key='analysis_student_select'
-    )
-
-    if analysis_col2.button("View Analysis", disabled=not student_for_analysis_name, type="secondary"):
-        student_id = next(s_id for s_id, s_data in students_in_area if s_data['name'] == student_for_analysis_name)
-        navigate_to('student_detail', role=current_role, student=student_id)
-        st.rerun()
-            
-    st.markdown("---")
-    if st.button("← Change Role / Log Out", key='logout_button'):
-        navigate_to('landing')
-
+    if st.button("← Back to Staff Dashboard", key='back_to_dashboard_from_detail'):
+        navigate_to('staff_area', role=role)
 
 # --- Main Application Loop ---
 
