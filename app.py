@@ -231,8 +231,14 @@ def navigate_to(page, role=None, student=None):
     st.session_state.page = page
     if role:
         st.session_state.role = role
-    if student:
+    
+    # Only set student if provided, otherwise preserve or clear if needed by page
+    if page == 'quick_log' and student is None:
+        # If navigating to quick_log without a student (e.g. from the main log button)
+        st.session_state.student = None
+    elif student is not None:
         st.session_state.student = student
+    
     # Reset log step when navigating away from log
     if page != 'quick_log':
         st.session_state.log_step = 1
@@ -308,6 +314,21 @@ def render_detailed_incident_log_form(student):
     with critical incident flagging.
     """
     
+    # STEP 0: Student Selection if coming from the main log button
+    if student is None:
+        st.subheader("Select Student for Incident Log")
+        student_names = {s['name']: s['id'] for s in STUDENTS}
+        selected_name = st.selectbox(
+            "Select Student",
+            list(student_names.keys()),
+            key='s0_student_select'
+        )
+        student_id = student_names[selected_name]
+        student = get_student_by_id(student_id)
+        
+        st.markdown("---")
+
+
     st.subheader(f"Detailed Incident Log: {student['name']} (Year {student['year']})")
     st.markdown(f"**Step {st.session_state.log_step} of 2**")
     
@@ -368,6 +389,9 @@ def render_detailed_incident_log_form(student):
                         'follow_up': True, # Assume follow up is needed until checked in step 2
                         'staff_id': next(s['id'] for s in MOCK_STAFF if s['name'] == staff_reporter)
                     }
+                    # IMPORTANT: Store the student ID here for step 2 submission
+                    st.session_state.prelim_log_data['student_id'] = student['id']
+                    
                     st.session_state.log_step = 2
                     st.rerun()
     
@@ -445,8 +469,8 @@ def render_detailed_incident_log_form(student):
                     **outcome_data # Spread the collected outcome data
                 })
                 
-                # Log the final incident
-                log_incident(student['id'], final_log_entry)
+                # Log the final incident using the student ID stored in prelim data
+                log_incident(final_log_entry['student_id'], final_log_entry)
                 
                 # Display success message and critical warning if needed
                 if is_critical:
@@ -469,6 +493,11 @@ def render_student_analysis(student, role):
     
     st.markdown(f"**Student ID:** `{student['id']}` | **Year:** `{student['year']}` | **Grade Level:** `{student['grade_level']}`")
     
+    # Log button placed prominently next to metrics
+    if role in ['ADM', 'SY', 'MY', 'PY']:
+        if st.button(f"➕ Log New Incident for {student['name']}", key="direct_log_btn", type="primary"):
+            navigate_to('quick_log', student=student)
+
     st.markdown("---")
     
     col_a, col_b, col_c = st.columns(3)
@@ -621,10 +650,6 @@ def render_student_analysis(student, role):
     if st.button("⬅ Back to Student List", key="back_from_analysis", type="secondary"):
         navigate_to('staff_area', role=role)
     
-    # Optional: Direct log button for this student 
-    if role in ['ADM', 'SY', 'MY', 'PY']:
-        if st.button(f"➕ Log New Incident for {student['name']}", key="direct_log_btn", type="primary"):
-            navigate_to('quick_log', student=student)
 
 
 def render_staff_area_home(role):
@@ -632,6 +657,15 @@ def render_staff_area_home(role):
     
     staff_header(f"Staff Dashboard ({role})")
     
+    # --- PROMINENT LOG BUTTON ---
+    col_log, col_space = st.columns([0.4, 0.6])
+    with col_log:
+        # Allow staff to log an incident immediately without selecting a student first
+        if st.button("➕ Log Incident (Select Student Now)", key="log_new_incident_main", type="primary", use_container_width=True):
+            navigate_to('quick_log', student=None) # Navigate with student=None to trigger internal selection
+
+    st.markdown("---")
+
     # Calculate overall metrics
     all_incidents = get_all_incidents()
     
@@ -666,7 +700,7 @@ def render_staff_area_home(role):
             st.metric("Students in View", len(student_data))
 
     st.markdown("---")
-    st.subheader("Student Quick View")
+    st.subheader("Student Quick View (Click to Analyze/Log)")
     
     # Student Search/Filter
     search_query = st.text_input("Search by Name or ID", key="student_search", placeholder="e.g., Alex or S001")
@@ -711,9 +745,7 @@ def render_staff_area_home(role):
                                 unsafe_allow_html=True
                             )
                             
-                            # Streamlit doesn't allow a button *inside* a custom markdown container 
-                            # to trigger an action easily, so we use the button right below it 
-                            # for functional clarity.
+                            # Button to view analysis (which contains the log button)
                             if st.button("View Analysis / Log", key=key, use_container_width=True):
                                 navigate_to('student_detail', student=student_obj)
     else:
@@ -757,16 +789,22 @@ def render_quick_log(role, student):
     """Page to render the log form after selecting a student from the dashboard."""
     staff_header("Incident Quick Log")
     
-    # Call the new detailed log form
+    # If student is None, the form handles selection first (Step 0)
+    # If student is provided, it proceeds to Step 1 directly.
     render_detailed_incident_log_form(student)
     
+    # Navigation buttons for the log page
+    st.markdown("---")
     if st.session_state.log_step == 1:
         if st.button("⬅ Cancel and Return to List", key="back_from_log", type="secondary"):
             navigate_to('staff_area', role=role)
     elif st.session_state.log_step == 2:
-        if st.button("⬅ Back to Step 1", key="back_to_step1", type="secondary"):
-            st.session_state.log_step = 1
-            st.rerun()
+        # Add a back button for multi-step form
+        col_back, col_space = st.columns([0.4, 0.6])
+        with col_back:
+            if st.button("⬅ Back to Step 1", key="back_to_step1", type="secondary"):
+                st.session_state.log_step = 1
+                st.rerun()
 
 
 # --- Main Application Loop ---
@@ -785,11 +823,12 @@ def main():
         render_landing_page()
 
     elif st.session_state.page == 'quick_log':
-        if current_student and current_role:
+        # Quick log can be accessed either with a student pre-selected or not (student=None)
+        if current_role:
              render_quick_log(current_role, current_student) 
         else:
-            st.error("Missing context. Returning to dashboard.")
-            navigate_to('staff_area', role=current_role)
+            st.error("Role context missing. Returning to landing page.")
+            navigate_to('landing')
 
 
     elif st.session_state.page == 'student_detail':
