@@ -16,7 +16,6 @@ st.set_page_config(
 )
 
 # Custom CSS for a sleek, high-contrast, dark-mode inspired UI
-# Corrected #F1F5N9 to #F1F5F9 for valid hex color
 st.markdown(
     """
     <style>
@@ -94,12 +93,9 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- FBA Data, Staff Mock Data, and Helper Functions (UPDATED) ---
+# --- FBA Data, Staff Mock Data, and Helper Functions ---
 
 # --- MOCK DATA REQUIRED FOR LOGGING DROPDOWNS ---
-# NOTE: This data is included for the staff selection logic in the forms. 
-# You should replace 'MOCK_STAFF' and the staff-related helper functions
-# (`get_active_staff`) with your application's actual data fetching logic.
 MOCK_STAFF = [
     {'id': 's1', 'name': 'Emily Jones (JP)', 'role': 'JP', 'active': True, 'special': False},
     {'id': 's2', 'name': 'Daniel Lee (PY)', 'role': 'PY', 'active': True, 'special': False},
@@ -109,7 +105,7 @@ MOCK_STAFF = [
     {'id': 's_sso', 'name': 'External SSO', 'role': 'SSO', 'active': True, 'special': True},
 ]
 
-# --- FBA and Data Constants (UPDATED) ---
+# --- FBA and Data Constants ---
 
 BEHAVIORS_FBA = ['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)', 'Self-Injurious Behaviour', 'Outburst (Screaming/Crying)', 'Other']
 ANTECEDENTS = ['Transition to non-preferred activity', 'Task demands/Request to work', 'Access to preferred item/activity denied', 'Peer interaction/conflict', 'Sensory overload (noise/light)', 'Unstructured time (recess/lunch)', 'Non-contingent attention removed', 'Other']
@@ -123,7 +119,9 @@ INTENSITY_LEVELS = {
     5: "Critical (Assault/Injury/Major destruction, immediate risk, requires physical intervention/emergency services)"
 }
 DURATION_OPTIONS = ['< 1 minute', '1-5 minutes', '5-15 minutes', '15-30 minutes', '> 30 minutes']
-WOT_OPTIONS = ['Co-regulated/Settled quickly', 'Settled independently (long duration)', 'Still escalated/Unsettled', 'Sent home/Left area']
+
+# WOT_OPTIONS is renamed to RESOLUTION_STATUS_OPTIONS to match the uploaded code's intent in Step 2
+RESOLUTION_STATUS_OPTIONS = ['Co-regulated/Settled quickly', 'Settled independently (long duration)', 'Still escalated/Unsettled', 'Sent home/Left area']
 
 OUTCOME_MAPPINGS = {
     'o_a_send_home': 'Send Home/Exclusion',
@@ -156,12 +154,15 @@ def get_active_staff():
 def save_quick_log_to_db(log_entry):
     """
     MOCK function to save the log entry to the database (or a DataFrame in this case).
-    In a real app, this would use Firestore/SQL/etc.
     """
     if 'log_history' not in st.session_state:
         st.session_state['log_history'] = pd.DataFrame(columns=list(log_entry.keys()))
     
-    # Append new log entry. Ensure all columns match.
+    # Ensure all list columns are correctly handled for concatenation
+    for col in ['staff_involved', 'behaviors', 'consequences']:
+        if col in log_entry and isinstance(log_entry[col], list):
+             log_entry[col] = [log_entry[col]] # Wrap the list in a list for correct DataFrame creation
+    
     new_row_df = pd.DataFrame([log_entry])
     st.session_state['log_history'] = pd.concat([st.session_state['log_history'], new_row_df], ignore_index=True)
 
@@ -186,207 +187,252 @@ def navigate_to(page, student=None, role=None):
     if role:
         st.session_state.role = role
 
-
-# --- Incident Reporting UI Functions (REPLACED WITH UPLOADED CODE) ---
-
-def render_quick_log(role, student_name):
-    """
-    Renders the quick A-B-C-H (Antecedent-Behaviour-Consequence-How to Respond) log form.
-    This is the single-page, comprehensive quick log.
-    """
-    st.title(f"Quick Incident Log for {student_name}")
-    st.caption(f"Staff Role: **{role}** | ID: {st.session_state.get('user_id', 'N/A')}")
-    st.markdown("---")
-
-    # Initialize data container
-    if 'current_log_data' not in st.session_state:
-        st.session_state.current_log_data = {
+def initialize_quick_log_state():
+    """Initializes/resets the state variables for the two-step quick log."""
+    if 'ql_step' not in st.session_state or st.session_state.ql_step == 'final':
+        st.session_state.ql_step = 1
+    if 'preliminary_data' not in st.session_state:
+        st.session_state.preliminary_data = {
             'log_id': str(uuid.uuid4()),
-            'student_name': student_name,
-            'logged_by_role': role,
             'timestamp': datetime.now().isoformat(),
             'is_abch_completed': False,
         }
+    # Reset critical outcome keys for clean slate on new log attempt
+    for key in OUTCOME_MAPPINGS.keys():
+        if key in st.session_state:
+            del st.session_state[key]
 
-    with st.form("quick_log_form", clear_on_submit=True):
-        
-        # --- Context/Timing ---
-        st.subheader("1. Context & Timing")
-        col1, col2 = st.columns(2)
-        with col1:
-            log_date = st.date_input("Date of Incident", datetime.now().date(), key='log_date')
-            log_time = st.time_input("Time of Incident", datetime.now().time(), key='log_time')
-            setting = st.selectbox("Setting/Location", options=SETTINGS, key='log_setting')
-        
-        with col2:
-            logged_by_staff = st.selectbox("Staff Logging Incident", options=get_active_staff(), key='log_staff')
-            staff_involved = st.multiselect("Other Staff Involved (if any)", options=[s for s in get_active_staff() if s != logged_by_staff], key='log_involved')
+# --- Incident Reporting UI Functions (CORRECTED TO USE TWO-STEP FLOW) ---
 
-        st.markdown("---")
+def render_quick_log(role, student_name):
+    """
+    Renders the two-step quick A-B-C-H log form based on the uploaded code structure.
+    """
+    initialize_quick_log_state()
 
-        # --- ABCH Fields ---
-        st.subheader("2. A-B-C: Incident Chain")
-        
-        # A - Antecedent
-        st.markdown("#### A: Antecedent (What happened *immediately* before the behaviour?)")
-        antecedent = st.selectbox("Primary Antecedent", options=ANTECEDENTS, key='log_antecedent')
-        
-        # B - Behaviour
-        st.markdown("#### B: Behaviour (What was the *observable* behaviour?)")
-        col3, col4 = st.columns([2, 1])
-        with col3:
-            behaviors = st.multiselect("Observed Behaviours (Select all that apply)", options=BEHAVIORS_FBA, key='log_behaviors')
-        with col4:
-            intensity = st.radio("Max Intensity Level", options=list(INTENSITY_LEVELS.keys()), format_func=lambda x: f"{x}: {INTENSITY_LEVELS[x].split('(')[0].strip()}", key='log_intensity', index=2, horizontal=True)
+    st.title(f"Quick Incident Log for {student_name}")
+    st.caption(f"Staff Role: **{role}** | Log ID: {st.session_state.preliminary_data['log_id'][:8]} | Step: {st.session_state.ql_step} of 2")
+    st.markdown("---")
 
-        # C - Consequence / Duration / Resolution
-        st.markdown("#### C: Consequence & Resolution")
-        col5, col6, col7 = st.columns(3)
-        with col5:
-            consequences = st.multiselect("Observed Consequences (Select all that apply)", options=CONSEQUENCES, key='log_consequences')
-        with col6:
-            duration = st.selectbox("Duration of Incident", options=DURATION_OPTIONS, key='log_duration', index=1)
-        with col7:
-            wot = st.selectbox("Resolution Status (WOT Check)", options=WOT_OPTIONS, key='log_wot', index=0)
-
-        st.markdown("---")
-
-        # --- Narrative and H (Plan) ---
-        st.subheader("3. Narrative & H: How to Respond")
+    if st.session_state.ql_step == 1:
+        st.subheader("Step 1: Antecedent, Behavior, Consequence (A-B-C)")
         
-        incident_narrative = st.text_area(
-            "Brief, Objective Narrative (What did you see, hear, and do?)",
-            height=120,
-            key='log_narrative'
-        )
-
-        how_to_respond_plan = st.text_area(
-            "H: Plan / Next Steps (Effective strategies used & plan for next time)",
-            height=120,
-            key='log_how_to_respond'
-        )
-
-        st.markdown("---")
-        
-        # --- Critical Incident Section (Conditional Display) ---
-        is_critical = st.session_state.get('log_intensity', 1) >= 4
-        
-        st.subheader("4. Critical Incident Outcomes (Mandatory for Intensity 4 & 5)")
-        st.caption("Select any mandatory reporting outcomes. This section is required for Intensity 4/5 logs.")
-        
-        # Use st.expander to keep the form clean if it's not critical, but enforce if it is.
-        with st.expander("Critical Outcomes & Follow-up", expanded=is_critical):
+        with st.form("quick_log_step_1", clear_on_submit=False):
             
-            # Mandatory Outcomes
-            st.markdown("##### Mandatory Outcomes")
-            col_cr_a, col_cr_b, col_cr_c = st.columns(3)
-            with col_cr_a:
-                st.checkbox(OUTCOME_MAPPINGS['o_c_assault'], key='o_c_assault')
-                st.checkbox(OUTCOME_MAPPINGS['o_d_property_damage'], key='o_d_property_damage')
-                st.checkbox(OUTCOME_MAPPINGS['o_e_staff_injury'], key='o_e_staff_injury')
-            with col_cr_b:
-                st.checkbox(OUTCOME_MAPPINGS['o_g_restraint'], key='o_g_restraint')
-                st.checkbox(OUTCOME_MAPPINGS['o_h_seclusion'], key='o_h_seclusion')
-                st.checkbox(OUTCOME_MAPPINGS['o_f_sapol_callout'], key='o_f_sapol_callout')
-            with col_cr_c:
-                st.checkbox(OUTCOME_MAPPINGS['o_i_first_aid_minor'], key='o_i_first_aid_minor')
-                st.checkbox(OUTCOME_MAPPINGS['o_j_first_aid_amb'], key='o_j_first_aid_amb')
-                st.checkbox(OUTCOME_MAPPINGS['o_k_reportable'], key='o_k_reportable')
+            # --- Context/Timing ---
+            st.markdown("##### Context & Timing")
+            col1, col2 = st.columns(2)
+            with col1:
+                log_date = st.date_input("Date of Incident", datetime.now().date(), key='ql_log_date')
+                log_time = st.time_input("Time of Incident", datetime.now().time(), key='ql_log_time')
+                setting = st.selectbox("Setting/Location", options=SETTINGS, key='ql_log_setting')
+            
+            with col2:
+                logged_by_staff = st.selectbox("Staff Logging Incident", options=get_active_staff(), key='ql_log_staff')
+                staff_involved = st.multiselect("Other Staff Involved (if any)", options=[s for s in get_active_staff() if s != logged_by_staff], key='ql_log_involved')
+
+            st.markdown("---")
+
+            # --- A - Antecedent
+            st.markdown("#### A: Antecedent (What happened *immediately* before the behaviour?)")
+            antecedent = st.selectbox("Primary Antecedent", options=ANTECEDENTS, key='ql_log_antecedent')
+            
+            # --- B - Behaviour
+            st.markdown("#### B: Behaviour (What was the *observable* behaviour?)")
+            col3, col4 = st.columns([2, 1])
+            with col3:
+                behaviors = st.multiselect("Observed Behaviours (Select all that apply)", options=BEHAVIORS_FBA, key='ql_log_behaviors')
+            with col4:
+                intensity = st.radio("Max Intensity Level", 
+                                     options=list(INTENSITY_LEVELS.keys()), 
+                                     format_func=lambda x: f"{x}: {INTENSITY_LEVELS[x].split('(')[0].strip()}", 
+                                     key='ql_log_intensity', index=2, horizontal=True)
+
+            # --- C - Consequence / Duration
+            st.markdown("#### C: Consequence & Duration")
+            col5, col6 = st.columns(2)
+            with col5:
+                consequences = st.multiselect("Observed Consequences (Select all that apply)", options=CONSEQUENCES, key='ql_log_consequences')
+            with col6:
+                duration = st.selectbox("Duration of Incident", options=DURATION_OPTIONS, key='ql_log_duration', index=1)
+                
+            st.markdown("---")
+
+            if st.form_submit_button("Continue to Narrative (Step 2/2)"):
+                # Save Step 1 data to preliminary_data
+                st.session_state.preliminary_data.update({
+                    'student_name': student_name,
+                    'logged_by_role': role,
+                    'log_date': log_date.isoformat(),
+                    'log_time': log_time.isoformat(),
+                    'setting': setting,
+                    'logged_by_staff': logged_by_staff,
+                    'staff_involved': staff_involved,
+                    'antecedent': antecedent,
+                    'behaviors': behaviors,
+                    'intensity': intensity,
+                    'consequences': consequences,
+                    'duration': duration,
+                })
+                
+                # Validation check for minimum data
+                if not behaviors or not antecedent:
+                    st.error("Please select at least one Behavior and the Antecedent before continuing.")
+                    st.stop()
+                
+                # Move to Step 2
+                st.session_state.ql_step = 2
+                st.rerun()
+                
+    elif st.session_state.ql_step == 2:
+        st.subheader("Step 2: Narrative, Plan (H), and Outcomes")
+        
+        preliminary_data = st.session_state.preliminary_data
+        
+        # Display key summary from Step 1
+        st.info(f"Summary: Level **{preliminary_data['intensity']}** incident, triggered by **{preliminary_data['antecedent']}**, observed: **{', '.join(preliminary_data['behaviors'])}**.")
+        
+        with st.form("quick_log_step_2", clear_on_submit=True):
+            
+            # --- Narrative and H (Plan) ---
+            st.markdown("#### Objective Narrative")
+            incident_narrative = st.text_area(
+                "Brief, Objective Context (What did you see, hear, and do?)",
+                height=120,
+                key='ql_incident_narrative'
+            )
+
+            st.markdown("#### H: Plan / Next Steps")
+            how_to_respond_plan = st.text_area(
+                "Effective strategies used & plan for next time (Required)",
+                height=100,
+                key='ql_how_to_respond'
+            )
             
             st.markdown("---")
-            
-            # Follow-up and Debriefing
-            st.markdown("##### Follow-up & Plan Review")
-            col_cr_d, col_cr_e, col_cr_f = st.columns(3)
-            with col_cr_d:
-                st.checkbox(OUTCOME_MAPPINGS['o_a_send_home'], key='o_a_send_home')
-                st.checkbox(OUTCOME_MAPPINGS['o_b_left_area'], key='o_b_left_area')
-            with col_cr_e:
-                st.checkbox(OUTCOME_MAPPINGS['o_l_debrief'], key='o_l_debrief')
-                st.checkbox(OUTCOME_MAPPINGS['o_m_follow_up_parent'], key='o_m_follow_up_parent')
-            with col_cr_f:
-                st.checkbox(OUTCOME_MAPPINGS['o_n_follow_up_staff'], key='o_n_follow_up_staff')
-                st.checkbox(OUTCOME_MAPPINGS['o_p_safety_plan_rev'], key='o_p_safety_plan_rev')
-        
-        st.markdown("---")
-        
-        # --- Submission Button ---
-        if st.form_submit_button("✅ Finalise and Save Incident Log"):
-            
-            # Final Validation
-            if not how_to_respond_plan or len(how_to_respond_plan.split()) < 5:
-                st.error("The 'H: Plan / Next Steps' field is critical and requires a substantial plan (at least 5 words provided).")
-                st.stop()
 
-            # Critical Incident Check (re-check)
-            if st.session_state.log_intensity >= 4:
-                # Example: Check if restraint or seclusion was marked if intensity is 5
-                if st.session_state.log_intensity == 5 and not (st.session_state.get('o_g_restraint') or st.session_state.get('o_h_seclusion')):
-                    st.warning("Intensity 5 incidents often involve restraint or seclusion. Please confirm the outcomes in the Critical Outcomes section.")
+            # --- Resolution Status / Window of Tolerance (WOT) ---
+            st.markdown("#### Resolution Status (WOT Check)")
+            refined_wot = st.radio(
+                "How was the situation resolved?",
+                options=RESOLUTION_STATUS_OPTIONS,
+                key='ql_refined_wot',
+                index=0,
+                horizontal=True
+            )
+
+            st.markdown("---")
+            
+            # --- Critical Incident Section (Conditional Display) ---
+            is_critical = preliminary_data['intensity'] >= 4
+            
+            st.subheader(f"Critical Incident Outcomes (Required for Intensity {preliminary_data['intensity']} Logs)")
+            
+            # Display if intensity is 4 or 5
+            if is_critical:
+                st.warning("🚨 This log requires mandatory review due to high intensity. Please check all relevant outcomes.")
+                
+                with st.container(border=True):
+                    st.markdown("##### Mandatory Outcomes")
+                    col_cr_a, col_cr_b, col_cr_c = st.columns(3)
+                    with col_cr_a:
+                        st.checkbox(OUTCOME_MAPPINGS['o_c_assault'], key='o_c_assault')
+                        st.checkbox(OUTCOME_MAPPINGS['o_d_property_damage'], key='o_d_property_damage')
+                        st.checkbox(OUTCOME_MAPPINGS['o_e_staff_injury'], key='o_e_staff_injury')
+                    with col_cr_b:
+                        st.checkbox(OUTCOME_MAPPINGS['o_g_restraint'], key='o_g_restraint')
+                        st.checkbox(OUTCOME_MAPPINGS['o_h_seclusion'], key='o_h_seclusion')
+                        st.checkbox(OUTCOME_MAPPINGS['o_f_sapol_callout'], key='o_f_sapol_callout')
+                    with col_cr_c:
+                        st.checkbox(OUTCOME_MAPPINGS['o_i_first_aid_minor'], key='o_i_first_aid_minor')
+                        st.checkbox(OUTCOME_MAPPINGS['o_j_first_aid_amb'], key='o_j_first_aid_amb')
+                        st.checkbox(OUTCOME_MAPPINGS['o_k_reportable'], key='o_k_reportable')
                     
-            # Consolidate and Save Data
-            log_entry = {
-                'log_id': st.session_state.current_log_data['log_id'],
-                'student_name': student_name,
-                'logged_by_role': role,
-                'timestamp': datetime.combine(log_date, log_time).isoformat(),
-                'is_abch_completed': True,
-                'log_date': log_date.isoformat(),
-                'log_time': log_time.isoformat(),
-                'setting': setting,
-                'logged_by_staff': logged_by_staff,
-                'staff_involved': staff_involved,
-                'antecedent': antecedent,
-                'behaviors': behaviors,
-                'intensity': intensity,
-                'consequences': consequences,
-                'duration': duration,
-                'wot_status': wot,
-                'incident_narrative': incident_narrative,
-                'how_to_respond': how_to_respond_plan,
-                # Critical Outcomes
-                'outcome_send_home': st.session_state.get('o_a_send_home', False),
-                'outcome_leave_area': st.session_state.get('o_b_left_area', False),
-                'outcome_assault': st.session_state.get('o_c_assault', False),
-                'outcome_property_damage': st.session_state.get('o_d_property_damage', False),
-                'outcome_staff_injury': st.session_state.get('o_e_staff_injury', False),
-                'outcome_sapol_callout': st.session_state.get('o_f_sapol_callout', False),
-                'outcome_restraint': st.session_state.get('o_g_restraint', False),
-                'outcome_seclusion': st.session_state.get('o_h_seclusion', False),
-                'outcome_first_aid_minor': st.session_state.get('o_i_first_aid_minor', False),
-                'outcome_first_aid_amb': st.session_state.get('o_j_first_aid_amb', False),
-                'outcome_reportable': st.session_state.get('o_k_reportable', False),
-                'outcome_debrief': st.session_state.get('o_l_debrief', False),
-                'outcome_follow_up_parent': st.session_state.get('o_m_follow_up_parent', False),
-                'outcome_follow_up_staff': st.session_state.get('o_n_follow_up_staff', False),
-                'outcome_counselling': st.session_state.get('o_o_counselling', False),
-                'outcome_safety_plan_rev': st.session_state.get('o_p_safety_plan_rev', False),
-                'outcome_other': st.session_state.get('o_q_other', False),
-                'outcome_ambulance': st.session_state.get('o_r_call_out_amb', False) or st.session_state.get('o_j_first_aid_amb', False),
-            }
-            
-            save_quick_log_to_db(log_entry)
-            
-            # Clean up
-            del st.session_state.current_log_data
-            for key in OUTCOME_MAPPINGS.keys():
-                if key in st.session_state:
-                    del st.session_state[key]
+                    st.markdown("---")
+                    
+                    st.markdown("##### Follow-up & Plan Review")
+                    col_cr_d, col_cr_e, col_cr_f = st.columns(3)
+                    with col_cr_d:
+                        st.checkbox(OUTCOME_MAPPINGS['o_a_send_home'], key='o_a_send_home')
+                        st.checkbox(OUTCOME_MAPPINGS['o_b_left_area'], key='o_b_left_area')
+                    with col_cr_e:
+                        st.checkbox(OUTCOME_MAPPINGS['o_l_debrief'], key='o_l_debrief')
+                        st.checkbox(OUTCOME_MAPPINGS['o_m_follow_up_parent'], key='o_m_follow_up_parent')
+                    with col_cr_f:
+                        st.checkbox(OUTCOME_MAPPINGS['o_n_follow_up_staff'], key='o_n_follow_up_staff')
+                        st.checkbox(OUTCOME_MAPPINGS['o_p_safety_plan_rev'], key='o_p_safety_plan_rev')
 
-            st.success(f"Incident Log '{log_entry['log_id'][:8]}' successfully saved!")
-            st.info("Log automatically navigates back to Student Detail in 1 second.")
-            time.sleep(1) 
-            navigate_to('student_detail', student=student_name, role=role)
+            st.markdown("---")
+            
+            # --- Submission Button ---
+            if st.form_submit_button("✅ Finalise and Save Incident Log"):
+                
+                # Final Validation
+                if not how_to_respond_plan or len(how_to_respond_plan.split()) < 5:
+                    st.error("The 'H: Plan / Next Steps' field is critical and requires a substantial plan (at least 5 words provided).")
+                    st.stop()
+                if not incident_narrative or len(incident_narrative.split()) < 5:
+                    st.error("The 'Objective Narrative' field is critical and requires context (at least 5 words provided).")
+                    st.stop()
+
+                # Consolidate and Save Data
+                log_entry = preliminary_data.copy()
+                log_entry.update({
+                    'is_abch_completed': True,
+                    'wot_status': refined_wot,
+                    'incident_narrative': incident_narrative,
+                    'how_to_respond': how_to_respond_plan,
+                    # Critical Outcomes - retrieve all checkbox values
+                    'outcome_send_home': st.session_state.get('o_a_send_home', False),
+                    'outcome_leave_area': st.session_state.get('o_b_left_area', False),
+                    'outcome_assault': st.session_state.get('o_c_assault', False),
+                    'outcome_property_damage': st.session_state.get('o_d_property_damage', False),
+                    'outcome_staff_injury': st.session_state.get('o_e_staff_injury', False),
+                    'outcome_sapol_callout': st.session_state.get('o_f_sapol_callout', False),
+                    'outcome_restraint': st.session_state.get('o_g_restraint', False),
+                    'outcome_seclusion': st.session_state.get('o_h_seclusion', False),
+                    'outcome_first_aid_minor': st.session_state.get('o_i_first_aid_minor', False),
+                    'outcome_first_aid_amb': st.session_state.get('o_j_first_aid_amb', False),
+                    'outcome_reportable': st.session_state.get('o_k_reportable', False),
+                    'outcome_debrief': st.session_state.get('o_l_debrief', False),
+                    'outcome_follow_up_parent': st.session_state.get('o_m_follow_up_parent', False),
+                    'outcome_follow_up_staff': st.session_state.get('o_n_follow_up_staff', False),
+                    'outcome_counselling': st.session_state.get('o_o_counselling', False),
+                    'outcome_safety_plan_rev': st.session_state.get('o_p_safety_plan_rev', False),
+                    'outcome_other': st.session_state.get('o_q_other', False),
+                    'outcome_ambulance': st.session_state.get('o_r_call_out_amb', False) or st.session_state.get('o_j_first_aid_amb', False),
+                })
+                
+                save_quick_log_to_db(log_entry)
+                
+                # Clean up
+                st.session_state.ql_step = 'final' # Use 'final' to signal successful completion
+                del st.session_state.preliminary_data
+                for key in OUTCOME_MAPPINGS.keys():
+                    if key in st.session_state:
+                        del st.session_state[key]
+
+                st.success(f"Incident Log '{log_entry['log_id'][:8]}' successfully saved!")
+                st.info("Log automatically navigates back to Student Detail in 1 second.")
+                time.sleep(1) 
+                navigate_to('student_detail', student=student_name, role=role)
+                st.rerun()
+
+    # Back button for Step 2
+    if st.session_state.ql_step == 2:
+        if st.button("⬅️ Back to Step 1 (A-B-C)", key="back_to_step1"):
+            st.session_state.ql_step = 1
             st.rerun()
 
-# This function is now a simple redirect, as per the structure often used when replacing pages with an integrated flow.
+# This function is now a simple redirection, as the critical incident reporting is 
+# integrated into the main quick log form (via the Critical Outcomes section).
 def render_critical_incident(role, student_name):
     """
     Renders a redirection to the quick log, as the critical incident reporting is 
     integrated into the main quick log form (via the Critical Outcomes section).
     """
     st.header("Critical Incident Reporting")
-    st.error("The Critical Incident Report functionality has been integrated directly into the Quick Log form. Please use the Quick Log to record all incident details, including critical outcomes.")
+    st.error("The Critical Incident Report functionality has been integrated directly into the Quick Log form (Step 2) and is mandatory for Intensity 4 & 5 incidents. Please use the Quick Log to record all incident details.")
     st.info(f"Navigate to Quick Log for {student_name}", icon="➡️")
     if st.button(f"Go to Quick Log for {student_name}"):
         navigate_to('quick_log', student=student_name, role=role)
@@ -602,7 +648,6 @@ def initialize_state():
 
     # Initialize log history if missing (mock database)
     if 'log_history' not in st.session_state:
-        # Create an empty DataFrame with the expected columns
         # Column list derived from the fields in save_quick_log_to_db and render_quick_log
         log_columns = [
             'log_id', 'student_name', 'logged_by_role', 'timestamp', 'is_abch_completed',
