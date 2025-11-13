@@ -385,20 +385,42 @@ def render_staff_area(role):
 
     # Display student list in a data-driven table
     df_students = pd.DataFrame(MOCK_STUDENTS)
-
-    # Add a 'View Details' button column
-    df_students['Actions'] = [f"View_Details_{id}" for id in df_students['id']]
     
+    # --- FIX: Replaced ButtonColumn with standard Selectbox for compatibility ---
+    
+    student_names = df_students['name'].tolist()
+    
+    # Use st.selectbox for selection
+    selected_name = st.selectbox(
+        "Choose a Student to View Details:",
+        options=["-- Select a Student --"] + student_names,
+        key="student_selector"
+    )
+
+    selected_student_id = None
+    
+    if selected_name != "-- Select a Student --":
+        # Find the ID of the selected student
+        selected_student_row = df_students[df_students['name'] == selected_name].iloc[0]
+        selected_student_id = selected_student_row['id']
+        
+        st.markdown("---")
+        # Use a primary button to trigger navigation
+        if st.button(f"View Analysis for {selected_name}", type="primary", use_container_width=True):
+            navigate_to('student_detail', student=selected_student_id, role=role)
+
+    st.subheader("Full Student Directory")
+    
+    # Display the directory for reference
     st.dataframe(
-        df_students,
+        df_students[['id', 'name', 'grade', 'plan_status', 'risk_level']],
         column_config={
             "id": "Student ID",
             "name": "Name",
             "grade": "Grade",
+            # We keep standard column_config elements as they are supported
             "plan_status": st.column_config.Column("Plan Status", width="medium"),
             "risk_level": st.column_config.Column("Risk Level", width="small"),
-            "Actions": st.column_config.ButtonColumn("Actions", help="View student analysis and logs", 
-                                                    key='student_action_buttons', on_click=lambda id=id: navigate_to('student_detail', student=id, role=role))
         },
         hide_index=True,
         use_container_width=True
@@ -425,7 +447,7 @@ def render_quick_log(role, student):
         st.session_state.log_end_time = (datetime.combine(today, now_time) + timedelta(minutes=10)).time()
     if 'log_staff_involved' not in st.session_state:
         # Default to the current logged-in user if available, otherwise 'Admin User (ADM)'
-        default_staff = next((s['name'] for s in MOCK_STAFF if s['role'] == role), 'Admin User (ADM)')
+        default_staff = next((s for s in MOCK_STAFF if s['role'] == role), 'Admin User (ADM)')
         st.session_state.log_staff_involved = [default_staff]
     if 'log_staff_witnesses' not in st.session_state:
         st.session_state.log_staff_witnesses = []
