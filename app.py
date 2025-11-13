@@ -15,6 +15,7 @@ st.set_page_config(
 )
 
 # Custom CSS for a sleek, high-contrast, dark-mode inspired UI
+# Corrected #F1F5N9 to #F1F5F9 for valid hex color
 st.markdown(
     """
     <style>
@@ -30,10 +31,8 @@ st.markdown(
     /* Input Fields */
     div[data-testid="stTextInput"] > div > input,
     div[data-testid="stTextArea"] > div > textarea,
-    div[data-testid="stSelectbox"] > div > div > div,
-    div[data-testid="stTimeInput"] > div > input,
-    div[data-testid="stDateInput"] > div > input {
-        background-color: #334155;
+    .st-emotion-cache-1gcs6de {
+        background-color: #0F172A;
         border: 1px solid #475569;
         color: #F1F5F9;
         border-radius: 8px;
@@ -41,559 +40,608 @@ st.markdown(
     
     /* Buttons */
     .stButton>button {
-        background-color: #0F5E6B; /* A vibrant teal */
-        color: #F1F5F9;
-        border: none;
+        background-color: #3B82F6; /* Blue for primary action */
+        color: white;
         border-radius: 8px;
-        padding: 10px 20px;
-        font-weight: bold;
+        padding: 10px 24px;
+        font-weight: 600;
         transition: background-color 0.3s;
+        border: none;
     }
     .stButton>button:hover {
-        background-color: #0B4B55;
-    }
-    
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background-color: #1E293B;
+        background-color: #2563EB;
     }
 
-    /* Info and Warning boxes */
-    [data-testid="stAlert"] {
-        border-radius: 10px;
-        border: none;
+    /* Warning (Critical Incident) - Yellow Box */
+    div[data-testid="stAlert"] > div {
+        background-color: #433E0B !important; /* Darker yellow/brown background */
+        border-left: 6px solid #FBBF24 !important; /* Bright yellow border */
+        color: #F1F5F9 !important;
+        border-radius: 12px;
     }
-    .st-emotion-cache-1cypcdb { /* Info alert styling */
-        background-color: #1E3A8A !important; 
-    }
-    .st-emotion-cache-1g83s4g { /* Warning alert styling */
-        background-color: #78350F !important;
-    }
-    
-    /* Centered Text for Headers */
-    .centered-header {
-        text-align: center;
-        margin-bottom: 20px;
+    .st-emotion-cache-121p009 { /* Specific style for warning text */
+        color: #F1F5F9 !important; 
     }
     
     /* Dataframe Styling */
-    .stDataFrame {
+    .stDataFrame { border-radius: 12px; }
+    
+    /* Metric Card Styling */
+    [data-testid="stMetricValue"] {
+        font-size: 2rem;
+        color: #60A5FA; /* Light Blue for metrics */
+    }
+    [data-testid="stMetricLabel"] {
+        color: #E2E8F0;
+    }
+    
+    /* Custom Card/Container Style */
+    .dashboard-card {
+        padding: 20px;
         border-radius: 12px;
-        overflow: hidden;
+        background-color: #1E293B;
+        margin-bottom: 15px;
+        border: 1px solid #334155;
     }
     </style>
-    """,
-    unsafe_allow_html=True
+    """, unsafe_allow_html=True
 )
-
-# --- MOCK DATA REQUIRED FOR LOGGING DROPDOWNS ---
-# This data is included for the staff selection logic in the forms. 
-MOCK_STAFF = [
-    {'id': 's1', 'name': 'Emily Jones (JP)', 'role': 'JP', 'active': True, 'special': False},
-    {'id': 's2', 'name': 'Daniel Lee (PY)', 'role': 'PY', 'active': True, 'special': False},
-    {'id': 's3', 'name': 'Sarah Chen (SY)', 'role': 'SY', 'active': True, 'special': False},
-    {'id': 's4', 'name': 'Admin User (ADM)', 'role': 'ADM', 'active': True, 'special': False},
-    {'id': 's_trt', 'name': 'TRT', 'role': 'TRT', 'active': True, 'special': True},
-    {'id': 's_sso', 'name': 'External SSO', 'role': 'SSO', 'active': True, 'special': True},
-]
 
 # --- FBA and Data Constants ---
 
-BEHAVIORS_FBA = ['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)', 
-                  'Self-Injurious Behaviour', 'Outburst (Verbal)', 'Outburst (Physical)', 
-                  'Aggression (Staff)', 'Non-Compliance', 'Other (Please specify)']
+BEHAVIORS_FBA = ['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)', 'Self-Injurious Behaviour', 'Outburst (Verbal/Noise)', 'Task Avoidance', 'Defiance/Non-Compliance']
+CONSEQUENCES_FBA = ['Redirection/Prompt', 'Ignored/Withdrawn', 'Preferred Task/Item Given', 'Time Out/Seclusion', 'Restraint/Physical Support', 'Verbal Reprimand', 'Sent to Leadership/Manager', 'Parent Contact/Sent Home']
+SETTING_FBA = ['Classroom (Main)', 'Playground (Recess/Lunch)', 'Specialist Lesson (Art/Gym)', 'Hallway/Transition', 'Office/Sick Bay', 'Library', 'Outside School Grounds']
+ANTECEDENTS_FBA = ['Demand/Instruction Given', 'Transition Time', 'Peer Conflict/Teasing', 'Independent Work', 'High Noise/Stimulation', 'Seating Arrangement Change', 'Interrupted Activity', 'No Antecedent Identified']
+FUNCTIONS_FBA = ['Attention (Peer/Staff)', 'Escape (Task/Activity)', 'Access (Preferred Item/Activity)', 'Sensory (Automatic Reinforcement)']
 
-TRIGGERS = [
-    'Academic demand (difficult task)', 'Academic demand (easy task)', 'Transition (expected)', 
-    'Transition (unexpected)', 'Peer conflict/attention', 'Adult attention (positive)', 
-    'Adult attention (negative/redirection)', 'Unstructured time/boredom', 
-    'Sensory overload (noise, light, crowds)', 'Change in routine', 'Internal state (hungry, tired, unwell)', 
-    'Access to preferred item/activity denied', 'Other (Please specify)'
-]
+# --- Mock Data Generation ---
 
-FUNCTIONS = ['Gain Tangibles/Activity', 'Gain Attention (Adult)', 'Gain Attention (Peer)', 
-             'Escape/Avoid Task/Demand', 'Escape/Avoid Sensory Input', 'Automatic/Sensory']
-
-INTERVENTION_STRATEGIES = [
-    'Prompting (Verbal/Visual/Physical)', 'Redirection/Distraction', 'Planned Ignoring', 
-    'Differential Reinforcement (DRA/DRO)', 'Proximity Control', 'Non-contingent reinforcement', 
-    'Offering Choice', 'Use of Calming Strategy (e.g., breathing, deep pressure)', 
-    'Sensory Break', 'Crisis Management Procedure (CM)', 'Restorative Conversation',
-    'Time Out/Cool Down', 'Other (Please specify)'
-]
-
-DE_ESCALATION_TOOLS = [
-    'Deep Breathing Prompts', 'Sensory Kit/Box', 'Weighted Blanket/Vest', 'Fidget Toy', 
-    'Safe Space (e.g., chill out zone, retreat)', 'Grounding Techniques', 
-    'First/Then Chart', 'Visual Schedule', 'Calm Voice/Low Tone', 'Silence/Non-verbal cueing', 
-    'Other (Please specify)'
-]
-
-WINDOW_OF_TOLERANCE_OPTIONS = [
-    "Optimum (Calm, engaged, receptive)",
-    "Hypoarousal (Disengaged, quiet, withdrawn, frozen)",
-    "Hyperarousal (Agitated, highly reactive, overwhelmed, defensive)"
-]
-
-EMOTIONAL_STATES = [
-    'Calm', 'Frustrated', 'Angry', 'Anxious', 'Sad', 'Excited (overstimulated)', 'Withdrawn', 'Confused', 'Tired'
-]
-
-# --- MOCK STUDENT & LOG DATA (for a runnable application) ---
-MOCK_STUDENT_DATA = pd.DataFrame([
-    {'id': 'stu_a', 'name': 'Alex Johnson', 'year': 'JP', 'profile': 'Has an FBA, moderate support needs.'},
-    {'id': 'stu_b', 'name': 'Beth Smith', 'year': 'PY', 'profile': 'Minimal support needed, focus on social skills.'},
-    {'id': 'stu_c', 'name': 'Charlie Brown', 'year': 'SY', 'profile': 'High support needs, has an SSO.'},
-])
-
-MOCK_LOGS = pd.DataFrame([
-    {'id': 'log1', 'student_id': 'stu_a', 'date': '2025-10-20', 'time': '10:30', 'behavior': 'Verbal Refusal', 'duration_min': 5, 'staff_id': 's1', 'is_critical': False, 'details': 'Refused to start math task.', 'trigger': 'Academic demand (difficult task)', 'function': 'Escape/Avoid Task/Demand', 'intervention': 'Offering Choice', 'outcome_send_home': False, 'outcome_assault': False, 'context': 'Classroom, Math lesson.'},
-    {'id': 'log2', 'student_id': 'stu_a', 'date': '2025-10-21', 'time': '14:15', 'behavior': 'Elopement', 'duration_min': 15, 'staff_id': 's2', 'is_critical': True, 'details': 'Ran out of classroom during transition.', 'trigger': 'Transition (expected)', 'function': 'Escape/Avoid Sensory Input', 'intervention': 'Crisis Management Procedure (CM)', 'outcome_send_home': True, 'outcome_assault': False, 'context': 'Hallway, moving to library.'},
-    {'id': 'log3', 'student_id': 'stu_b', 'date': '2025-10-22', 'time': '09:00', 'behavior': 'Aggression (Peer)', 'duration_min': 2, 'staff_id': 's3', 'is_critical': False, 'details': 'Pushed a peer during morning lining up.', 'trigger': 'Peer conflict/attention', 'function': 'Gain Attention (Peer)', 'intervention': 'Restorative Conversation', 'outcome_send_home': False, 'outcome_assault': False, 'context': 'Outside, lining up.'},
-])
-
-# --- HELPER FUNCTIONS ---
-
-def navigate_to(page_name, student=None, role=None):
-    """Sets the session state to navigate to a new page."""
-    if student:
-        st.session_state.student = student
-        st.session_state.student_details = get_student_details(student)
-    if role:
-        st.session_state.role = role
-    st.session_state.page = page_name
-
-def get_active_staff():
-    """Retrieves a list of currently active staff names."""
-    return [s['name'] for s in MOCK_STAFF if s['active']]
-
-def get_staff_id(staff_name):
-    """Retrieves the ID of a staff member by name."""
-    for s in MOCK_STAFF:
-        if s['name'] == staff_name:
-            return s['id']
-    return None
-
-def get_student_details(student_name):
-    """Mocks fetching student details by name."""
-    details = MOCK_STUDENT_DATA[MOCK_STUDENT_DATA['name'] == student_name].to_dict('records')
-    return details[0] if details else None
-
-def get_student_analysis_data(student_name):
-    """Mocks fetching log data for a specific student for analysis."""
-    student_id = MOCK_STUDENT_DATA[MOCK_STUDENT_DATA['name'] == student_name]['id'].iloc[0]
-    return MOCK_LOGS[MOCK_LOGS['student_id'] == student_id]
-
-def save_log_to_db(preliminary_data, is_critical=False):
-    """
-    Saves the log entry to the mock database (MOCK_LOGS DataFrame).
-    This includes the detailed logic for ABCH form completion if applicable.
-    """
-    global MOCK_LOGS
+def generate_mock_data(n_logs=1000):
+    """Generates a large, realistic-looking DataFrame of behaviour logs."""
     
-    # 1. ABCH Completion Logic
-    if is_critical:
-        # Critical incidents mandate full ABCH completion
-        refined_wot = st.session_state.get('wot_level', 'Not provided.')
-        final_context = st.session_state.get('critical_context', 'No context provided.')
-        how_to_respond_plan = st.session_state.get('critical_response', 'No response plan provided.')
-        is_abch_completed = True
-        
-        # Outcomes mapping (uses st.session_state for critical form checkboxes)
-        outcome_data = {
-            'outcome_send_home': st.session_state.get('o_a_send_home', False),
-            'outcome_leave_area': st.session_state.get('o_b_left_area', False),
-            'outcome_assault': st.session_state.get('o_c_assault', False),
-            'outcome_property_damage': st.session_state.get('o_d_property_damage', False),
-            'outcome_staff_injury': st.session_state.get('o_e_staff_injury', False),
-            'outcome_sapol_callout': st.session_state.get('o_f_sapol_callout', False),
-            'outcome_ambulance': st.session_state.get('o_r_call_out_amb', False) or st.session_state.get('o_j_first_aid_amb', False),
-        }
-    else:
-        # Quick log may not complete full ABCH
-        refined_wot = preliminary_data.get('window_of_tolerance', 'Not provided.')
-        final_context = preliminary_data.get('context', 'No context provided.')
-        how_to_respond_plan = preliminary_data.get('intervention', 'No response plan provided.')
-        is_abch_completed = preliminary_data.get('is_abch_completed', False)
-
-        # Quick log only tracks primary outcome (Is critical determines full outcome mapping)
-        outcome_data = {
-            'outcome_send_home': preliminary_data.get('primary_outcome') == 'Sent Home',
-            'outcome_leave_area': preliminary_data.get('primary_outcome') == 'Left Area',
-            'outcome_assault': preliminary_data.get('primary_outcome') == 'Assault (Peer/Staff)',
-            'outcome_property_damage': preliminary_data.get('primary_outcome') == 'Property Damage',
-            'outcome_staff_injury': False,
-            'outcome_sapol_callout': False,
-            'outcome_ambulance': False,
-        }
-
-    final_log_entry = preliminary_data.copy()
-    final_log_entry.update({
-        'id': str(uuid.uuid4()),
-        'is_abch_completed': is_abch_completed,
-        'window_of_tolerance': refined_wot,
-        'context': final_context,
-        'how_to_respond': how_to_respond_plan,
-        'is_critical': is_critical,
-        **outcome_data,
-    })
+    # Static list of mock students with associated roles (JP, PY, SY)
+    students = [
+        {'id': 'S101', 'name': 'Alex Johnson', 'role': 'JP'},
+        {'id': 'S102', 'name': 'Bella Smith', 'role': 'JP'},
+        {'id': 'S201', 'name': 'Charlie Brown', 'role': 'PY'},
+        {'id': 'S202', 'name': 'Daisy Miller', 'role': 'PY'},
+        {'id': 'S301', 'name': 'Ethan Davis', 'role': 'SY'},
+        {'id': 'S302', 'name': 'Fiona Wilson', 'role': 'SY'},
+    ]
     
-    # 2. Add to Mock Database (DataFrame)
-    new_log_df = pd.DataFrame([final_log_entry])
-    MOCK_LOGS = pd.concat([MOCK_LOGS, new_log_df], ignore_index=True)
+    # Mock staff for observer dropdown
+    MOCK_STAFF = [
+        {'id': 's1', 'name': 'Emily Jones (JP)', 'role': 'JP'},
+        {'id': 's2', 'name': 'Daniel Lee (PY)', 'role': 'PY'},
+        {'id': 's3', 'name': 'Sarah Chen (SY)', 'role': 'SY'},
+        {'id': 's4', 'name': 'Admin User (ADM)', 'role': 'ADM'},
+        {'id': 's_trt', 'name': 'TRT', 'role': 'TRT'},
+    ]
     
-    # 3. Clean up temporary session state data after final save (only for critical form)
-    if is_critical:
-        keys_to_delete = ['wot_level', 'critical_context', 'critical_response']
-        for key in keys_to_delete:
-            if key in st.session_state:
-                del st.session_state[key]
-        # Delete outcome checkbox states
-        for key in st.session_state.keys():
-            if key.startswith('o_'):
-                del st.session_state[key]
-
-    st.success(f"Incident Log recorded successfully! (Type: {'Critical' if is_critical else 'Quick'})")
+    data = []
     
-    # Navigate back to staff area after successful logging
-    current_role = st.session_state.get('role', 'ADM')
-    navigate_to('staff_area', role=current_role)
+    start_date = datetime(2024, 7, 1)
+    end_date = datetime(2024, 11, 12)
     
+    for _ in range(n_logs):
+        student = random.choice(students)
+        staff = random.choice(MOCK_STAFF)
+        
+        # Random date/time
+        days_diff = (end_date - start_date).days
+        random_day = start_date + timedelta(days=random.randint(0, days_diff))
+        random_time = time(random.randint(8, 15), random.randint(0, 59))
+        dt = datetime.combine(random_day.date(), random_time)
+        
+        # Behaviour, Antecedent, Consequence, Setting
+        behaviour = random.choice(BEHAVIORS_FBA)
+        antecedent = random.choice(ANTECEDENTS_FBA)
+        consequence = random.choice(CONSEQUENCES_FBA)
+        setting = random.choice(SETTING_FBA)
+        
+        # Function (often linked to behaviour/antecedent, but random for mock)
+        function = random.choice(FUNCTIONS_FBA)
+        
+        # Intensity (Mock rating 1-5)
+        intensity = random.choices([1, 2, 3, 4, 5], weights=[20, 30, 30, 15, 5], k=1)[0]
 
-# --- RENDERING FUNCTIONS ---
+        # Critical Incident Flag
+        is_critical = True if intensity >= 4 and random.random() < 0.3 else False
+        
+        data.append({
+            'log_id': str(uuid.uuid4()),
+            'student_id': student['id'],
+            'student_name': student['name'],
+            'student_role': student['role'],
+            'timestamp': dt,
+            'date': dt.date(),
+            'time': dt.time(),
+            'observer_name': staff['name'],
+            'observer_id': staff['id'],
+            'antecedent': antecedent,
+            'behaviour': behaviour,
+            'consequence': consequence,
+            'setting': setting,
+            'function_hypothesis': function,
+            'intensity': intensity,
+            'duration_minutes': random.randint(1, 15),
+            'notes': f"Log entry for {student['name']} showing {behaviour.lower()}.",
+            'is_abch_completed': True,
+            'is_critical': is_critical,
+        })
 
-def render_landing_page():
-    st.markdown("<h1 class='centered-header'>Welcome to the Behaviour Support Tool</h1>", unsafe_allow_html=True)
-    st.markdown("---")
-    st.info("Select your staff role to access the dashboard and student logs.")
-
-    col1, col2, col3 = st.columns(3)
+    df = pd.DataFrame(data)
     
-    with col1:
-        if st.button("Admin (ADM)"):
-            navigate_to('staff_area', role='ADM')
-    with col2:
-        if st.button("PY Staff (PY)"):
-            navigate_to('staff_area', role='PY')
-    with col3:
-        if st.button("JP Staff (JP)"):
-            navigate_to('staff_area', role='JP')
-
-def render_staff_area(role):
-    st.markdown(f"<h1 class='centered-header'>Staff Dashboard: {role}</h1>", unsafe_allow_html=True)
-    st.markdown("---")
+    # Add a 'month' column for filtering
+    df['month'] = df['date'].apply(lambda x: x.strftime('%Y-%m'))
     
-    col_log, col_crit = st.columns(2)
-
-    with col_log:
-        st.subheader("Quick Incident Log")
-        st.info("Select a student to log a quick incident.")
-        student_names = MOCK_STUDENT_DATA['name'].tolist()
-        selected_student = st.selectbox("Select Student for Quick Log:", student_names, key='quick_log_student_select')
-        
-        if st.button(f"Start Quick Log for {selected_student}"):
-            navigate_to('quick_log', student=selected_student, role=role)
-
-    with col_crit:
-        st.subheader("Critical Incident Form")
-        st.warning("⚠️ Use this form for incidents requiring **Principal notification** (e.g., self-harm, serious aggression, police involvement).")
-        critical_student = st.selectbox("Select Student for Critical Incident:", student_names, key='critical_log_student_select')
-        
-        if st.button(f"Start Critical Incident Form for {critical_student}"):
-            navigate_to('critical_incident', student=critical_student, role=role)
-            
-    st.markdown("---")
-    st.subheader("Student Data Analysis")
-    st.info("Select a student to view their FBA data, trends, and intervention efficacy.")
+    # Sort by date
+    df = df.sort_values('timestamp', ascending=False).reset_index(drop=True)
     
-    analysis_student = st.selectbox("Select Student for Detailed Analysis:", student_names, key='analysis_student_select')
-    
-    if st.button(f"View Analysis for {analysis_student}"):
-        navigate_to('student_detail', student=analysis_student, role=role)
-        
+    return df
 
-def render_student_analysis(student_name, role):
-    st.markdown(f"<h1 class='centered-header'>FBA & Trend Analysis: {student_name}</h1>", unsafe_allow_html=True)
-    st.markdown("---")
-    
-    details = get_student_details(student_name)
-    log_data = get_student_analysis_data(student_name)
-    
-    st.subheader(f"Profile: {details['profile']}")
-
-    # Display raw data for context
-    st.markdown("### Incident Log History")
-    st.dataframe(
-        log_data[['date', 'time', 'behavior', 'duration_min', 'trigger', 'intervention', 'is_critical', 'details']], 
-        use_container_width=True,
-        hide_index=True
-    )
-
-    if not log_data.empty:
-        # Time-based analysis (e.g., behaviors per week)
-        log_data['datetime'] = pd.to_datetime(log_data['date'] + ' ' + log_data['time'])
-        log_data['week'] = log_data['datetime'].dt.to_period('W')
-        weekly_counts = log_data.groupby('week').size().reset_index(name='Count')
-        weekly_counts['Week Start'] = weekly_counts['week'].astype(str).apply(lambda x: x.split('/')[0])
-
-        st.markdown("### Trend: Incidents Per Week")
-        fig = px.bar(weekly_counts, x='Week Start', y='Count', title='Total Incidents Over Time', 
-                     color_discrete_sequence=['#4ADE80'])
-        st.plotly_chart(fig, use_container_width=True)
-
-        # Scatter plot for time of day
-        st.markdown("### Trend: Incident Time of Day")
-        log_data['hour'] = log_data['datetime'].dt.hour
-        time_counts = log_data['hour'].value_counts().sort_index().reset_index()
-        time_counts.columns = ['Hour', 'Incidents']
-
-        fig_time = px.bar(time_counts, x='Hour', y='Incidents', 
-                          title='Incidents by Hour of Day (0-23)', 
-                          color_discrete_sequence=['#3B82F6'])
-        fig_time.update_layout(xaxis=dict(tickmode='linear', dtick=1))
-        st.plotly_chart(fig_time, use_container_width=True)
-
-    else:
-        st.info("No incident logs available for this student to generate analysis.")
-
-    st.markdown("---")
-    if st.button("← Back to Dashboard"):
-        navigate_to('staff_area', role=role)
-
-
-def render_quick_log(role, student_name):
-    """
-    Renders the Quick Incident Log form (ABCH Lite).
-    This function is now based on the isolated code provided by the user.
-    """
-    st.markdown(f"<h1 class='centered-header'>Quick Incident Log: {student_name}</h1>", unsafe_allow_html=True)
-    st.markdown("---")
-    st.info("Use this form to quickly log minor incidents and behaviours of concern.")
-
-    student_details = get_student_details(student_name)
-    
-    with st.form("quick_incident_log_form", clear_on_submit=True):
-        st.subheader("A. Context & Staff")
-        
-        # Row 1: Date, Time, Staff
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            log_date = st.date_input("Date of Incident", datetime.today())
-        with col2:
-            log_time = st.time_input("Time of Incident", datetime.now().time())
-        with col3:
-            staff_name = st.selectbox("Staff Logging Incident", get_active_staff(), index=get_active_staff().index([s['name'] for s in MOCK_STAFF if s['role'] == role][0]))
-            staff_id = get_staff_id(staff_name)
-
-        # Row 2: Location
-        location = st.text_input("Location of Incident (e.g., Classroom, Oval, Hallway)")
-
-        st.subheader("B. Behaviour and ABC Data (Lite)")
-
-        # Row 3: Behavior, Duration, Intensity
-        col4, col5, col6 = st.columns(3)
-        with col4:
-            behavior = st.selectbox("Primary Behavior of Concern", BEHAVIORS_FBA)
-        with col5:
-            duration_min = st.number_input("Duration (minutes)", min_value=1, max_value=240, value=5)
-        with col6:
-            intensity = st.slider("Intensity (1-5)", 1, 5, 3, help="1=Minor disruption, 5=Crisis/Extreme")
-
-        # Row 4: Trigger and Function (Quick Log selects primary)
-        col7, col8 = st.columns(2)
-        with col7:
-            trigger = st.selectbox("Antecedent/Trigger (Primary)", TRIGGERS)
-        with col8:
-            function = st.selectbox("Hypothesised Function (Primary)", FUNCTIONS)
-
-        # Row 5: Intervention and Outcome
-        intervention = st.selectbox("Intervention/Response Used", INTERVENTION_STRATEGIES)
-        
-        st.markdown("---")
-        st.subheader("C. Detailed Description & Outcome")
-        details = st.text_area("Detailed Description of Incident (What happened?)", height=150)
-        
-        # Primary Outcome
-        primary_outcome = st.selectbox("Primary Outcome/Resolution", 
-                                      ['Resolved', 'Time Out/Cool Down', 'Sent Home', 
-                                       'Left Area', 'Assault (Peer/Staff)', 'Property Damage', 
-                                       'Other (See details)'])
-
-        # Window of Tolerance (WOT) Check (Quick log uses simplified version)
-        wot_level = st.selectbox("Student's Arousal Level (WOT)", WINDOW_OF_TOLERANCE_OPTIONS, 
-                                 index=0, help="Estimate the student's arousal state during the incident.")
-
-        st.markdown("---")
-        
-        submitted = st.form_submit_button("Submit Quick Log")
-
-    if submitted:
-        if not details or not location:
-            st.error("Please ensure the Location and Detailed Description fields are filled.")
-        else:
-            preliminary_data = {
-                'student_id': student_details['id'],
-                'student_name': student_name,
-                'date': log_date.isoformat(),
-                'time': log_time.isoformat(),
-                'staff_id': staff_id,
-                'location': location,
-                'behavior': behavior,
-                'duration_min': duration_min,
-                'intensity': intensity,
-                'trigger': trigger,
-                'function': function,
-                'intervention': intervention,
-                'details': details,
-                'primary_outcome': primary_outcome,
-                'window_of_tolerance': wot_level,
-                'is_abch_completed': True, # Assume basic ABCH is met by the form fields
-            }
-            save_log_to_db(preliminary_data, is_critical=False)
-            
-    if st.button("← Back to Dashboard"):
-        navigate_to('staff_area', role=role)
-
-# CRITICAL INCIDENT FORM - Full ABCH Structure
-def render_critical_incident_form(role, student_name):
-    """
-    Renders the Critical Incident Form (Full ABCH).
-    This function is now based on the isolated code provided by the user.
-    """
-    st.markdown(f"<h1 class='centered-header'>Critical Incident Form (Full ABCH): {student_name}</h1>", unsafe_allow_html=True)
-    st.markdown("---")
-    st.warning("⚠️ This log requires complete data for mandatory reporting and Principal review.")
-
-    student_details = get_student_details(student_name)
-
-    # 1. Preliminary Details (Date, Staff, Core Incident) - Stored in session state before final save
-    if 'preliminary_data' not in st.session_state:
-        st.session_state.preliminary_data = {}
-        st.session_state.form_step = 1 # Start at step 1
-
-    # --- Step 1: Preliminary Details and Incident Description ---
-    if st.session_state.form_step == 1:
-        st.subheader("Step 1: Incident Description and Staff")
-        with st.form("critical_incident_step_1", clear_on_submit=False):
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                log_date = st.date_input("Date of Incident", datetime.today())
-            with col2:
-                log_time = st.time_input("Time of Incident", datetime.now().time())
-            with col3:
-                staff_name = st.selectbox("Staff Logging Incident", get_active_staff(), index=get_active_staff().index([s['name'] for s in MOCK_STAFF if s['role'] == role][0]))
-                staff_id = get_staff_id(staff_name)
-
-            col4, col5, col6 = st.columns(3)
-            with col4:
-                location = st.text_input("Location", key='critical_location')
-            with col5:
-                behavior = st.selectbox("Primary Behavior", BEHAVIORS_FBA, key='critical_behavior')
-            with col6:
-                duration_min = st.number_input("Duration (minutes)", min_value=1, max_value=240, value=15, key='critical_duration')
-
-            details = st.text_area("Detailed Narrative of the Incident", height=200, key='critical_details')
-            
-            if st.form_submit_button("Continue to Step 2 (Full ABCH)"):
-                if not location or not details:
-                    st.error("Location and Detailed Narrative are mandatory fields.")
-                else:
-                    # Store preliminary data in session state
-                    st.session_state.preliminary_data = {
-                        'student_id': student_details['id'],
-                        'student_name': student_name,
-                        'date': log_date.isoformat(),
-                        'time': log_time.isoformat(),
-                        'staff_id': staff_id,
-                        'location': location,
-                        'behavior': behavior,
-                        'duration_min': duration_min,
-                        'details': details,
-                    }
-                    st.session_state.form_step = 2
-                    st.experimental_rerun()
-            
-            if st.button("← Back to Dashboard", key='back_step1'):
-                navigate_to('staff_area', role=role)
-
-    # --- Step 2: Full ABCH and Response/Outcomes ---
-    elif st.session_state.form_step == 2:
-        st.subheader("Step 2: Full ABCH Analysis & Incident Management")
-
-        st.markdown("### A. Antecedent (What happened right before?)")
-        trigger = st.multiselect("Triggers/Antecedents Present", TRIGGERS, key='critical_trigger')
-        
-        st.markdown("### B. Behavior (Student Arousal State)")
-        st.warning("Assess the student's level of distress/arousal before, during, and after the peak.")
-        col_wot_1, col_wot_2 = st.columns(2)
-        with col_wot_1:
-            st.session_state.wot_level = st.selectbox("Primary Arousal State (WOT)", WINDOW_OF_TOLERANCE_OPTIONS, key='wot_level', help="Critical incidents usually involve Hyperarousal.")
-        with col_wot_2:
-            st.multiselect("Observed Emotional State(s)", EMOTIONAL_STATES, key='critical_emotions')
-            
-        st.text_area("Additional Context/Environmental Factors", key='critical_context', height=100)
-        
-        st.markdown("### C. Consequence & Function")
-        col_c_1, col_c_2 = st.columns(2)
-        with col_c_1:
-            st.multiselect("Hypothesised Function(s)", FUNCTIONS, key='critical_function')
-        with col_c_2:
-            st.selectbox("Intervention Strategy Used (Primary)", INTERVENTION_STRATEGIES, key='critical_intervention')
-        
-        st.text_area("Staff Response & De-escalation Sequence", key='critical_response', height=150, help="Detail the step-by-step response used by staff. Include de-escalation tools.")
-        st.multiselect("De-escalation Tools Used", DE_ESCALATION_TOOLS, key='critical_de_escalation')
-
-        st.markdown("### H. Outcomes (MANDATORY Reporting Indicators)")
-        st.markdown("_Check all that apply. Checking any of these triggers mandatory Principal notification._")
-        
-        col_o_1, col_o_2, col_o_3 = st.columns(3)
-        with col_o_1:
-            st.checkbox("A. Sent Home/Family Contacted", key='o_a_send_home')
-            st.checkbox("D. Property Damage/Vandalism", key='o_d_property_damage')
-            st.checkbox("G. Police Call-out (SAPOL)", key='o_f_sapol_callout')
-
-        with col_o_2:
-            st.checkbox("B. Student left school grounds (Elopement)", key='o_b_left_area')
-            st.checkbox("E. Staff Injury (First Aid applied)", key='o_e_staff_injury')
-            st.checkbox("H. Ambulance called", key='o_r_call_out_amb')
-            
-        with col_o_3:
-            st.checkbox("C. Assault (Physical Aggression towards Peer/Staff)", key='o_c_assault')
-            st.checkbox("F. First Aid applied to student (not injury related)", key='o_j_first_aid_amb')
-            
-        st.markdown("---")
-        
-        col_nav_2_1, col_nav_2_2 = st.columns(2)
-        with col_nav_2_1:
-            if st.button("← Back to Step 1"):
-                st.session_state.form_step = 1
-                st.experimental_rerun()
-        with col_nav_2_2:
-            if st.button("Finalise and Submit Critical Incident Log", type='primary'):
-                if not st.session_state.get('critical_response') or not st.session_state.get('critical_context'):
-                    st.error("Please fill in the Context and Staff Response fields.")
-                else:
-                    save_log_to_db(st.session_state.preliminary_data, is_critical=True)
-                    st.session_state.form_step = 1 # Reset form
-                    st.session_state.preliminary_data = {}
-                    st.experimental_rerun()
-                    
-    st.markdown("---")
-    st.info("Ensure all details are accurate before submission, as this is a formal reporting requirement.")
-
-
-# --- Application State and Flow Control ---
+# --- Navigation and State Management ---
 
 def initialize_state():
-    """Initializes the session state variables for navigation and data."""
+    """Initializes Streamlit session state variables."""
+    if 'log_data' not in st.session_state:
+        st.session_state.log_data = generate_mock_data()
     if 'page' not in st.session_state:
         st.session_state.page = 'landing'
     if 'role' not in st.session_state:
         st.session_state.role = None
     if 'student' not in st.session_state:
+        st.session_state.student = None # Current student object for detail view
+
+def navigate_to(page, role=None, student=None):
+    """Handles navigation and state updates."""
+    st.session_state.page = page
+    if role:
+        st.session_state.role = role
+    if student:
+        st.session_state.student = student
+    st.rerun()
+
+# --- Helper Functions ---
+
+def get_filtered_data(df, role=None, student_id=None, month=None):
+    """Filters the log data based on role, student, and time period."""
+    filtered_df = df.copy()
+    
+    if student_id:
+        filtered_df = filtered_df[filtered_df['student_id'] == student_id]
+        
+    elif role and role != 'ADM': # ADM sees all data
+        filtered_df = filtered_df[filtered_df['student_role'] == role]
+        
+    if month:
+        filtered_df = filtered_df[filtered_df['month'] == month]
+        
+    return filtered_df
+
+def create_bar_chart(df, column, title, color_map=None):
+    """Creates a standardized Plotly bar chart."""
+    if df.empty:
+        return st.warning("No data available for charting.")
+        
+    counts = df[column].value_counts().reset_index()
+    counts.columns = [column, 'Count']
+    
+    fig = px.bar(
+        counts, 
+        x='Count', 
+        y=column, 
+        orientation='h', 
+        title=f'{title} Distribution ({len(df)} logs)',
+        color=column, # Use column itself for color mapping
+        color_discrete_map=color_map,
+        template='plotly_dark' # Use dark theme
+    )
+    
+    fig.update_layout(
+        margin=dict(l=20, r=20, t=40, b=20),
+        xaxis_title=None,
+        yaxis_title=None,
+        yaxis={'categoryorder': 'total ascending'},
+        showlegend=False,
+        height=400
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+# --- Page Rendering Functions ---
+
+def render_landing_page():
+    """Renders the initial landing page for role selection."""
+    
+    st.title("Behaviour Support & Data Analysis Tool")
+    st.markdown("---")
+    
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        st.header("Select Your Role")
+        st.markdown("Please choose your staff area to access relevant data and logging tools.")
+        
+        st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+        # JP Role Button
+        if st.button('JP (Junior Primary) Staff Area', key='role_jp', use_container_width=True):
+            navigate_to('staff_area', role='JP')
+
+        # PY Role Button
+        if st.button('PY (Primary) Staff Area', key='role_py', use_container_width=True):
+            navigate_to('staff_area', role='PY')
+        
+        # SY Role Button (NEWLY ADDED)
+        if st.button('SY (Senior Years) Staff Area', key='role_sy', use_container_width=True):
+            navigate_to('staff_area', role='SY')
+
+        # ADM Role Button
+        if st.button('ADM (Administration/Leadership) Dashboard', key='role_adm', use_container_width=True):
+            navigate_to('staff_area', role='ADM')
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    with col2:
+        st.subheader("About the Tool")
+        st.info(
+            "This application enables staff to quickly log student behaviour incidents (ABCH Quick Log) "
+            "and view real-time data analysis specific to their area (JP/PY/SY) or for the whole school (ADM)."
+        )
+        st.image("https://placehold.co/600x300/1E293B/F1F5F9?text=Data+Visualisation+Placeholder", caption="Example data trends for targeted support.")
+
+def render_staff_area(role):
+    """Renders the main dashboard for a specific staff role."""
+    
+    # Setup Header and Navigation
+    st.header(f"Staff Dashboard: {role} Area")
+    st.markdown("---")
+    
+    col_nav, col_title = st.columns([1, 4])
+    with col_nav:
+        if st.button('↩ Return to Role Select', key='back_to_landing', use_container_width=True):
+            navigate_to('landing')
+    with col_title:
+        st.subheader("Overview & Quick Actions")
+        
+    # --- Critical Incident Warning ---
+    # The Principal has been replaced with Manager, and examples have been removed.
+    col_warn, col_log = st.columns([2, 1])
+    
+    with col_warn:
+        with st.container(border=True):
+            st.warning(
+                """
+                **Critical Incident Reporting Instructions:**
+
+                1.  **Safety First:** Ensure all immediate safety concerns have been addressed.
+                2.  **Immediate Notification:** Verbally notify the **Manager** or a member of the leadership team immediately if the incident involves:
+                    * High-risk behaviours.
+                    * Any incident requiring external support (Police, Ambulance).
+                    * Any incident resulting in serious injury or property damage.
+                3.  **Complete Log:** Complete the Quick Log (ABCH) form for data collection, then follow up with a formal Critical Incident Form (external system) within 24 hours.
+                """
+            )
+            
+    with col_log:
+        st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+        st.subheader("Quick Log")
+        st.markdown("Select a student to log an incident now.")
+        
+        # Filter students relevant to the staff role (or all for ADM)
+        all_students = st.session_state.log_data[['student_id', 'student_name', 'student_role']].drop_duplicates().sort_values('student_name')
+        
+        if role != 'ADM':
+            area_students = all_students[all_students['student_role'] == role]
+        else:
+            area_students = all_students
+            
+        student_options = area_students['student_name'].tolist()
+        
+        selected_name = st.selectbox(
+            'Select Student to Log Incident:',
+            options=['-- Select --'] + student_options,
+            key='log_student_select'
+        )
+        
+        if selected_name != '-- Select --':
+            selected_student_row = area_students[area_students['student_name'] == selected_name].iloc[0]
+            selected_student_obj = {
+                'id': selected_student_row['student_id'],
+                'name': selected_name,
+                'role': selected_student_row['student_role']
+            }
+            if st.button(f'Start Quick Log for {selected_name}', key='start_quick_log', use_container_width=True):
+                navigate_to('quick_log', student=selected_student_obj)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+
+    # --- Dashboard Metrics and Analysis ---
+    
+    st.markdown("## Data Overview")
+    
+    df_all = st.session_state.log_data
+    df_filtered = get_filtered_data(df_all, role=role)
+    
+    # Time filter
+    available_months = ['All Time'] + sorted(df_filtered['month'].unique(), reverse=True)
+    selected_month = st.selectbox("Filter Data By Month:", options=available_months, index=0)
+
+    if selected_month != 'All Time':
+        df_display = get_filtered_data(df_filtered, month=selected_month)
+    else:
+        df_display = df_filtered
+
+    col_metrics = st.columns(4)
+    
+    # Metric 1: Total Incidents
+    col_metrics[0].metric(label=f"Total Incidents ({selected_month})", value=len(df_display))
+    
+    # Metric 2: Critical Incidents
+    critical_count = df_display['is_critical'].sum()
+    col_metrics[1].metric(label="Critical Incidents", value=critical_count)
+    
+    # Metric 3: Students Involved
+    unique_students = df_display['student_id'].nunique()
+    col_metrics[2].metric(label="Unique Students Logged", value=unique_students)
+    
+    # Metric 4: Average Intensity
+    avg_intensity = df_display['intensity'].mean()
+    col_metrics[3].metric(label="Average Intensity (1-5)", value=f"{avg_intensity:.2f}")
+
+    # --- Charts ---
+    
+    st.markdown("### Top Behaviours & Functions")
+
+    col_charts = st.columns(2)
+    with col_charts[0]:
+        create_bar_chart(df_display, 'behaviour', 'Behaviour Types')
+        
+    with col_charts[1]:
+        create_bar_chart(df_display, 'function_hypothesis', 'Hypothesised Functions')
+
+    st.markdown("### Log Detail & Student Selection")
+    
+    # Display recent logs
+    st.dataframe(
+        df_display[['timestamp', 'student_name', 'behaviour', 'antecedent', 'consequence', 'setting', 'intensity', 'is_critical']]
+        .head(20)
+        .rename(columns={
+            'timestamp': 'Date/Time', 
+            'student_name': 'Student',
+            'is_critical': 'Critical',
+            'intensity': 'Int.',
+            'antecedent': 'Antecedent',
+            'consequence': 'Consequence',
+            'behaviour': 'Behaviour',
+            'setting': 'Setting',
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    # Student Detail View Trigger
+    st.markdown("---")
+    st.subheader("View Detailed Student Analysis")
+    
+    analysis_options = df_display[['student_name', 'student_id']].drop_duplicates().sort_values('student_name')
+    
+    analysis_name = st.selectbox(
+        'Select Student for Detailed Analysis:',
+        options=['-- Select --'] + analysis_options['student_name'].tolist(),
+        key='analysis_student_select'
+    )
+    
+    if analysis_name != '-- Select --':
+        selected_row = analysis_options[analysis_options['student_name'] == analysis_name].iloc[0]
+        selected_student_obj = {
+            'id': selected_row['student_id'],
+            'name': analysis_name,
+            'role': df_all[df_all['student_id'] == selected_row['student_id']]['student_role'].iloc[0]
+        }
+        if st.button(f'View Analysis for {analysis_name}', key='view_analysis', use_container_width=True):
+            navigate_to('student_detail', student=selected_student_obj, role=role)
+
+def render_quick_log(role, student):
+    """Renders the streamlined ABCH Quick Log form."""
+    
+    st.header(f"ABCH Quick Log - {student['name']} ({student['role']})")
+    
+    col_nav, col_title = st.columns([1, 4])
+    with col_nav:
+        if st.button('↩ Back to Dashboard', key='back_to_dashboard', use_container_width=True):
+            navigate_to('staff_area', role=role)
+    with col_title:
+        st.subheader("Record a Behaviour Incident")
+        
+    st.markdown("---")
+
+    # The actual log form logic is highly simplified here, but mimics the structure.
+    with st.form("quick_log_form", clear_on_submit=True):
+        
+        # --- Incident Details ---
+        st.subheader("Incident Timing and Location")
+        col_time, col_date, col_setting = st.columns(3)
+        
+        current_dt = datetime.now()
+        
+        with col_date:
+            log_date = st.date_input("Date of Incident", current_dt.date())
+        with col_time:
+            log_time = st.time_input("Time of Incident", current_dt.time())
+        with col_setting:
+            setting = st.selectbox("Setting", options=SETTING_FBA)
+
+        st.markdown("---")
+        
+        # --- ABCH Components ---
+        st.subheader("Antecedent, Behaviour, Consequence")
+        
+        col_abc = st.columns(3)
+        with col_abc[0]:
+            antecedent = st.selectbox("Antecedent (A)", options=ANTECEDENTS_FBA, help="What happened immediately before the behaviour?")
+            
+        with col_abc[1]:
+            behaviour = st.selectbox("Behaviour (B)", options=BEHAVIORS_FBA, help="The behaviour observed.")
+            
+        with col_abc[2]:
+            consequence = st.selectbox("Consequence (C)", options=CONSEQUENCES_FBA, help="What happened immediately after the behaviour?")
+            
+        st.markdown("---")
+        
+        # --- Severity and Notes ---
+        st.subheader("Severity and Context")
+        
+        col_sev, col_dur, col_crit = st.columns(3)
+        
+        with col_sev:
+            intensity = st.slider("Intensity (1 = Low to 5 = High)", 1, 5, 3)
+            
+        with col_dur:
+            duration = st.number_input("Duration (minutes)", min_value=1, max_value=60, value=5)
+
+        with col_crit:
+            is_critical = st.checkbox("Critical Incident?", value=(intensity >= 4)) # Pre-check if intensity is high
+            st.markdown(
+                f"""<div style='font-size: 12px; color: #94A3B8; margin-top: -10px;'>
+                {":red[Check if this requires immediate Manager notification.]" if is_critical else "Low risk incident."}
+                </div>""",
+                unsafe_allow_html=True
+            )
+
+        notes = st.text_area("Additional Notes/Context (H)", max_chars=500, help="Human context, hypotheses, or general notes.")
+        
+        submitted = st.form_submit_button("Submit Quick Log", use_container_width=True)
+
+    if submitted:
+        # Create new log entry
+        new_log = {
+            'log_id': str(uuid.uuid4()),
+            'student_id': student['id'],
+            'student_name': student['name'],
+            'student_role': student['role'],
+            'timestamp': datetime.combine(log_date, log_time),
+            'date': log_date,
+            'time': log_time,
+            'observer_name': next((s['name'] for s in [{'id': 's1', 'name': 'Emily Jones (JP)', 'role': 'JP'}, {'id': 's2', 'name': 'Daniel Lee (PY)', 'role': 'PY'}, {'id': 's3', 'name': 'Sarah Chen (SY)', 'role': 'SY'}, {'id': 's4', 'name': 'Admin User (ADM)', 'role': 'ADM'}] if s['role'] == role), f'Unknown Staff ({role})'), # Simplified observer logic
+            'observer_id': 's_mock',
+            'antecedent': antecedent,
+            'behaviour': behaviour,
+            'consequence': consequence,
+            'setting': setting,
+            'function_hypothesis': random.choice(FUNCTIONS_FBA), # Mock function for quick log
+            'intensity': intensity,
+            'duration_minutes': duration,
+            'notes': notes,
+            'is_abch_completed': True,
+            'is_critical': is_critical,
+            'month': log_date.strftime('%Y-%m')
+        }
+        
+        # Append to the session state DataFrame
+        new_df = pd.DataFrame([new_log])
+        st.session_state.log_data = pd.concat([st.session_state.log_data, new_df], ignore_index=True)
+        st.session_state.log_data = st.session_state.log_data.sort_values('timestamp', ascending=False).reset_index(drop=True)
+        
+        st.success(f"Log submitted successfully for {student['name']}! Returning to dashboard.")
+        
+        # Clear student context and navigate back
         st.session_state.student = None
-    if 'student_details' not in st.session_state:
-        st.session_state.student_details = None
+        navigate_to('staff_area', role=role)
+        
+
+def render_student_analysis(student, role):
+    """Renders the detailed behaviour analysis for a specific student."""
+    
+    st.header(f"Detailed Behaviour Analysis: {student['name']} ({student['role']})")
+    
+    col_nav, col_title = st.columns([1, 4])
+    with col_nav:
+        if st.button('↩ Back to Dashboard', key='back_to_dashboard_detail', use_container_width=True):
+            navigate_to('staff_area', role=role)
+    with col_title:
+        st.subheader(f"Insights for Targeted Support Planning")
+        
+    st.markdown("---")
+    
+    df_student = get_filtered_data(st.session_state.log_data, student_id=student['id'])
+    
+    if df_student.empty:
+        st.warning(f"No log data found for {student['name']}.")
+        return
+
+    # --- Student Metrics ---
+    col_metrics = st.columns(4)
+    col_metrics[0].metric("Total Logs", len(df_student))
+    col_metrics[1].metric("Avg. Intensity", f"{df_student['intensity'].mean():.2f}")
+    col_metrics[2].metric("Critical Incidents", df_student['is_critical'].sum())
+    
+    # Calculate most common behaviour
+    most_common_b = df_student['behaviour'].mode().iloc[0] if not df_student['behaviour'].mode().empty else 'N/A'
+    col_metrics[3].metric("Most Frequent Behaviour", most_common_b)
+    
+    st.markdown("## ABC Functional Analysis")
+    
+    # --- ABC Charts ---
+    col_charts_abc = st.columns(3)
+    
+    with col_charts_abc[0]:
+        create_bar_chart(df_student, 'antecedent', 'Antecedent (A)')
+        
+    with col_charts_abc[1]:
+        create_bar_chart(df_student, 'behaviour', 'Behaviour (B)')
+        
+    with col_charts_abc[2]:
+        create_bar_chart(df_student, 'consequence', 'Consequence (C)')
+        
+    # --- Function & Setting Analysis ---
+    st.markdown("## Hypotheses & Settings")
+    col_hyp, col_set = st.columns(2)
+    
+    with col_hyp:
+        create_bar_chart(df_student, 'function_hypothesis', 'Hypothesised Function')
+        
+    with col_set:
+        create_bar_chart(df_student, 'setting', 'Setting of Incidents')
+        
+    st.markdown("## Trend Over Time")
+    
+    # Prepare data for time series
+    df_trend = df_student.copy()
+    df_trend.set_index('timestamp', inplace=True)
+    
+    # Resample daily and sum/mean
+    daily_count = df_trend.resample('D')['log_id'].count().rename('Daily Logs')
+    daily_intensity = df_trend.resample('D')['intensity'].mean().rename('Avg. Intensity')
+
+    # Combine data for plotting
+    df_combined = pd.concat([daily_count, daily_intensity], axis=1).fillna(0)
+    
+    # Plotting daily log counts
+    fig_count = px.line(
+        df_combined, 
+        y='Daily Logs', 
+        title='Incident Count Over Time',
+        template='plotly_dark'
+    )
+    fig_count.update_layout(xaxis_title="Date", yaxis_title="Number of Logs")
+    st.plotly_chart(fig_count, use_container_width=True)
+
+    # Plotting average intensity
+    fig_intensity = px.line(
+        df_combined, 
+        y='Avg. Intensity', 
+        title='Average Incident Intensity Over Time',
+        template='plotly_dark'
+    )
+    fig_intensity.update_layout(xaxis_title="Date", yaxis_title="Average Intensity (1-5)", yaxis_range=[1, 5])
+    st.plotly_chart(fig_intensity, use_container_width=True)
+    
+    st.markdown("---")
+    st.info("This analysis provides the foundation for developing a targeted Behaviour Support Plan.")
+            
+    st.markdown("---")
+    st.info("This application uses a detailed ABCH Quick Log for context-rich data collection, feeding directly into data-driven student analysis.")
+
 
 # --- Main Application Loop ---
 
@@ -617,12 +665,6 @@ def main():
             st.error("Missing context. Returning to dashboard.")
             navigate_to('staff_area', role=current_role)
 
-    elif st.session_state.page == 'critical_incident':
-        if current_student and current_role:
-             render_critical_incident_form(current_role, current_student) 
-        else:
-            st.error("Missing context. Returning to dashboard.")
-            navigate_to('staff_area', role=current_role)
 
     elif st.session_state.page == 'student_detail':
         if current_student and current_role:
@@ -635,7 +677,8 @@ def main():
         if current_role:
             render_staff_area(current_role)
         else:
-            st.error("Role context missing. Returning to landing page.")
+            # Should not happen if state is managed correctly
+            st.error("Role context missing. Returning to landing.")
             navigate_to('landing')
 
 if __name__ == '__main__':
