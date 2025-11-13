@@ -403,7 +403,7 @@ def render_staff_area(role):
     
     # Display recent logs
     st.dataframe(
-        df_display[['timestamp', 'student_name', 'behaviour', 'antecedent', 'consequence', 'setting', 'intensity', 'is_critical']]
+        df_display[['timestamp', 'student_name', 'behaviour', 'antecedent', 'consequence', 'setting', 'intensity', 'is_critical', 'duration_minutes']]
         .head(20)
         .rename(columns={
             'timestamp': 'Date/Time', 
@@ -414,6 +414,7 @@ def render_staff_area(role):
             'consequence': 'Consequence',
             'behaviour': 'Behaviour',
             'setting': 'Setting',
+            'duration_minutes': 'Duration (min)', # Duration remains visible in the data display
         }),
         use_container_width=True,
         hide_index=True
@@ -491,14 +492,12 @@ def render_quick_log(role, student):
         # --- Severity and Notes ---
         st.subheader("Severity and Context")
         
-        col_sev, col_dur, col_crit = st.columns(3)
+        # Removed the 'Duration' column, now just 2 columns
+        col_sev, col_crit = st.columns(2) 
         
         with col_sev:
             intensity = st.slider("Intensity (1 = Low to 5 = High)", 1, 5, 3)
             
-        with col_dur:
-            duration = st.number_input("Duration (minutes)", min_value=1, max_value=60, value=5)
-
         with col_crit:
             is_critical = st.checkbox("Critical Incident?", value=(intensity >= 4)) # Pre-check if intensity is high
             st.markdown(
@@ -530,7 +529,8 @@ def render_quick_log(role, student):
             'setting': setting,
             'function_hypothesis': random.choice(FUNCTIONS_FBA), # Mock function for quick log
             'intensity': intensity,
-            'duration_minutes': duration,
+            # Setting a default duration since it was removed from the input form
+            'duration_minutes': 5, 
             'notes': notes,
             'is_abch_completed': True,
             'is_critical': is_critical,
