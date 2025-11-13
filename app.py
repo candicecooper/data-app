@@ -5,7 +5,6 @@ import random
 import uuid # Use uuid for robust unique IDs
 import plotly.express as px
 import numpy as np
-import time # Import time for sleep functionality in quick_log
 
 # --- Configuration and Aesthetics (High-Contrast Dark Look) ---
 
@@ -16,6 +15,7 @@ st.set_page_config(
 )
 
 # Custom CSS for a sleek, high-contrast, dark-mode inspired UI
+# Corrected #F1F5N9 to #F1F5F9 for valid hex color
 st.markdown(
     """
     <style>
@@ -30,72 +30,70 @@ st.markdown(
     
     /* Input Fields */
     div[data-testid="stTextInput"] > div > input,
-    div[data-testid="stTextInput"] > div > textarea,
-    .st-emotion-cache-1cpxdwl,
-    .st-emotion-cache-13gs9y { background-color: #334155; color: #F1F5F9; border: 1px solid #475569; border-radius: 8px; }
-    
-    /* Buttons */
-    .stButton > button {
-        background-color: #4C1D95; /* Deep Purple */
-        color: white;
-        border-radius: 10px;
-        padding: 10px 20px;
-        transition: all 0.2s;
-        border: none;
-    }
-    .stButton > button:hover {
-        background-color: #5B21B6; /* Lighter Purple on hover */
-        transform: translateY(-1px);
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-    }
-    
-    /* Radio Buttons / Checkboxes */
-    .stRadio > label, .stCheckbox > label {
-        color: #E2E8F0;
-    }
-    .stRadio div[role="radiogroup"] div {
+    div[data-testid="stTextArea"] > textarea,
+    div[data-testid="stSelectbox"] > div[data-baseweb="select"] > div,
+    div[data-testid="stDateInput"] > div > input,
+    div[data-testid="stTimeInput"] > div > input
+    {
         background-color: #334155;
-        border-radius: 6px;
-        padding: 5px 10px;
-        margin-bottom: 5px;
+        color: #F1F5F9;
+        border-radius: 8px;
         border: 1px solid #475569;
     }
     
-    /* Metric Cards */
-    [data-testid="stMetric"] {
-        background-color: #1E293B;
-        padding: 20px;
-        border-radius: 12px;
-        border-left: 5px solid #6366F1; /* Indigo accent */
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-    [data-testid="stMetric"] > div > div:first-child {
-        color: #94A3B8; /* Secondary text color */
-    }
-    [data-testid="stMetric"] > div > div:nth-child(2) {
-        font-size: 2.5rem;
-        font-weight: 700;
+    /* Buttons */
+    .stButton > button {
+        background-color: #4C51BF; /* Indigo primary color */
         color: #F1F5F9;
+        border-radius: 8px;
+        border: none;
+        padding: 10px 20px;
+        transition: background-color 0.2s;
+    }
+    .stButton > button:hover {
+        background-color: #4338CA; /* Darker indigo on hover */
+    }
+    .stButton > button:disabled {
+        background-color: #334155;
+        color: #94A3B8;
     }
     
-    /* General Container Styling */
-    .st-emotion-cache-16ids9g { /* Main block container */
+    /* Primary Button (Submit Log) */
+    .stButton[data-testid="stFormSubmitButton"] > button {
+        background-color: #10B981; /* Emerald green */
+        color: #0F172A;
+        font-weight: bold;
+    }
+    .stButton[data-testid="stFormSubmitButton"] > button:hover {
+        background-color: #059669;
+    }
+
+    /* Expander/Info Boxes */
+    div[data-testid="stAlert"] { border-radius: 12px; }
+    
+    /* Multiselect/Checkbox appearance */
+    .stMultiSelect, .stCheckbox { color: #E2E8F0; }
+
+    /* Custom Header for Student Profile */
+    .student-header {
+        background-color: #334155;
+        padding: 15px;
         border-radius: 12px;
-        overflow: hidden;
+        margin-bottom: 20px;
     }
-    
-    /* Sidebar collapse button fix (if sidebar is used) */
-    [data-testid="collapsed-sidebar"] {
-        background-color: #1E293B !important;
+
+    /* Fix column gaps */
+    div[data-testid="stColumn"] {
+        padding-top: 0px !important;
     }
     </style>
-    """,
-    unsafe_allow_html=True
+    """, unsafe_allow_html=True
 )
 
-# --- FBA Data, Staff Mock Data, and Helper Functions ---
-
-# --- MOCK DATA REQUIRED FOR LOGGING DROPDOWNS ---
+# --- MOCK DATA REQUIRED FOR LOGGING DROPDOWNS (FROM UPLOADED FILE) ---
+# NOTE: This data is included for the staff selection logic in the forms. 
+# You should replace 'MOCK_STAFF' and the staff-related helper functions
+# (`get_active_staff`) with your application's actual data fetching logic.
 MOCK_STAFF = [
     {'id': 's1', 'name': 'Emily Jones (JP)', 'role': 'JP', 'active': True, 'special': False},
     {'id': 's2', 'name': 'Daniel Lee (PY)', 'role': 'PY', 'active': True, 'special': False},
@@ -105,563 +103,540 @@ MOCK_STAFF = [
     {'id': 's_sso', 'name': 'External SSO', 'role': 'SSO', 'active': True, 'special': True},
 ]
 
-# --- FBA and Data Constants ---
+# --- FBA and Data Constants (FROM UPLOADED FILE) ---
 
-BEHAVIORS_FBA = ['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)', 'Self-Injurious Behaviour', 'Outburst (Screaming/Crying)', 'Other']
-ANTECEDENTS = ['Transition to non-preferred activity', 'Task demands/Request to work', 'Access to preferred item/activity denied', 'Peer interaction/conflict', 'Sensory overload (noise/light)', 'Unstructured time (recess/lunch)', 'Non-contingent attention removed', 'Other']
-CONSEQUENCES = ['Sent to time-out/chill-out', 'Verbal reprimand/Correction', 'Loss of privilege/preferred item', 'Access to preferred item/activity provided', 'Ignored (extinction)', 'Escaped task demands', 'Counselling/Discussion', 'Physical intervention (safe hold)', 'Other']
-SETTINGS = ['Classroom (Whole Group)', 'Classroom (Small Group)', 'Individual Workstation', 'Playground/Recess', 'Library/Specialist Room', 'Cafeteria', 'Hallway/Transition', 'Other (Specify)']
-INTENSITY_LEVELS = {
-    1: "Minimal (Muttering, minimal off-task, easily redirected)",
-    2: "Low (Verbal protest, small disruptions, redirection effective within 3-5s)",
-    3: "Medium (Verbal refusal/threats, moderate non-compliance, requires multiple redirections/calm-down time)",
-    4: "High (Elopement, minor property destruction, sustained verbal abuse, requires staff support/removal)",
-    5: "Critical (Assault/Injury/Major destruction, immediate risk, requires physical intervention/emergency services)"
-}
-DURATION_OPTIONS = ['< 1 minute', '1-5 minutes', '5-15 minutes', '15-30 minutes', '> 30 minutes']
+BEHAVIORS_FBA = ['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)', 'Self-Injurious Behaviour', 'Outburst (Screaming/Crying)', 'Minor Physical Contact', 'Other: Specify in Description']
+ANTECEDENTS_FBA = ['Request/Demand', 'Transition', 'Change in Routine', 'Peer Interaction (Conflict)', 'Task Difficulty', 'Attention Withdrawn/Denied', 'Sensory Overload', 'Unstructured Time (Recess/Break)', 'Other: Specify in Description']
+CONSEQUENCES_FBA = ['Restorative Conversation', 'Time Out (In Class/Area)', 'Loss of Privileges', 'Removal from Activity', 'Parent Contact (Informal)', 'Peer Mediation', 'Other: Specify in Description', 'No Consequence (De-escalation)']
+LOCATIONS = ['Classroom (Main)', 'Playground (Oval)', 'Specific Learning Area (Art/Science)', 'Office/Admin', 'Corridor', 'Bathroom', 'Library', 'Canteen/Cafeteria', 'Out of School Grounds']
 
-# WOT_OPTIONS is renamed to RESOLUTION_STATUS_OPTIONS to match the uploaded code's intent in Step 2
-RESOLUTION_STATUS_OPTIONS = ['Co-regulated/Settled quickly', 'Settled independently (long duration)', 'Still escalated/Unsettled', 'Sent home/Left area']
-
-OUTCOME_MAPPINGS = {
-    'o_a_send_home': 'Send Home/Exclusion',
-    'o_b_left_area': 'Left Area (Staff Directed)',
-    'o_c_assault': 'Assault (Peer/Staff)',
-    'o_d_property_damage': 'Property Damage',
-    'o_e_staff_injury': 'Staff Injury',
-    'o_f_sapol_callout': 'SAPOL Callout',
-    'o_g_restraint': 'Restraint/Physical Intervention',
-    'o_h_seclusion': 'Seclusion/Isolation',
-    'o_i_first_aid_minor': 'First Aid (Minor)',
-    'o_j_first_aid_amb': 'First Aid (Ambulance)',
-    'o_k_reportable': 'Reportable Incident (Mandatory)',
-    'o_l_debrief': 'Staff Debrief Required',
-    'o_m_follow_up_parent': 'Parent Follow-up',
-    'o_n_follow_up_staff': 'Staff Follow-up/Plan Review',
-    'o_o_counselling': 'Counselling Referral',
-    'o_p_safety_plan_rev': 'Safety Plan Review',
-    'o_q_other': 'Other (Specify)',
-    'o_r_call_out_amb': 'Call Out (Ambulance)',
+# Used for the referral outcomes section (Outcomes/Actions)
+REFERRAL_OUTCOMES = {
+    'Emergency': [
+        ('o_c_assault', 'Assault/Threats (Staff/Student)'),
+        ('o_d_property_damage', 'Significant Property Damage'),
+        ('o_e_staff_injury', 'Staff Injury'),
+        ('o_f_sapol_callout', 'SAPOL Callout'),
+        ('o_r_call_out_amb', 'Ambulance Callout'),
+    ],
+    'Internal Actions': [
+        ('o_a_send_home', 'Student Sent Home/Exclusion'),
+        ('o_b_left_area', 'Student Left Area/Eloped'),
+        ('o_g_detention', 'Detention Issued'),
+        ('o_h_formal_warning', 'Formal Warning Issued'),
+        ('o_i_restorative_process', 'Formal Restorative Process'),
+    ],
+    'Medical/Support': [
+        ('o_j_first_aid_amb', 'First Aid administered (Non-Ambulance)'),
+        ('o_k_psych_support', 'Referral to Psychologist/Counsellor'),
+        ('o_l_leadership_meeting', 'Leadership/Team Meeting Held'),
+    ],
+    'Parent/External Communication': [
+        ('o_m_parent_formal', 'Formal Parent Meeting Scheduled'),
+        ('o_n_sso_referral', 'SSO/Welfare Follow-up'),
+        ('o_p_external_referral', 'External Agency Referral'),
+    ]
 }
 
-# --- Mock Data and Database Helpers ---
+# --- Helper Functions for Staff and Data (FROM UPLOADED FILE) ---
 
 def get_active_staff():
-    """Returns the names of all active staff members for selection."""
-    active_staff = [s['name'] for s in MOCK_STAFF if s['active']]
-    return active_staff
+    """Returns a list of active staff names for use in dropdowns."""
+    return [s['name'] for s in MOCK_STAFF if s['active']]
 
-def save_quick_log_to_db(log_entry):
-    """
-    MOCK function to save the log entry to the database (or a DataFrame in this case).
-    """
-    if 'log_history' not in st.session_state:
-        st.session_state['log_history'] = pd.DataFrame(columns=list(log_entry.keys()))
-    
-    # Ensure all list columns are correctly handled for concatenation
-    for col in ['staff_involved', 'behaviors', 'consequences']:
-        if col in log_entry and isinstance(log_entry[col], list):
-             log_entry[col] = [log_entry[col]] # Wrap the list in a list for correct DataFrame creation
-    
-    new_row_df = pd.DataFrame([log_entry])
-    st.session_state['log_history'] = pd.concat([st.session_state['log_history'], new_row_df], ignore_index=True)
+def get_staff_name_from_id(staff_id):
+    """Mocks fetching a staff member's name from their ID."""
+    try:
+        return next(s['name'] for s in MOCK_STAFF if s['id'] == staff_id)
+    except StopIteration:
+        return "Unknown Staff"
 
 
-# --- Mock Data for Students (Preserved) ---
+# --- MOCK STUDENT DATA ---
 MOCK_STUDENTS = [
-    {'name': 'Alex Johnson', 'id': 's101', 'year': 5, 'plan_status': 'Tier 3 (BSP)', 'last_log_intensity': 4, 'total_logs': 15, 'key_behavior': 'Elopement'},
-    {'name': 'Beth Smith', 'id': 's102', 'year': 7, 'plan_status': 'Tier 2 (Safety Plan)', 'last_log_intensity': 2, 'total_logs': 8, 'key_behavior': 'Verbal Refusal'},
-    {'name': 'Charlie Brown', 'id': 's103', 'year': 9, 'plan_status': 'Tier 1 (Classroom)', 'last_log_intensity': 1, 'total_logs': 3, 'key_behavior': 'Disruption'},
-    {'name': 'Dana White', 'id': 's104', 'year': 10, 'plan_status': 'Tier 3 (BSP)', 'last_log_intensity': 5, 'total_logs': 22, 'key_behavior': 'Aggression (Peer)'},
+    {'id': 'S001', 'name': 'Alex Johnson', 'grade': 5, 'plan_status': 'Current FBA/BSP', 'risk_level': 'High'},
+    {'id': 'S002', 'name': 'Ben Carter', 'grade': 4, 'plan_status': 'Low Risk Monitoring', 'risk_level': 'Low'},
+    {'id': 'S003', 'name': 'Chloe Davis', 'grade': 6, 'plan_status': 'In Review', 'risk_level': 'Medium'},
 ]
 
-def get_student_data(student_name):
-    """Retrieves mock data for a specific student."""
-    return next((s for s in MOCK_STUDENTS if s['name'] == student_name), None)
-
-def navigate_to(page, student=None, role=None):
-    """Handles page navigation and updates session state."""
-    st.session_state.page = page
-    if student:
-        st.session_state.student = student
-    if role:
-        st.session_state.role = role
-
-def initialize_quick_log_state():
-    """Initializes/resets the state variables for the two-step quick log."""
-    if 'ql_step' not in st.session_state or st.session_state.ql_step == 'final':
-        st.session_state.ql_step = 1
-    if 'preliminary_data' not in st.session_state:
-        st.session_state.preliminary_data = {
-            'log_id': str(uuid.uuid4()),
-            'timestamp': datetime.now().isoformat(),
-            'is_abch_completed': False,
-        }
-    # Reset critical outcome keys for clean slate on new log attempt
-    for key in OUTCOME_MAPPINGS.keys():
-        if key in st.session_state:
-            del st.session_state[key]
-
-# --- Incident Reporting UI Functions (CORRECTED TO USE TWO-STEP FLOW) ---
-
-def render_quick_log(role, student_name):
-    """
-    Renders the two-step quick A-B-C-H log form based on the uploaded code structure.
-    """
-    initialize_quick_log_state()
-
-    st.title(f"Quick Incident Log for {student_name}")
-    st.caption(f"Staff Role: **{role}** | Log ID: {st.session_state.preliminary_data['log_id'][:8]} | Step: {st.session_state.ql_step} of 2")
-    st.markdown("---")
-
-    if st.session_state.ql_step == 1:
-        st.subheader("Step 1: Antecedent, Behavior, Consequence (A-B-C)")
-        
-        with st.form("quick_log_step_1", clear_on_submit=False):
-            
-            # --- Context/Timing ---
-            st.markdown("##### Context & Timing")
-            col1, col2 = st.columns(2)
-            with col1:
-                log_date = st.date_input("Date of Incident", datetime.now().date(), key='ql_log_date')
-                log_time = st.time_input("Time of Incident", datetime.now().time(), key='ql_log_time')
-                setting = st.selectbox("Setting/Location", options=SETTINGS, key='ql_log_setting')
-            
-            with col2:
-                logged_by_staff = st.selectbox("Staff Logging Incident", options=get_active_staff(), key='ql_log_staff')
-                staff_involved = st.multiselect("Other Staff Involved (if any)", options=[s for s in get_active_staff() if s != logged_by_staff], key='ql_log_involved')
-
-            st.markdown("---")
-
-            # --- A - Antecedent
-            st.markdown("#### A: Antecedent (What happened *immediately* before the behaviour?)")
-            antecedent = st.selectbox("Primary Antecedent", options=ANTECEDENTS, key='ql_log_antecedent')
-            
-            # --- B - Behaviour
-            st.markdown("#### B: Behaviour (What was the *observable* behaviour?)")
-            col3, col4 = st.columns([2, 1])
-            with col3:
-                behaviors = st.multiselect("Observed Behaviours (Select all that apply)", options=BEHAVIORS_FBA, key='ql_log_behaviors')
-            with col4:
-                intensity = st.radio("Max Intensity Level", 
-                                     options=list(INTENSITY_LEVELS.keys()), 
-                                     format_func=lambda x: f"{x}: {INTENSITY_LEVELS[x].split('(')[0].strip()}", 
-                                     key='ql_log_intensity', index=2, horizontal=True)
-
-            # --- C - Consequence / Duration
-            st.markdown("#### C: Consequence & Duration")
-            col5, col6 = st.columns(2)
-            with col5:
-                consequences = st.multiselect("Observed Consequences (Select all that apply)", options=CONSEQUENCES, key='ql_log_consequences')
-            with col6:
-                duration = st.selectbox("Duration of Incident", options=DURATION_OPTIONS, key='ql_log_duration', index=1)
-                
-            st.markdown("---")
-
-            if st.form_submit_button("Continue to Narrative (Step 2/2)"):
-                # Save Step 1 data to preliminary_data
-                st.session_state.preliminary_data.update({
-                    'student_name': student_name,
-                    'logged_by_role': role,
-                    'log_date': log_date.isoformat(),
-                    'log_time': log_time.isoformat(),
-                    'setting': setting,
-                    'logged_by_staff': logged_by_staff,
-                    'staff_involved': staff_involved,
-                    'antecedent': antecedent,
-                    'behaviors': behaviors,
-                    'intensity': intensity,
-                    'consequences': consequences,
-                    'duration': duration,
-                })
-                
-                # Validation check for minimum data
-                if not behaviors or not antecedent:
-                    st.error("Please select at least one Behavior and the Antecedent before continuing.")
-                    st.stop()
-                
-                # Move to Step 2
-                st.session_state.ql_step = 2
-                st.rerun()
-                
-    elif st.session_state.ql_step == 2:
-        st.subheader("Step 2: Narrative, Plan (H), and Outcomes")
-        
-        preliminary_data = st.session_state.preliminary_data
-        
-        # Display key summary from Step 1
-        st.info(f"Summary: Level **{preliminary_data['intensity']}** incident, triggered by **{preliminary_data['antecedent']}**, observed: **{', '.join(preliminary_data['behaviors'])}**.")
-        
-        with st.form("quick_log_step_2", clear_on_submit=True):
-            
-            # --- Narrative and H (Plan) ---
-            st.markdown("#### Objective Narrative")
-            incident_narrative = st.text_area(
-                "Brief, Objective Context (What did you see, hear, and do?)",
-                height=120,
-                key='ql_incident_narrative'
-            )
-
-            st.markdown("#### H: Plan / Next Steps")
-            how_to_respond_plan = st.text_area(
-                "Effective strategies used & plan for next time (Required)",
-                height=100,
-                key='ql_how_to_respond'
-            )
-            
-            st.markdown("---")
-
-            # --- Resolution Status / Window of Tolerance (WOT) ---
-            st.markdown("#### Resolution Status (WOT Check)")
-            refined_wot = st.radio(
-                "How was the situation resolved?",
-                options=RESOLUTION_STATUS_OPTIONS,
-                key='ql_refined_wot',
-                index=0,
-                horizontal=True
-            )
-
-            st.markdown("---")
-            
-            # --- Critical Incident Section (Conditional Display) ---
-            is_critical = preliminary_data['intensity'] >= 4
-            
-            st.subheader(f"Critical Incident Outcomes (Required for Intensity {preliminary_data['intensity']} Logs)")
-            
-            # Display if intensity is 4 or 5
-            if is_critical:
-                st.warning("🚨 This log requires mandatory review due to high intensity. Please check all relevant outcomes.")
-                
-                with st.container(border=True):
-                    st.markdown("##### Mandatory Outcomes")
-                    col_cr_a, col_cr_b, col_cr_c = st.columns(3)
-                    with col_cr_a:
-                        st.checkbox(OUTCOME_MAPPINGS['o_c_assault'], key='o_c_assault')
-                        st.checkbox(OUTCOME_MAPPINGS['o_d_property_damage'], key='o_d_property_damage')
-                        st.checkbox(OUTCOME_MAPPINGS['o_e_staff_injury'], key='o_e_staff_injury')
-                    with col_cr_b:
-                        st.checkbox(OUTCOME_MAPPINGS['o_g_restraint'], key='o_g_restraint')
-                        st.checkbox(OUTCOME_MAPPINGS['o_h_seclusion'], key='o_h_seclusion')
-                        st.checkbox(OUTCOME_MAPPINGS['o_f_sapol_callout'], key='o_f_sapol_callout')
-                    with col_cr_c:
-                        st.checkbox(OUTCOME_MAPPINGS['o_i_first_aid_minor'], key='o_i_first_aid_minor')
-                        st.checkbox(OUTCOME_MAPPINGS['o_j_first_aid_amb'], key='o_j_first_aid_amb')
-                        st.checkbox(OUTCOME_MAPPINGS['o_k_reportable'], key='o_k_reportable')
-                    
-                    st.markdown("---")
-                    
-                    st.markdown("##### Follow-up & Plan Review")
-                    col_cr_d, col_cr_e, col_cr_f = st.columns(3)
-                    with col_cr_d:
-                        st.checkbox(OUTCOME_MAPPINGS['o_a_send_home'], key='o_a_send_home')
-                        st.checkbox(OUTCOME_MAPPINGS['o_b_left_area'], key='o_b_left_area')
-                    with col_cr_e:
-                        st.checkbox(OUTCOME_MAPPINGS['o_l_debrief'], key='o_l_debrief')
-                        st.checkbox(OUTCOME_MAPPINGS['o_m_follow_up_parent'], key='o_m_follow_up_parent')
-                    with col_cr_f:
-                        st.checkbox(OUTCOME_MAPPINGS['o_n_follow_up_staff'], key='o_n_follow_up_staff')
-                        st.checkbox(OUTCOME_MAPPINGS['o_p_safety_plan_rev'], key='o_p_safety_plan_rev')
-
-            st.markdown("---")
-            
-            # --- Submission Button ---
-            if st.form_submit_button("✅ Finalise and Save Incident Log"):
-                
-                # Final Validation
-                if not how_to_respond_plan or len(how_to_respond_plan.split()) < 5:
-                    st.error("The 'H: Plan / Next Steps' field is critical and requires a substantial plan (at least 5 words provided).")
-                    st.stop()
-                if not incident_narrative or len(incident_narrative.split()) < 5:
-                    st.error("The 'Objective Narrative' field is critical and requires context (at least 5 words provided).")
-                    st.stop()
-
-                # Consolidate and Save Data
-                log_entry = preliminary_data.copy()
-                log_entry.update({
-                    'is_abch_completed': True,
-                    'wot_status': refined_wot,
-                    'incident_narrative': incident_narrative,
-                    'how_to_respond': how_to_respond_plan,
-                    # Critical Outcomes - retrieve all checkbox values
-                    'outcome_send_home': st.session_state.get('o_a_send_home', False),
-                    'outcome_leave_area': st.session_state.get('o_b_left_area', False),
-                    'outcome_assault': st.session_state.get('o_c_assault', False),
-                    'outcome_property_damage': st.session_state.get('o_d_property_damage', False),
-                    'outcome_staff_injury': st.session_state.get('o_e_staff_injury', False),
-                    'outcome_sapol_callout': st.session_state.get('o_f_sapol_callout', False),
-                    'outcome_restraint': st.session_state.get('o_g_restraint', False),
-                    'outcome_seclusion': st.session_state.get('o_h_seclusion', False),
-                    'outcome_first_aid_minor': st.session_state.get('o_i_first_aid_minor', False),
-                    'outcome_first_aid_amb': st.session_state.get('o_j_first_aid_amb', False),
-                    'outcome_reportable': st.session_state.get('o_k_reportable', False),
-                    'outcome_debrief': st.session_state.get('o_l_debrief', False),
-                    'outcome_follow_up_parent': st.session_state.get('o_m_follow_up_parent', False),
-                    'outcome_follow_up_staff': st.session_state.get('o_n_follow_up_staff', False),
-                    'outcome_counselling': st.session_state.get('o_o_counselling', False),
-                    'outcome_safety_plan_rev': st.session_state.get('o_p_safety_plan_rev', False),
-                    'outcome_other': st.session_state.get('o_q_other', False),
-                    'outcome_ambulance': st.session_state.get('o_r_call_out_amb', False) or st.session_state.get('o_j_first_aid_amb', False),
-                })
-                
-                save_quick_log_to_db(log_entry)
-                
-                # Clean up
-                st.session_state.ql_step = 'final' # Use 'final' to signal successful completion
-                del st.session_state.preliminary_data
-                for key in OUTCOME_MAPPINGS.keys():
-                    if key in st.session_state:
-                        del st.session_state[key]
-
-                st.success(f"Incident Log '{log_entry['log_id'][:8]}' successfully saved!")
-                st.info("Log automatically navigates back to Student Detail in 1 second.")
-                time.sleep(1) 
-                navigate_to('student_detail', student=student_name, role=role)
-                st.rerun()
-
-    # Back button for Step 2
-    if st.session_state.ql_step == 2:
-        if st.button("⬅️ Back to Step 1 (A-B-C)", key="back_to_step1"):
-            st.session_state.ql_step = 1
-            st.rerun()
-
-# This function is now a simple redirection, as the critical incident reporting is 
-# integrated into the main quick log form (via the Critical Outcomes section).
-def render_critical_incident(role, student_name):
-    """
-    Renders a redirection to the quick log, as the critical incident reporting is 
-    integrated into the main quick log form (via the Critical Outcomes section).
-    """
-    st.header("Critical Incident Reporting")
-    st.error("The Critical Incident Report functionality has been integrated directly into the Quick Log form (Step 2) and is mandatory for Intensity 4 & 5 incidents. Please use the Quick Log to record all incident details.")
-    st.info(f"Navigate to Quick Log for {student_name}", icon="➡️")
-    if st.button(f"Go to Quick Log for {student_name}"):
-        navigate_to('quick_log', student=student_name, role=role)
-
-
-# --- Student Analysis Function (Preserved) ---
-
-def render_student_analysis(student_name, role):
-    """Renders detailed analysis and reporting tools for a specific student."""
-    st.title(f"Detailed Analysis: {student_name}")
-    student_data = get_student_data(student_name)
-    
-    col_a, col_b, col_c = st.columns(3)
-    with col_a:
-        st.metric("Total Logs", student_data['total_logs'])
-    with col_b:
-        st.metric("Current Plan", student_data['plan_status'])
-    with col_c:
-        st.metric("Key Behaviour", student_data['key_behavior'])
-        
-    st.markdown("---")
-    
-    # Check if log history exists for plotting
-    if 'log_history' in st.session_state and not st.session_state['log_history'].empty:
-        df_logs = st.session_state['log_history']
-        df_student = df_logs[df_logs['student_name'] == student_name].copy()
-        
-        if not df_student.empty:
-            df_student['log_datetime'] = pd.to_datetime(df_student['log_date'] + ' ' + df_student['log_time'])
-            
-            st.subheader("Intensity Trend")
-            fig_intensity = px.line(
-                df_student.sort_values('log_datetime'),
-                x='log_datetime',
-                y='intensity',
-                title='Incident Intensity Over Time',
-                markers=True,
-                color_discrete_sequence=['#6366F1']
-            )
-            fig_intensity.update_layout(
-                xaxis_title="Date/Time",
-                yaxis_title="Intensity Level",
-                yaxis=dict(tickmode='array', tickvals=list(INTENSITY_LEVELS.keys()), ticktext=[str(k) for k in INTENSITY_LEVELS.keys()]),
-                plot_bgcolor='#1E293B',
-                paper_bgcolor='#1E293B',
-                font_color='#F1F5F9'
-            )
-            st.plotly_chart(fig_intensity, use_container_width=True)
-            
-            st.markdown("---")
-            
-            col_chart_a, col_chart_b = st.columns(2)
-            
-            # Antecedent Distribution
-            with col_chart_a:
-                st.subheader("Antecedent Distribution")
-                antecedent_counts = df_student['antecedent'].value_counts().reset_index()
-                antecedent_counts.columns = ['Antecedent', 'Count']
-                fig_ante = px.bar(
-                    antecedent_counts,
-                    x='Count',
-                    y='Antecedent',
-                    orientation='h',
-                    title='Incident Triggers',
-                    color='Count',
-                    color_continuous_scale='Sunsetdark'
-                )
-                fig_ante.update_layout(
-                    yaxis_title="",
-                    plot_bgcolor='#1E293B',
-                    paper_bgcolor='#1E293B',
-                    font_color='#F1F5F9'
-                )
-                st.plotly_chart(fig_ante, use_container_width=True)
-
-            # Behaviour Distribution
-            with col_chart_b:
-                st.subheader("Top Behaviours")
-                # Flatten the list of behaviors
-                all_behaviors = [b for sublist in df_student['behaviors'] for b in sublist]
-                behavior_counts = pd.Series(all_behaviors).value_counts().reset_index()
-                behavior_counts.columns = ['Behaviour', 'Count']
-                fig_behav = px.pie(
-                    behavior_counts.head(5),
-                    values='Count',
-                    names='Behaviour',
-                    title='Top 5 Observable Behaviours',
-                    color_discrete_sequence=px.colors.sequential.RdPu
-                )
-                fig_behav.update_layout(
-                    showlegend=True,
-                    plot_bgcolor='#1E293B',
-                    paper_bgcolor='#1E293B',
-                    font_color='#F1F5F9'
-                )
-                st.plotly_chart(fig_behav, use_container_width=True)
-
-
-            st.markdown("---")
-            st.subheader("Latest Incident Logs")
-            st.dataframe(df_student[['log_datetime', 'intensity', 'antecedent', 'incident_narrative', 'how_to_respond']]
-                         .sort_values('log_datetime', ascending=False)
-                         .head(10),
-                         use_container_width=True,
-                         column_config={
-                            "log_datetime": st.column_config.DatetimeColumn("Date/Time", format="YYYY-MM-DD HH:mm"),
-                            "intensity": st.column_config.NumberColumn("Int", help="Max Intensity Level"),
-                            "antecedent": "Antecedent",
-                            "incident_narrative": "Narrative",
-                            "how_to_respond": "Plan/Response"
-                         })
-                         
-        else:
-             st.info("No Quick Logs found for this student yet.")
-    
-    else:
-        st.info("No Quick Logs have been recorded in the mock database.")
-
-    st.markdown("---")
-    
-    # Action Buttons
-    col_btn_a, col_btn_b, col_btn_c = st.columns(3)
-    with col_btn_a:
-        if st.button(f"➕ New Quick Log for {student_name}", use_container_width=True, key="new_log_btn"):
-            navigate_to('quick_log', student=student_name, role=role)
-    with col_btn_b:
-        if st.button(f"🔙 Back to Staff Area", use_container_width=True, key="back_staff_btn"):
-            navigate_to('staff_area', role=role)
-    with col_btn_c:
-        if role == 'ADM' and st.button(f"⚙️ Manage Plans/Staff (ADM)", use_container_width=True, key="manage_plans_btn"):
-             st.warning("Management functionality not yet implemented.")
-
-
-# --- Staff Area UI Function (Preserved) ---
-
-def render_staff_area(role):
-    """Renders the dashboard for staff to select a student and view summary metrics."""
-    st.header(f"Staff Dashboard ({role} User)")
-    st.subheader("Select a Student for Detailed Analysis or Quick Logging")
-
-    # Mock Summary Metrics (using log history if available)
-    total_incidents = st.session_state.get('log_history', pd.DataFrame()).shape[0]
-    critical_incidents = st.session_state.get('log_history', pd.DataFrame()).query('intensity >= 4').shape[0]
-    
-    col_m1, col_m2, col_m3 = st.columns(3)
-    with col_m1:
-        st.metric("Students Monitored", len(MOCK_STUDENTS))
-    with col_m2:
-        st.metric("Total Incidents Logged", total_incidents)
-    with col_m3:
-        st.metric("Critical Incidents (Level 4/5)", critical_incidents, delta=f"{critical_incidents/total_incidents*100:.1f}% of total" if total_incidents else None)
-
-    st.markdown("---")
-
-    # Student Selector Table
-    st.subheader("Current Focus Students")
-    
-    student_options = [s['name'] for s in MOCK_STUDENTS]
-    selected_student = st.selectbox("Choose a Student:", options=['Select...'] + student_options)
-
-    if selected_student != 'Select...':
-        student_data = get_student_data(selected_student)
-        st.markdown(f"**Student:** {student_data['name']} | **Year:** {student_data['year']} | **Plan:** {student_data['plan_status']}")
-        
-        col_s1, col_s2 = st.columns([1, 1])
-        with col_s1:
-            if st.button(f"View Analysis for {selected_student}", use_container_width=True, key="view_analysis_btn"):
-                navigate_to('student_detail', student=selected_student, role=role)
-        with col_s2:
-            if st.button(f"Log Incident for {selected_student}", use_container_width=True, key="log_incident_btn"):
-                navigate_to('quick_log', student=selected_student, role=role)
-    
-    st.markdown("---")
-    st.info("This application uses a detailed ABCH Quick Log for context-rich data collection, feeding directly into data-driven student analysis.")
-
-
-# --- Landing Page (Preserved) ---
-
-def render_landing_page():
-    """Renders the initial landing page for role selection."""
-    st.title("Behaviour Support & Data Analysis Tool")
-    st.subheader("Select Your Role to Access the Dashboard")
-    
-    col_j, col_p, col_a = st.columns(3)
-    
-    with col_j:
-        if st.button("Junior Primary (JP) Staff", use_container_width=True):
-            navigate_to('staff_area', role='JP')
-    with col_p:
-        if st.button("Primary (PY/SY) Staff", use_container_width=True):
-            navigate_to('staff_area', role='PY')
-    with col_a:
-        if st.button("Admin/Leadership (ADM)", use_container_width=True):
-            navigate_to('staff_area', role='ADM')
-            
-    st.markdown("---")
-    st.info("This application uses a detailed ABCH Quick Log for context-rich data collection, feeding directly into data-driven student analysis.")
-
-
-# --- State Initialization (Preserved) ---
+# --- State Management and Navigation ---
 
 def initialize_state():
-    """Initializes session state variables if they don't exist."""
+    """Initializes session state variables."""
     if 'page' not in st.session_state:
         st.session_state.page = 'landing'
-    if 'student' not in st.session_state:
-        st.session_state.student = None
     if 'role' not in st.session_state:
         st.session_state.role = None
-    if 'user_id' not in st.session_state:
-        # Mock user ID for demonstration
-        st.session_state.user_id = str(uuid.uuid4())[:8]
-
-    # Initialize log history if missing (mock database)
+    if 'student' not in st.session_state:
+        st.session_state.student = None
     if 'log_history' not in st.session_state:
-        # Column list derived from the fields in save_quick_log_to_db and render_quick_log
-        log_columns = [
-            'log_id', 'student_name', 'logged_by_role', 'timestamp', 'is_abch_completed',
-            'log_date', 'log_time', 'setting', 'logged_by_staff', 'staff_involved',
-            'antecedent', 'behaviors', 'intensity', 'consequences', 'duration',
-            'wot_status', 'incident_narrative', 'how_to_respond', 
-            # Critical Outcomes (must match keys used in the save logic of render_quick_log)
-            'outcome_send_home', 'outcome_leave_area', 'outcome_assault', 'outcome_property_damage', 
-            'outcome_staff_injury', 'outcome_sapol_callout', 'outcome_restraint', 'outcome_seclusion',
-            'outcome_first_aid_minor', 'outcome_first_aid_amb', 'outcome_reportable', 'outcome_debrief', 
-            'outcome_follow_up_parent', 'outcome_follow_up_staff', 'outcome_counselling', 'outcome_safety_plan_rev', 
-            'outcome_other', 'outcome_ambulance',
-        ]
-        st.session_state['log_history'] = pd.DataFrame(columns=log_columns)
+        st.session_state.log_history = []
+    if 'last_log_id' not in st.session_state:
+        st.session_state.last_log_id = None
+
+def navigate_to(page_name, role=None, student=None):
+    """Handles application navigation and state updates."""
+    st.session_state.page = page_name
+    if role:
+        st.session_state.role = role
+    if student:
+        st.session_state.student = student
+    st.rerun()
+
+# --- Quick Log Submission Logic (FROM UPLOADED FILE) ---
+
+def save_incident_log(preliminary_data):
+    """
+    Handles the submission and final processing of the quick incident log data.
+    In a real app, this would push data to a database (e.g., Firestore).
+    """
+    # 1. Gather all data from Session State (which holds the results of the form)
+    # This logic assumes the form fields are keyed in st.session_state as defined in render_quick_log
+    
+    # 2. Process free-text data
+    refined_wot = st.session_state.get('wot_text', 'No Window of Tolerance details provided.')
+    final_context = st.session_state.get('context_text', 'No contextual details provided.')
+    how_to_respond_plan = st.session_state.get('response_plan_text', 'No specific response plan provided.')
+
+    # 3. Compile final log entry
+    final_log_entry = preliminary_data.copy()
+    final_log_entry.update({
+        'is_abch_completed': True,
+        'window_of_tolerance': refined_wot,
+        'context': final_context,
+        'how_to_respond': how_to_respond_plan,
+        
+        # Outcomes mapping here (use st.session_state to retrieve checkbox values)
+        'outcome_send_home': st.session_state.get('o_a_send_home', False),
+        'outcome_leave_area': st.session_state.get('o_b_left_area', False),
+        'outcome_assault': st.session_state.get('o_c_assault', False),
+        'outcome_property_damage': st.session_state.get('o_d_property_damage', False),
+        'outcome_staff_injury': st.session_state.get('o_e_staff_injury', False),
+        'outcome_sapol_callout': st.session_state.get('o_f_sapol_callout', False),
+        'outcome_ambulance': st.session_state.get('o_r_call_out_amb', False) or st.session_state.get('o_j_first_aid_amb', False),
+        
+        # Other fields from the ABCH form would need to be saved in your target app's database structure
+        'location': st.session_state.get('log_location'),
+        'antecedent': st.session_state.get('log_antecedent'),
+        'behavior': st.session_state.get('log_behavior'),
+        'consequence': st.session_state.get('log_consequence'),
+        'incident_date': st.session_state.get('log_date'),
+        'start_time': st.session_state.get('log_start_time'),
+        'end_time': st.session_state.get('log_end_time'),
+        'duration_minutes': st.session_state.get('log_duration'),
+        'staff_involved': st.session_state.get('log_staff_involved'),
+        'staff_witness': st.session_state.get('log_staff_witnesses'),
+    })
+    
+    # 4. Mock Database Save
+    st.session_state.last_log_id = str(uuid.uuid4())
+    st.session_state.log_history.append(final_log_entry)
+
+    # 5. Clean up temporary session state data after final save
+    # Note: For a real app, you would only clear state after a confirmed successful DB write.
+    for key in list(st.session_state.keys()):
+        if key.startswith(('log_', 'wot_text', 'context_text', 'response_plan_text', 'o_')):
+            if key in st.session_state:
+                del st.session_state[key]
+    
+    st.success(f"Quick Incident Log submitted successfully! (ID: {st.session_state.last_log_id[:8]}...)")
+    
+    # Navigate back to student detail page after successful save
+    navigate_to('student_detail', student=final_log_entry['student_id'], role=final_log_entry['reporter_role'])
+
+
+# --- Page Render Functions ---
+
+def render_landing_page():
+    """Renders the initial role selection page."""
+    st.title("Welcome to the Behaviour Support & Data Analysis Tool")
+    st.subheader("Please select your role to proceed.")
+
+    roles = [('Junior Primary (JP)', 'JP'), ('Primary (PY)', 'PY'), ('Senior Years (SY)', 'SY'), ('Admin/Leadership', 'ADM')]
+
+    col = st.columns(len(roles))
+    
+    for i, (label, role_key) in enumerate(roles):
+        with col[i]:
+            if st.button(label, key=f'role_button_{role_key}', use_container_width=True, type='secondary'):
+                navigate_to('staff_area', role=role_key)
+
+    st.markdown("---")
+    st.info("This tool supports evidence-based Functional Behaviour Assessment (FBA) by enabling quick, contextual logging and detailed analysis of student behaviour.")
+
+
+def render_student_analysis(student, role):
+    """Renders the detailed student analysis dashboard."""
+    
+    # Ensure student is a dictionary object
+    if isinstance(student, str):
+        student_obj = next((s for s in MOCK_STUDENTS if s['id'] == student), None)
+        if not student_obj:
+            st.error("Student not found. Returning to staff area.")
+            navigate_to('staff_area', role=role)
+            return
+        student = student_obj
+
+    st.markdown(f'<div class="student-header"><h1>📊 Behaviour Analysis: {student["name"]}</h1>'
+                f'<p style="font-size: 1.1em; margin: 0;">Grade: <b>{student["grade"]}</b> | Risk Level: <b><span style="color: {"red" if student["risk_level"] == "High" else "orange" if student["risk_level"] == "Medium" else "green"};">{student["risk_level"]}</span></b> | Plan: <b>{student["plan_status"]}</b></p></div>', 
+                unsafe_allow_html=True)
+    
+    st.subheader("Quick Actions")
+    col_actions = st.columns(3)
+    
+    if col_actions[0].button("📝 Log Incident", key='nav_log_incident', use_container_width=True, type='primary'):
+        navigate_to('quick_log', student=student, role=role)
+        
+    if col_actions[1].button("📋 View Plan/FBA", key='view_plan', use_container_width=True):
+        st.info("Mock feature: Displaying detailed FBA/BSP content.")
+        
+    if col_actions[2].button("📞 Contact Parents", key='contact_parents', use_container_width=True):
+        st.info("Mock feature: Preparing parent contact template.")
+        
+    st.markdown("---")
+    
+    st.subheader("Incident History")
+
+    # Filter logs for the current student
+    student_logs = [log for log in st.session_state.log_history if log['student_id'] == student['id']]
+
+    if student_logs:
+        df_logs = pd.DataFrame(student_logs)
+        
+        st.caption(f"Total Logs: **{len(df_logs)}**")
+        
+        # --- Visualization Section ---
+        viz_cols = st.columns(2)
+        
+        # 1. Behavior Frequency
+        behavior_counts = df_logs['behavior'].value_counts().reset_index()
+        behavior_counts.columns = ['Behavior', 'Count']
+        fig_behavior = px.bar(
+            behavior_counts, 
+            x='Behavior', 
+            y='Count', 
+            title='Top Behaviours',
+            color='Count',
+            color_continuous_scale=px.colors.sequential.Plasma,
+            template="plotly_dark"
+        )
+        viz_cols[0].plotly_chart(fig_behavior, use_container_width=True)
+
+        # 2. ABC Scatter Plot (Mocking data for visualization)
+        df_abc = df_logs[['antecedent', 'behavior', 'consequence']].copy()
+        df_abc['x'] = df_abc['antecedent'].apply(lambda x: ANTECEDENTS_FBA.index(x))
+        df_abc['y'] = df_abc['behavior'].apply(lambda x: BEHAVIORS_FBA.index(x))
+        df_abc['z'] = df_abc['consequence'].apply(lambda x: CONSEQUENCES_FBA.index(x))
+        
+        fig_scatter = px.scatter(
+            df_abc,
+            x='antecedent', 
+            y='behavior', 
+            color='consequence', 
+            title='Antecedent vs. Behavior (Colored by Consequence)',
+            template="plotly_dark",
+            height=400
+        )
+        viz_cols[1].plotly_chart(fig_scatter, use_container_width=True)
+
+        # --- Detailed Log Table ---
+        st.subheader("Recent Logs")
+        df_logs_display = df_logs.sort_values(by='timestamp_logged', ascending=False).head(10)
+        
+        df_display = df_logs_display[[
+            'incident_date', 'start_time', 'duration_minutes', 'location', 
+            'antecedent', 'behavior', 'consequence', 'context'
+        ]]
+        
+        st.dataframe(
+            df_display, 
+            column_config={
+                "incident_date": st.column_config.DateColumn("Date", format="YYYY/MM/DD"),
+                "start_time": st.column_config.TimeColumn("Time", format="HH:mm"),
+                "duration_minutes": st.column_config.NumberColumn("Duration (min)"),
+                "context": st.column_config.Column("Narrative", width="large")
+            },
+            hide_index=True,
+            use_container_width=True
+        )
+
+    else:
+        st.info(f"No incident logs recorded yet for {student['name']}.")
+        
+    st.markdown("---")
+    
+    # Back button
+    if st.button("← Back to Staff Area", key='nav_back_staff_from_detail'):
+        navigate_to('staff_area', role=role)
+
+
+def render_staff_area(role):
+    """Renders the main staff dashboard for selecting students."""
+    st.title(f"{get_staff_name_from_id(role)} Staff Dashboard")
+    st.subheader("Select a Student for Behaviour Support or Logging")
+    
+    col_back, col_role = st.columns([1, 4])
+    if col_back.button("← Change Role", key='nav_back_landing'):
+        navigate_to('landing')
+    
+    col_role.markdown(f"**Current Role:** :orange[{get_staff_name_from_id(role)}]")
+    
+    st.markdown("---")
+
+    # Display student list in a data-driven table
+    df_students = pd.DataFrame(MOCK_STUDENTS)
+
+    # Add a 'View Details' button column
+    df_students['Actions'] = [f"View_Details_{id}" for id in df_students['id']]
+    
+    st.dataframe(
+        df_students,
+        column_config={
+            "id": "Student ID",
+            "name": "Name",
+            "grade": "Grade",
+            "plan_status": st.column_config.Column("Plan Status", width="medium"),
+            "risk_level": st.column_config.Column("Risk Level", width="small"),
+            "Actions": st.column_config.ButtonColumn("Actions", help="View student analysis and logs", 
+                                                    key='student_action_buttons', on_click=lambda id=id: navigate_to('student_detail', student=id, role=role))
+        },
+        hide_index=True,
+        use_container_width=True
+    )
+            
+    st.markdown("---")
+    st.info("This application uses a detailed ABCH Quick Log for context-rich data collection, feeding directly into data-driven student analysis.")
+
+
+# --- Page Render Function (Quick Log) (FROM UPLOADED FILE) ---
+
+def render_quick_log(role, student):
+    """Renders the comprehensive quick incident logging form."""
+    
+    # Initialize log date/time defaults if not present
+    today = datetime.now().date()
+    now_time = datetime.now().time()
+    
+    if 'log_date' not in st.session_state:
+        st.session_state.log_date = today
+    if 'log_start_time' not in st.session_state:
+        st.session_state.log_start_time = now_time
+    if 'log_end_time' not in st.session_state:
+        st.session_state.log_end_time = (datetime.combine(today, now_time) + timedelta(minutes=10)).time()
+    if 'log_staff_involved' not in st.session_state:
+        # Default to the current logged-in user if available, otherwise 'Admin User (ADM)'
+        default_staff = next((s['name'] for s in MOCK_STAFF if s['role'] == role), 'Admin User (ADM)')
+        st.session_state.log_staff_involved = [default_staff]
+    if 'log_staff_witnesses' not in st.session_state:
+        st.session_state.log_staff_witnesses = []
+
+    st.title(f"Quick Incident Log for {student['name']}")
+    st.caption(f"Role: **{role}** | Student ID: **{student['id']}** | Reporting: **{get_staff_name_from_id(role)}**")
+
+    st.markdown("---")
+
+    # --- Start of Incident Log Form ---
+    with st.form(key='quick_incident_log_form', clear_on_submit=False):
+        
+        # --- Section 1: Incident Details (Date, Time, Location) ---
+        st.subheader("1. Incident Core Details")
+        col1, col2, col3 = st.columns([1.5, 1, 1])
+
+        # Date
+        st.session_state.log_date = col1.date_input(
+            "Incident Date", 
+            value=st.session_state.log_date, 
+            key='log_date_widget'
+        )
+
+        # Start Time
+        st.session_state.log_start_time = col2.time_input(
+            "Start Time", 
+            value=st.session_state.log_start_time, 
+            step=timedelta(minutes=1),
+            key='log_start_time_widget'
+        )
+
+        # End Time
+        st.session_state.log_end_time = col3.time_input(
+            "End Time", 
+            value=st.session_state.log_end_time, 
+            step=timedelta(minutes=1),
+            key='log_end_time_widget'
+        )
+        
+        # Calculate Duration (in minutes) for display and storage
+        try:
+            start_dt = datetime.combine(st.session_state.log_date, st.session_state.log_start_time)
+            end_dt = datetime.combine(st.session_state.log_date, st.session_state.log_end_time)
+            if end_dt < start_dt:
+                # Handle incidents crossing midnight (rare for school, but robust)
+                end_dt += timedelta(days=1) 
+            duration = (end_dt - start_dt).total_seconds() / 60
+            st.session_state.log_duration = round(duration, 1)
+            st.markdown(f"**Calculated Duration:** :green[{st.session_state.log_duration} minutes]")
+        except Exception:
+            st.error("Error calculating duration. Check date/time inputs.")
+            st.session_state.log_duration = 0
+
+
+        # Location
+        st.session_state.log_location = st.selectbox(
+            "Incident Location",
+            options=LOCATIONS,
+            key='log_location_widget',
+            index=LOCATIONS.index(st.session_state.get('log_location')) if st.session_state.get('log_location') in LOCATIONS else 0,
+            help="Where did the core incident occur?"
+        )
+        
+        st.markdown("---")
+
+        # --- Section 2: ABC-H Data ---
+        st.subheader("2. ABC-H Data Collection")
+        st.caption("Complete the Antecedent, Behavior, and Consequence fields. The 'H' (Hypothesis) is derived from this data over time.")
+        
+        col_abc1, col_abc2, col_abc3 = st.columns(3)
+        
+        # Antecedent
+        st.session_state.log_antecedent = col_abc1.selectbox(
+            "Antecedent (Trigger)",
+            options=ANTECEDENTS_FBA,
+            key='log_antecedent_widget',
+            index=ANTECEDENTS_FBA.index(st.session_state.get('log_antecedent')) if st.session_state.get('log_antecedent') in ANTECEDENTS_FBA else 0,
+            help="What immediately preceded the behavior?"
+        )
+
+        # Behavior
+        st.session_state.log_behavior = col_abc2.selectbox(
+            "Behavior (Observed Action)",
+            options=BEHAVIORS_FBA,
+            key='log_behavior_widget',
+            index=BEHAVIORS_FBA.index(st.session_state.get('log_behavior')) if st.session_state.get('log_behavior') in BEHAVIORS_FBA else 0,
+            help="The specific action(s) the student engaged in."
+        )
+        
+        # Consequence
+        st.session_state.log_consequence = col_abc3.selectbox(
+            "Consequence (Staff Response)",
+            options=CONSEQUENCES_FBA,
+            key='log_consequence_widget',
+            index=CONSEQUENCES_FBA.index(st.session_state.get('log_consequence')) if st.session_state.get('log_consequence') in CONSEQUENCES_FBA else 0,
+            help="What staff did immediately following the behavior."
+        )
+        
+        st.markdown("---")
+
+        # --- Section 3: Staff Involvement ---
+        st.subheader("3. Staff and Witnesses")
+        staff_options = get_active_staff()
+
+        # Staff Involved
+        st.session_state.log_staff_involved = st.multiselect(
+            "Staff Directly Involved/Responding (Mandatory)",
+            options=staff_options,
+            default=st.session_state.log_staff_involved,
+            key='log_staff_involved_widget',
+            help="Which staff member(s) were actively responding to the incident?"
+        )
+        
+        # Staff Witnesses
+        st.session_state.log_staff_witnesses = st.multiselect(
+            "Staff Witnesses (Optional)",
+            options=[s for s in staff_options if s not in st.session_state.log_staff_involved],
+            default=st.session_state.log_staff_witnesses,
+            key='log_staff_witnesses_widget',
+            help="Other staff who observed the incident."
+        )
+
+        st.markdown("---")
+
+        # --- Section 4: Narrative and Context ---
+        st.subheader("4. Narrative and Contextual Details")
+        
+        # Window of Tolerance
+        st.markdown("**Window of Tolerance (Pre-Incident)**")
+        st.session_state.wot_text = st.text_area(
+            "Describe the student's regulation state leading up to the event (e.g., signs of dysregulation, calm/hyper-arousal level).",
+            value=st.session_state.get('wot_text', ''),
+            key='wot_text_widget',
+            height=100
+        )
+        
+        # Context/Description
+        st.markdown("**Incident Description/Context**")
+        st.session_state.context_text = st.text_area(
+            "Provide a detailed, objective description of the incident, including what the student said/did. Include any relevant environmental factors or peer interactions.",
+            value=st.session_state.get('context_text', ''),
+            key='context_text_widget',
+            height=150
+        )
+        
+        st.markdown("---")
+
+        # --- Section 5: Follow-up and Outcomes ---
+        st.subheader("5. Follow-up Actions and Outcomes")
+
+        # How to respond (Future planning)
+        st.markdown("**Future Response Planning**")
+        st.session_state.response_plan_text = st.text_area(
+            "What was learned from this incident? What specific strategies will be implemented immediately and in the future to prevent or respond to this behavior?",
+            value=st.session_state.get('response_plan_text', ''),
+            key='response_plan_text_widget',
+            height=100
+        )
+        
+        # Referral Outcomes (Checkboxes grouped by category)
+        st.markdown("**Outcomes/Required Referrals (Check all that apply)**")
+        
+        # Create 4 columns for the outcomes
+        cols_outcome = st.columns(4)
+        
+        # Iterate through the defined outcomes and place them in the columns
+        col_index = 0
+        for category, outcomes in REFERRAL_OUTCOMES.items():
+            cols_outcome[col_index].markdown(f"**{category}**")
+            for key, label in outcomes:
+                # Use st.session_state to manage the state of the checkboxes across re-runs
+                st.session_state[key] = cols_outcome[col_index].checkbox(
+                    label, 
+                    value=st.session_state.get(key, False), 
+                    key=f'outcome_check_{key}'
+                )
+            col_index = (col_index + 1) % 4 # Move to the next column
+
+
+        st.markdown("---")
+
+        # --- Form Submission ---
+        
+        # Check required fields before submission (Staff Involved and Context are critical)
+        staff_check = len(st.session_state.get('log_staff_involved', [])) > 0
+        context_check = len(st.session_state.get('context_text', '').strip()) > 10
+        
+        can_submit = staff_check and context_check
+        
+        if not staff_check:
+            st.error("Please select at least one staff member directly involved/responding.")
+        if not context_check:
+            st.warning("Please provide a detailed objective description of the incident (Section 4).")
+
+
+        submitted = st.form_submit_button(
+            label="💾 Submit Quick Incident Log",
+            disabled=not can_submit,
+            type="primary"
+        )
+        
+        if submitted and can_submit:
+            # Prepare preliminary data before calling the save function
+            preliminary_data = {
+                'id': str(uuid.uuid4()),
+                'student_id': student['id'],
+                'student_name': student['name'],
+                'reporter_role': role,
+                'timestamp_logged': datetime.now().isoformat(),
+            }
+            save_incident_log(preliminary_data)
 
 
 # --- Main Application Loop ---
@@ -680,16 +655,22 @@ def main():
         render_landing_page()
 
     elif st.session_state.page == 'quick_log':
-        if current_student and current_role:
-             render_quick_log(current_role, current_student) 
+        # Need to fetch student object from ID if only ID is stored
+        student_data = next((s for s in MOCK_STUDENTS if s['id'] == current_student), None) if isinstance(current_student, str) else current_student
+        
+        if student_data and current_role:
+             render_quick_log(current_role, student_data) 
         else:
             st.error("Missing context. Returning to dashboard.")
             navigate_to('staff_area', role=current_role)
 
 
     elif st.session_state.page == 'student_detail':
-        if current_student and current_role:
-            render_student_analysis(current_student, current_role)
+        # Need to fetch student object from ID if only ID is stored
+        student_data = next((s for s in MOCK_STUDENTS if s['id'] == current_student), None) if isinstance(current_student, str) else current_student
+
+        if student_data and current_role:
+            render_student_analysis(student_data, current_role)
         else:
             st.error("Student context missing. Please select a student.")
             navigate_to('staff_area', role=current_role)
@@ -698,16 +679,7 @@ def main():
         if current_role:
             render_staff_area(current_role)
         else:
-            st.error("Role context missing. Returning to landing page.")
             navigate_to('landing')
 
-    elif st.session_state.page == 'critical_incident':
-        if current_student and current_role:
-            # Note: This route now forces navigation back to the quick log as it's the integrated flow
-            render_critical_incident(current_role, current_student)
-        else:
-             st.error("Missing context. Returning to dashboard.")
-             navigate_to('staff_area', role=current_role)
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
