@@ -37,7 +37,7 @@ st.markdown(
         border-radius: 8px;
     }
 
-    /* Buttons */
+    /* Standard Button */
     .stButton > button {
         background-color: #3B82F6; /* Blue for primary actions */
         color: white;
@@ -53,19 +53,25 @@ st.markdown(
     }
     
     /* Critical Incident Button Style */
-    .critical-button>button {
-        background-color: #EF4444; /* Red/Alert for critical */
-        color: white;
-        border-radius: 8px;
-        padding: 12px 24px;
-        font-weight: 700;
-        transition: background-color 0.3s;
-        border: none;
-        box-shadow: 0 4px 6px rgba(239, 68, 68, 0.4);
+    /* Target the Critical Incident button specifically using a unique key or wrapper if needed, 
+       but for now we rely on the specific content/primary styling where possible. 
+       We will use an explicit `primary` color for the Critical Incident button's background 
+       if we decide to override the standard primary button.
+    */
+    .critical-incident-btn button {
+        background-color: #EF4444 !important; /* Red/Alert for critical */
+        color: white !important;
+        border-radius: 8px !important;
+        padding: 12px 24px !important;
+        font-weight: 700 !important;
+        transition: background-color 0.3s !important;
+        border: none !important;
+        box-shadow: 0 4px 6px rgba(239, 68, 68, 0.4) !important;
     }
-    .critical-button>button:hover {
-        background-color: #DC2626;
+    .critical-incident-btn button:hover {
+        background-color: #DC2626 !important;
     }
+
 
     /* Secondary/Navigation Buttons */
     .st-emotion-cache-nahz7x button {
@@ -136,10 +142,9 @@ def generate_mock_log(student_id, date, hour, minute):
     antecedent = random.choice(CONTEXTS)
     consequence = random.choice(CONSEQUENCES_FBA)
     motivation = random.choice(MOTIVATIONS)
-    wot_start = random.choice(WOT_LABELS[:-1]) # Cannot start at Crisis
-    wot_end = random.choice(WOT_LABELS[WOT_LABELS.index(wot_start):]) # WOT can only increase or stay same
+    wot_start = random.choice(WOT_LABELS[:-1])
+    wot_end = random.choice(WOT_LABELS[WOT_LABELS.index(wot_start):])
     
-    # Critical incidents occur only 10% of the time, or if the behavior is aggression to staff
     is_critical = random.random() < 0.15 or behavior == 'Physical Aggression (Staff)'
     
     return {
@@ -166,7 +171,6 @@ def initialize_state():
     if 'students' not in st.session_state:
         st.session_state.students = MOCK_STUDENTS
     if 'log_data' not in st.session_state:
-        # Generate 100 mock logs over the last 30 days
         logs = []
         today = datetime.now().date()
         for _ in range(100):
@@ -240,14 +244,11 @@ def render_staff_area(role):
     st.title(f"Behaviour Support Dashboard: {role_map.get(role, role)}")
     st.markdown("---")
     
-    col_nav, col_title = st.columns([1, 4])
-    with col_nav:
-        if st.button('↩ Return to Role Select', key='back_to_landing', use_container_width=True):
-            navigate_to('landing')
-    with col_title:
-        st.subheader("Overview & Quick Actions")
+    if st.button('↩ Return to Role Select', key='back_to_landing', use_container_width=False):
+        navigate_to('landing')
         
-    # --- Logging and Quick Actions (RESTORED STRUCTURE) ---
+    st.subheader("Action Center")
+
     col_log_container, col_data_info = st.columns([1, 2])
     
     with col_log_container:
@@ -277,19 +278,23 @@ def render_staff_area(role):
             
             st.markdown("---")
             
+            col_log_btns = st.columns(2)
+            
             # Button 1: Standard ABCH Quick Log
-            if st.button(f'ABCH Quick Log for {selected_name}', key='start_quick_log_abch', use_container_width=True):
-                # Pass the 'abch_quick' flag
-                navigate_to('quick_log', student=selected_student_obj, role=role, incident_type='abch_quick')
-                
-            # Button 2: Dedicated Critical Incident Log Button (styled with custom CSS)
-            st.markdown(
-                f'<div class="critical-button">{st.button(f"**CRITICAL INCIDENT LOG** for {selected_name}", key="start_quick_log_critical", use_container_width=True)}</div>', 
-                unsafe_allow_html=True
-            )
-            if st.session_state.get('start_quick_log_critical'):
-                # Pass the 'critical' flag
-                navigate_to('quick_log', student=selected_student_obj, role=role, incident_type='critical')
+            with col_log_btns[0]:
+                if st.button('ABCH Quick Log', key='start_quick_log_abch', use_container_width=True):
+                    # Pass the 'abch_quick' flag
+                    navigate_to('quick_log', student=selected_student_obj, role=role, incident_type='abch_quick')
+                    
+            # Button 2: Dedicated Critical Incident Log Button (styled using custom CSS)
+            with col_log_btns[1]:
+                # Wrap the button in a div with the custom class for styling
+                st.markdown('<div class="critical-incident-btn">', unsafe_allow_html=True)
+                if st.button('Critical Incident', key='start_quick_log_critical', use_container_width=True):
+                    # Pass the 'critical' flag
+                    navigate_to('quick_log', student=selected_student_obj, role=role, incident_type='critical')
+                st.markdown('</div>', unsafe_allow_html=True)
+
         
         st.markdown('</div>', unsafe_allow_html=True)
         
@@ -313,7 +318,6 @@ def render_staff_area(role):
     else:
         df_filtered = df_all.copy()
         
-    # Time filter (Simplified for the demo)
     df_display = df_filtered.copy()
 
     col_metrics = st.columns(4)
@@ -338,7 +342,7 @@ def render_staff_area(role):
     st.markdown("### Top Behaviours & Functions")
 
     col_charts = st.columns(2)
-    # Using simple pandas/plotly structure for charts (no helper function needed here)
+    
     if not df_display.empty:
         with col_charts[0]:
             fig_behaviors = px.bar(
@@ -361,10 +365,9 @@ def render_staff_area(role):
 
     st.markdown("---")
     
-    # Student Detail View Trigger (Separate from Logging)
+    # Student Detail View Trigger
     st.subheader("View Detailed Student Analysis")
     
-    # Map student IDs to names for easy display
     student_map = {s['id']: s['name'] for s in st.session_state.students}
     df_display['student_name'] = df_display['student_id'].map(student_map)
     
@@ -390,7 +393,7 @@ def render_quick_log(current_role, current_student):
     # Display dynamic header based on navigation
     st.header(f"Incident Log for {current_student['name']}")
 
-    # This is the core visual fix for the Critical Incident Report
+    # FIX: Displaying the correct banner based on the navigation flag
     if incident_type == 'critical':
         st.error("🚨 CRITICAL INCIDENT REPORT 🚨 (Requires full completion and immediate follow-up)")
     elif incident_type == 'abch_quick':
@@ -419,7 +422,6 @@ def render_quick_log(current_role, current_student):
         with col_loc:
             location = st.selectbox("Location/Setting", options=SETTING_FBA)
         with col_staff:
-            # Find staff name matching the role for default selection
             default_staff_name = next((s['name'] for s in MOCK_STAFF if s['role'] == current_role), MOCK_STAFF[0]['name'])
             staff_list = [s['name'] for s in MOCK_STAFF]
             staff_involved = st.selectbox("Staff Recording/Witnessing", options=staff_list, index=staff_list.index(default_staff_name))
@@ -467,7 +469,6 @@ def render_quick_log(current_role, current_student):
 
             staff_id = next(s['id'] for s in MOCK_STAFF if s['name'] == staff_involved)
             
-            # Determine if this log should be marked critical based on form flags or the initial navigation
             is_critical_flag = (incident_type == 'critical' or 
                                 st.session_state.get('o_a_send_home', False) or 
                                 st.session_state.get('o_e_staff_injury', False) or 
@@ -489,16 +490,14 @@ def render_quick_log(current_role, current_student):
                 'wot_end': wot_end,
                 'is_critical': is_critical_flag,
                 'notes': f"Staff Response: {staff_response}. Location: {location}",
-                'setting': location # Use location for setting as per the input
+                'setting': location
             }
 
-            # Add to the DataFrame
             new_log_df = pd.DataFrame([new_log])
             st.session_state.log_data = pd.concat([st.session_state.log_data, new_log_df], ignore_index=True)
             
             st.success(f"Log recorded successfully for {current_student['name']}!")
             
-            # Navigate back to staff area after submission
             navigate_to('staff_area', role=current_role)
 
 
@@ -532,7 +531,6 @@ def render_student_analysis(student, role):
     
     st.header("Behaviour Patterns")
     
-    # Chart 1: Behavior Frequency
     fig_behaviors = px.bar(
         log_data['behavior'].value_counts().reset_index(),
         x='behavior', y='count',
@@ -542,7 +540,6 @@ def render_student_analysis(student, role):
     )
     st.plotly_chart(fig_behaviors, use_container_width=True)
     
-    # Chart 2: Motivation Hypothesis
     fig_motivation = px.pie(
         log_data['motivation'].value_counts().reset_index(),
         names='motivation', values='count',
@@ -567,13 +564,11 @@ def render_student_analysis(student, role):
 def main():
     """Controls the main application flow based on session state."""
     
-    # 1. Initialize data and state
     initialize_state()
 
     current_role = st.session_state.get('role')
     current_student = st.session_state.get('student')
 
-    # 2. Page Routing Logic
     if st.session_state.page == 'landing':
         render_landing_page()
 
@@ -596,7 +591,6 @@ def main():
         if current_role:
             render_staff_area(current_role)
         else:
-            # Should not happen, but return to landing if role is somehow lost
             navigate_to('landing')
 
 if __name__ == '__main__':
