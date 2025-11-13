@@ -92,6 +92,8 @@ MOCK_STAFF = [
     {'id': 'st2', 'name': 'Daniel Lee (PY)', 'role': 'PY'},
     {'id': 'st3', 'name': 'Sarah Chen (SY)', 'role': 'SY'},
     {'id': 'st4', 'name': 'Admin User (ADM)', 'role': 'ADM'},
+    {'id': 'st5', 'name': 'Specialist SSO', 'role': 'SSO'},
+    {'id': 'st6', 'name': 'Relief Teacher (TRT)', 'role': 'TRT'},
 ]
 
 # --- FBA and Data Constants ---
@@ -142,6 +144,9 @@ SUPPORT_TYPES = ['Independent', '1:1', 'Small Group', 'Large Group']
 
 BEHAVIOR_OPTIONS = ['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)', 'Self-Injurious Behaviour', 'Outburst']
 
+# List of all staff names for the new multiselect
+ALL_STAFF_NAMES = [s['name'] for s in MOCK_STAFF]
+
 
 # --- Helper Functions ---
 
@@ -181,8 +186,8 @@ def initialize_state():
     if 'student' not in st.session_state:
         st.session_state.student = None
     if 'incident_logs' not in st.session_state:
-        # Define the DataFrame with necessary columns
-        st.session_state.incident_logs = pd.DataFrame(columns=['id', 'student_id', 'datetime', 'staff_role', 'severity', 'behavior', 'location', 'antecedent', 'staff_response', 'wot', 'support_type', 'context'])
+        # Added 'involved_staff' column
+        st.session_state.incident_logs = pd.DataFrame(columns=['id', 'student_id', 'datetime', 'staff_role', 'involved_staff', 'severity', 'behavior', 'location', 'antecedent', 'staff_response', 'wot', 'support_type', 'context'])
     if 'critical_alert' not in st.session_state:
         st.session_state.critical_alert = False
 
@@ -208,7 +213,6 @@ def render_critical_log_form(role, student):
     st.info("Since a **Critical** severity was selected, this detailed mandatory reporting screen must be completed before saving.")
     
     # Use key data from the quick log session state as context
-    # Note: These values were stored in session state by the original quick log form submission attempt.
     severity = st.session_state.get('quick_log_severity_local_check', 'Critical (Not logged)')
     location = st.session_state.get('quick_log_location_local_check', 'Unknown Location')
     
@@ -236,21 +240,35 @@ def render_quick_log(role, student):
     staff_header("Quick Incident Log (ABCH)", role, student)
 
     staff_name = get_staff_name(role)
+    
+    # Ensure current logger's name is not in the list of "other" staff
+    staff_options_for_multiselect = [name for name in ALL_STAFF_NAMES if name != staff_name]
+
 
     # Use a persistent key for the form
     with st.form("quick_incident_log_form"):
         
-        # Row 1: Date, Time, Staff
-        col_date, col_time, col_staff = st.columns(3)
+        # Row 1: Date, Time, Staff Logging, and Other Staff Involved (NEW COLUMN ADDED)
+        col_date, col_time, col_staff_log, col_staff_involved = st.columns([1.5, 1.5, 2, 3])
+        
         with col_date:
             # Widget values stored in local variables
             date = st.date_input("Date of Incident", value=datetime.now().date())
         with col_time:
             # Widget values stored in local variables
             time_of_incident = st.time_input("Time of Incident", value=datetime.now().time())
-        with col_staff:
+        with col_staff_log:
             st.markdown("Staff Logging Incident")
             st.caption(f"**{staff_name}** (Automatically assigned)")
+        
+        with col_staff_involved:
+            # NEW FIELD FOR OTHER STAFF
+            involved_staff = st.multiselect(
+                "Other Staff Involved/Witnessed",
+                options=staff_options_for_multiselect,
+                default=[],
+                help="Select any other staff members who were involved or witnessed the incident."
+            )
 
         st.markdown("---")
         
@@ -393,6 +411,7 @@ def render_quick_log(role, student):
                             'student_id': current_student['id'],
                             'datetime': incident_datetime,
                             'staff_role': current_role,
+                            'involved_staff': ", ".join(involved_staff), # NEW FIELD SAVED HERE
                             'severity': severity,
                             'behavior': ", ".join(behavior),
                             'location': location,
@@ -477,11 +496,14 @@ def render_student_analysis(student, role):
     # Raw Data View
     st.subheader("Raw Incident Log Data")
     # Display the logs, sorting by date/time
+    # Exclude the new column 'involved_staff' from the drop list, as we want to see it
+    columns_to_drop = ['id', 'student_id', 'datetime']
+    
     st.dataframe(
         # Convert datetime column to date-only string for cleaner display in the dataframe
         student_incidents.assign(Date=lambda x: x['datetime'].dt.strftime('%Y-%m-%d'))
                          .sort_values(by='datetime', ascending=False)
-                         .drop(columns=['id', 'student_id', 'datetime']),
+                         .drop(columns=columns_to_drop),
         use_container_width=True
     )
     
