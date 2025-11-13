@@ -285,7 +285,7 @@ def render_student_analysis(student, role):
     col_actions = st.columns(3)
     
     if col_actions[0].button("📝 Log Incident", key='nav_log_incident', use_container_width=True, type='primary'):
-        navigate_to('quick_log', student=student, role=role)
+        navigate_to('quick_log', student=student['id'], role=role)
         
     if col_actions[1].button("📋 View Plan/FBA", key='view_plan', use_container_width=True):
         st.info("Mock feature: Displaying detailed FBA/BSP content.")
@@ -445,10 +445,21 @@ def render_quick_log(role, student):
         st.session_state.log_start_time = now_time
     if 'log_end_time' not in st.session_state:
         st.session_state.log_end_time = (datetime.combine(today, now_time) + timedelta(minutes=10)).time()
+        
+    # --- FIX APPLIED HERE: Ensure default staff involved is a list of strings (names) ---
     if 'log_staff_involved' not in st.session_state:
-        # Default to the current logged-in user if available, otherwise 'Admin User (ADM)'
-        default_staff = next((s for s in MOCK_STAFF if s['role'] == role), 'Admin User (ADM)')
-        st.session_state.log_staff_involved = [default_staff]
+        # Find the staff object corresponding to the current role (e.g., 'JP')
+        staff_match = next((s for s in MOCK_STAFF if s['role'] == role), None)
+        
+        # Extract the name (string) to use as the default value in the multiselect
+        if staff_match:
+            default_name = staff_match['name']
+        else:
+            default_name = 'Admin User (ADM)' # Fallback name
+            
+        # Set the default value as a list of strings
+        st.session_state.log_staff_involved = [default_name] 
+
     if 'log_staff_witnesses' not in st.session_state:
         st.session_state.log_staff_witnesses = []
 
@@ -552,11 +563,11 @@ def render_quick_log(role, student):
         st.subheader("3. Staff and Witnesses")
         staff_options = get_active_staff()
 
-        # Staff Involved
+        # Staff Directly Involved
         st.session_state.log_staff_involved = st.multiselect(
             "Staff Directly Involved/Responding (Mandatory)",
             options=staff_options,
-            default=st.session_state.log_staff_involved,
+            default=st.session_state.log_staff_involved, # Now correctly a list of strings
             key='log_staff_involved_widget',
             help="Which staff member(s) were actively responding to the incident?"
         )
