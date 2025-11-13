@@ -51,6 +51,22 @@ st.markdown(
     .stButton>button:hover {
         background-color: #2563EB;
     }
+    
+    /* Critical Incident Button Style */
+    .critical-button>button {
+        background-color: #EF4444; /* Red/Alert for critical */
+        color: white;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-weight: 700;
+        transition: background-color 0.3s;
+        border: none;
+        box-shadow: 0 4px 6px rgba(239, 68, 68, 0.4);
+    }
+    .critical-button>button:hover {
+        background-color: #DC2626;
+    }
+
 
     /* Warning (Critical Incident) - Yellow Box */
     div[data-testid="stAlert"] > div {
@@ -303,29 +319,14 @@ def render_staff_area(role):
     with col_title:
         st.subheader("Overview & Quick Actions")
         
-    # --- Critical Incident Warning ---
-    # The Principal has been replaced with Manager, and examples have been removed.
-    col_warn, col_log = st.columns([2, 1])
+    # --- Logging and Quick Actions ---
+    # Removed the yellow warning box as requested, and created a new container structure.
+    col_log_container = st.columns([1, 2])
     
-    with col_warn:
-        with st.container(border=True):
-            st.warning(
-                """
-                **Critical Incident Reporting Instructions:**
-
-                1.  **Safety First:** Ensure all immediate safety concerns have been addressed.
-                2.  **Immediate Notification:** Verbally notify the **Manager** or a member of the leadership team immediately if the incident involves:
-                    * High-risk behaviours.
-                    * Any incident requiring external support (Police, Ambulance).
-                    * Any incident resulting in serious injury or property damage.
-                3.  **Complete Log:** Complete the Quick Log (ABCH) form for data collection, then follow up with a formal Critical Incident Form (external system) within 24 hours.
-                """
-            )
-            
-    with col_log:
+    with col_log_container[0]:
         st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
-        st.subheader("Quick Log")
-        st.markdown("Select a student to log an incident now.")
+        st.subheader("Incident Logging")
+        st.markdown("Select a student to log an incident.")
         
         # Filter students relevant to the staff role (or all for ADM)
         all_students = st.session_state.log_data[['student_id', 'student_name', 'student_role']].drop_duplicates().sort_values('student_name')
@@ -338,7 +339,7 @@ def render_staff_area(role):
         student_options = area_students['student_name'].tolist()
         
         selected_name = st.selectbox(
-            'Select Student to Log Incident:',
+            'Select Student:',
             options=['-- Select --'] + student_options,
             key='log_student_select'
         )
@@ -350,9 +351,30 @@ def render_staff_area(role):
                 'name': selected_name,
                 'role': selected_student_row['student_role']
             }
-            if st.button(f'Start Quick Log for {selected_name}', key='start_quick_log', use_container_width=True):
+            
+            st.markdown("---")
+            
+            # Button 1: Standard ABCH Quick Log
+            if st.button(f'Start ABCH Quick Log for {selected_name}', key='start_quick_log_abch', use_container_width=True):
                 navigate_to('quick_log', student=selected_student_obj)
+                
+            # Button 2: Dedicated Critical Incident Log Button (styled with custom CSS)
+            st.markdown(
+                f'<div class="critical-button">{st.button(f"**START CRITICAL INCIDENT LOG** for {selected_name}", key="start_quick_log_critical", use_container_width=True)}</div>', 
+                unsafe_allow_html=True
+            )
+            if st.session_state.get('start_quick_log_critical'):
+                # Handle the case where the critical button was clicked
+                navigate_to('quick_log', student=selected_student_obj)
+        
         st.markdown('</div>', unsafe_allow_html=True)
+        
+    with col_log_container[1]:
+        st.subheader("Data Access & Support")
+        st.info(
+            "Use the dashboard below to analyse trends in your area, or scroll down to select a student "
+            "for detailed Functional Behaviour Assessment (FBA) analysis."
+        )
 
 
     # --- Dashboard Metrics and Analysis ---
