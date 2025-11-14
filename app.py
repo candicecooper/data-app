@@ -724,21 +724,23 @@ def render_critical_incident_abch_form():
         with notif_col3:
             st.checkbox("**Copy of Critical Incident in student file**", key="abch_file_copy")
         
+        # Staff Certification Section - ALWAYS SHOW (moved outside conditional)
+        st.markdown("---")
+        st.markdown("#### Staff Certification")
+        
+        reporting_staff_name = preliminary_data.get('reported_by_name', 'Staff Member')
+        
+        st.info(f"**Completing Staff Member:** {reporting_staff_name}")
+        
+        st.markdown("""
+        By checking the box below, I certify that:
+        - All information provided in this Critical Incident Report is accurate to the best of my knowledge
+        - All mandatory notifications have been completed
+        - I have documented the incident according to school policy
+        """)
+        
+        # Only enable certification if notifications are checked
         if manager_notified and parent_notified:
-            st.markdown("---")
-            st.markdown("#### Staff Certification")
-            
-            reporting_staff_name = preliminary_data.get('reported_by_name', 'Staff Member')
-            
-            st.info(f"**Completing Staff Member:** {reporting_staff_name}")
-            
-            st.markdown("""
-            By checking the box below, I certify that:
-            - All information provided in this Critical Incident Report is accurate to the best of my knowledge
-            - All mandatory notifications have been completed
-            - I have documented the incident according to school policy
-            """)
-            
             staff_certification = st.checkbox(
                 f"**I, {reporting_staff_name}, certify that all information is correct and complete**",
                 key="staff_certification"
@@ -746,6 +748,14 @@ def render_critical_incident_abch_form():
             
             if staff_certification:
                 st.success("✓ Form certified by staff member")
+        else:
+            st.warning("⚠️ Please check both mandatory notifications above before certifying")
+            # Disabled checkbox when notifications not complete
+            st.checkbox(
+                f"**I, {reporting_staff_name}, certify that all information is correct and complete**",
+                key="staff_certification",
+                disabled=True
+            )
         
         st.markdown("---")
         
