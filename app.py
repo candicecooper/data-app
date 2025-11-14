@@ -76,15 +76,25 @@ MOCK_STAFF = [
 STAFF_ROLES = ['JP', 'PY', 'SY', 'ADM', 'TRT', 'External SSO']
 
 MOCK_STUDENTS = [
-    {'id': 'stu_001', 'name': 'Izack N.', 'grade': '7', 'profile_status': 'Complete', 'program': 'SY', 'archived': False},
-    {'id': 'stu_002', 'name': 'Mia K.', 'grade': '8', 'profile_status': 'Draft', 'program': 'PY', 'archived': False},
-    {'id': 'stu_003', 'name': 'Liam B.', 'grade': '9', 'profile_status': 'Pending', 'program': 'SY', 'archived': False},
-    {'id': 'stu_004', 'name': 'Emma T.', 'grade': 'R', 'profile_status': 'Complete', 'program': 'JP', 'archived': False},
-    {'id': 'stu_005', 'name': 'Oliver S.', 'grade': 'Y2', 'profile_status': 'Complete', 'program': 'JP', 'archived': False},
-    {'id': 'stu_006', 'name': 'Sophie M.', 'grade': 'Y5', 'profile_status': 'Complete', 'program': 'PY', 'archived': False},
-    {'id': 'stu_arch_001', 'name': 'Jackson P.', 'grade': 'Y10', 'profile_status': 'Complete', 'program': 'SY', 'archived': True},
-    {'id': 'stu_arch_002', 'name': 'Ava L.', 'grade': 'Y6', 'profile_status': 'Complete', 'program': 'PY', 'archived': True},
+    {'id': 'stu_001', 'name': 'Izack N.', 'grade': '7', 'dob': '2012-03-15', 'edid': 'ED12345', 'profile_status': 'Complete', 'program': 'SY', 'archived': False},
+    {'id': 'stu_002', 'name': 'Mia K.', 'grade': '8', 'dob': '2011-07-22', 'edid': 'ED12346', 'profile_status': 'Draft', 'program': 'PY', 'archived': False},
+    {'id': 'stu_003', 'name': 'Liam B.', 'grade': '9', 'dob': '2010-11-08', 'edid': 'ED12347', 'profile_status': 'Pending', 'program': 'SY', 'archived': False},
+    {'id': 'stu_004', 'name': 'Emma T.', 'grade': 'R', 'dob': '2017-05-30', 'edid': 'ED12348', 'profile_status': 'Complete', 'program': 'JP', 'archived': False},
+    {'id': 'stu_005', 'name': 'Oliver S.', 'grade': 'Y2', 'dob': '2015-09-12', 'edid': 'ED12349', 'profile_status': 'Complete', 'program': 'JP', 'archived': False},
+    {'id': 'stu_006', 'name': 'Sophie M.', 'grade': 'Y5', 'dob': '2014-01-25', 'edid': 'ED12350', 'profile_status': 'Complete', 'program': 'PY', 'archived': False},
+    {'id': 'stu_arch_001', 'name': 'Jackson P.', 'grade': 'Y10', 'dob': '2009-04-17', 'edid': 'ED12351', 'profile_status': 'Complete', 'program': 'SY', 'archived': True},
+    {'id': 'stu_arch_002', 'name': 'Ava L.', 'grade': 'Y6', 'dob': '2013-12-03', 'edid': 'ED12352', 'profile_status': 'Complete', 'program': 'PY', 'archived': True},
 ]
+
+# Program options
+PROGRAM_OPTIONS = ['JP', 'PY', 'SY']
+
+# Grade options by program
+GRADE_OPTIONS = {
+    'JP': ['R', 'Y1', 'Y2'],
+    'PY': ['Y3', 'Y4', 'Y5', 'Y6'],
+    'SY': ['Y7', 'Y8', 'Y9', 'Y10', 'Y11', 'Y12']
+}
 
 BEHAVIOR_LEVELS = ['1 - Low Intensity', '2 - Moderate', '3 - High Risk']
 BEHAVIORS_FBA = ['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)', 'Other - Specify'] 
@@ -230,6 +240,9 @@ def initialize_session_state():
     if 'staff_list' not in st.session_state:
         st.session_state.staff_list = MOCK_STAFF.copy()
     
+    if 'students_list' not in st.session_state:
+        st.session_state.students_list = MOCK_STUDENTS.copy()
+    
     if 'current_page' not in st.session_state:
         st.session_state.current_page = 'landing'
 
@@ -258,7 +271,7 @@ def get_student_by_id(student_id: str) -> Optional[Dict[str, str]]:
     try:
         if not student_id:
             return None
-        return next((s for s in MOCK_STUDENTS if s['id'] == student_id), None)
+        return next((s for s in st.session_state.students_list if s['id'] == student_id), None)
     except Exception as e:
         logger.error(f"Error retrieving student: {e}")
         return None
@@ -363,6 +376,69 @@ def unarchive_staff_member(staff_id: str) -> bool:
         logger.error(f"Error unarchiving staff: {e}")
         raise AppError("Failed to unarchive staff member", "Could not unarchive staff member. Please try again.")
 
+def add_student(name: str, dob: datetime.date, program: str, grade: str, edid: str) -> bool:
+    """Adds a new student."""
+    try:
+        if not name or not name.strip():
+            raise ValidationError("Name cannot be empty", "Please enter a student name")
+        
+        if not program or program == "--- Select Program ---":
+            raise ValidationError("Program must be selected", "Please select a program")
+        
+        if not grade or grade == "--- Select Grade ---":
+            raise ValidationError("Grade must be selected", "Please select a grade")
+        
+        if not dob:
+            raise ValidationError("Date of birth is required", "Please enter date of birth")
+        
+        if not edid or not edid.strip():
+            raise ValidationError("EDID is required", "Please enter EDID")
+        
+        # Check for duplicate EDID
+        existing_edid = [s for s in st.session_state.students_list if s.get('edid', '').upper() == edid.strip().upper() and not s.get('archived', False)]
+        if existing_edid:
+            raise ValidationError("Duplicate EDID", f"A student with EDID {edid} already exists")
+        
+        # Validate DOB is not in the future
+        if dob > datetime.now().date():
+            raise ValidationError("Invalid date of birth", "Date of birth cannot be in the future")
+        
+        new_student = {
+            'id': f"stu_{uuid.uuid4().hex[:8]}",
+            'name': name.strip(),
+            'dob': dob.strftime('%Y-%m-%d'),
+            'program': program,
+            'grade': grade,
+            'edid': edid.strip().upper(),
+            'profile_status': 'Draft',
+            'archived': False,
+            'created_date': datetime.now().strftime('%Y-%m-%d')
+        }
+        
+        st.session_state.students_list.append(new_student)
+        logger.info(f"Added student: {name} (EDID: {edid}, Program: {program})")
+        return True
+        
+    except ValidationError:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding student: {e}")
+        raise AppError("Failed to add student", "Could not add student. Please try again.")
+
+def get_students_by_program(program: str, include_archived: bool = False) -> List[Dict[str, Any]]:
+    """Gets all students for a specific program."""
+    try:
+        students = st.session_state.students_list
+        filtered = [s for s in students if s.get('program') == program]
+        
+        if not include_archived:
+            filtered = [s for s in filtered if not s.get('archived', False)]
+        
+        return filtered
+    except Exception as e:
+        logger.error(f"Error retrieving students by program: {e}")
+        return []
+
 # --- VALIDATION FUNCTIONS ---
 
 def validate_incident_form(location, reported_by, behavior_type, severity_level, incident_date, incident_time):
@@ -461,7 +537,7 @@ def render_landing_page():
     
     with col_quick1:
         st.markdown("#### 📝 Quick Incident Log")
-        all_active_students = [s for s in MOCK_STUDENTS if not s.get('archived', False)]
+        all_active_students = [s for s in st.session_state.students_list if not s.get('archived', False)]
         student_options = [{'id': None, 'name': '--- Select Student ---'}] + all_active_students
         selected_student = st.selectbox(
             "Select Student",
@@ -500,7 +576,7 @@ def render_program_students():
     tab1, tab2 = st.tabs(["📚 Current Students", "📦 Archived Students"])
     
     with tab1:
-        current_students = [s for s in MOCK_STUDENTS if s.get('program') == program and not s.get('archived', False)]
+        current_students = get_students_by_program(program, include_archived=False)
         
         if not current_students:
             st.info(f"No current students in the {program} program.")
@@ -515,6 +591,7 @@ def render_program_students():
                         with st.container(border=True):
                             st.markdown(f"### {student['name']}")
                             st.markdown(f"**Grade:** {student['grade']}")
+                            st.caption(f"EDID: {student.get('edid', 'N/A')}")
                             
                             incident_count = len([inc for inc in st.session_state.get('incidents', []) if inc.get('student_id') == student['id']])
                             st.metric("Incidents", incident_count)
@@ -528,7 +605,7 @@ def render_program_students():
                                     navigate_to('direct_log_form', student_id=student['id'])
     
     with tab2:
-        archived_students = [s for s in MOCK_STUDENTS if s.get('program') == program and s.get('archived', False)]
+        archived_students = [s for s in st.session_state.students_list if s.get('program') == program and s.get('archived', False)]
         
         if not archived_students:
             st.info(f"No archived students in the {program} program.")
@@ -539,6 +616,7 @@ def render_program_students():
             for student in archived_students:
                 with st.expander(f"📦 {student['name']} - Grade {student['grade']}"):
                     st.markdown(f"**Profile Status:** {student.get('profile_status', 'N/A')}")
+                    st.markdown(f"**EDID:** {student.get('edid', 'N/A')}")
                     
                     incident_count = len([inc for inc in st.session_state.get('incidents', []) if inc.get('student_id') == student['id']])
                     st.metric("Total Incidents", incident_count)
@@ -562,16 +640,19 @@ def render_admin_portal():
     st.markdown("---")
     
     # Create tabs for different admin sections
-    tab1, tab2, tab3 = st.tabs(["👥 Staff Management", "📊 Reports", "⚙️ Settings"])
+    tab1, tab2, tab3, tab4 = st.tabs(["👥 Staff Management", "🎓 Student Management", "📊 Reports", "⚙️ Settings"])
     
     with tab1:
         render_staff_management()
     
     with tab2:
+        render_student_management()
+    
+    with tab3:
         st.markdown("### 📊 System Reports")
         st.info("Reports functionality - to be implemented")
     
-    with tab3:
+    with tab4:
         st.markdown("### ⚙️ System Settings")
         st.info("Settings functionality - to be implemented")
 
@@ -678,6 +759,162 @@ def render_staff_management():
                                 st.rerun()
                         except AppError as e:
                             st.error(e.user_message)
+
+@handle_errors("Unable to load student management")
+def render_student_management():
+    """Renders student management section."""
+    
+    st.markdown("## 🎓 Student Management")
+    st.markdown("---")
+    
+    st.markdown("### Add New Student")
+    
+    col_add1, col_add2, col_add3, col_add4 = st.columns([2, 1.5, 1, 1])
+    
+    with col_add1:
+        new_student_name = st.text_input("Student Name", key="new_student_name", placeholder="Enter full name")
+    
+    with col_add2:
+        new_student_dob = st.date_input(
+            "Date of Birth",
+            key="new_student_dob",
+            min_value=datetime(1990, 1, 1).date(),
+            max_value=datetime.now().date(),
+            value=datetime(2015, 1, 1).date()
+        )
+    
+    with col_add3:
+        new_student_program = st.selectbox(
+            "Program",
+            options=["--- Select Program ---"] + PROGRAM_OPTIONS,
+            key="new_student_program"
+        )
+    
+    with col_add4:
+        # Dynamic grade options based on selected program
+        if new_student_program and new_student_program != "--- Select Program ---":
+            grade_options = ["--- Select Grade ---"] + GRADE_OPTIONS.get(new_student_program, [])
+        else:
+            grade_options = ["--- Select Grade ---"]
+        
+        new_student_grade = st.selectbox(
+            "Grade",
+            options=grade_options,
+            key="new_student_grade"
+        )
+    
+    col_edid, col_add_btn = st.columns([3, 1])
+    
+    with col_edid:
+        new_student_edid = st.text_input(
+            "EDID (Education Department ID)",
+            key="new_student_edid",
+            placeholder="e.g., ED12345",
+            help="Unique identifier from Education Department"
+        )
+    
+    with col_add_btn:
+        st.markdown("##")  # Spacing
+        if st.button("➕ Add Student", type="primary", use_container_width=True):
+            try:
+                if add_student(
+                    new_student_name,
+                    new_student_dob,
+                    new_student_program,
+                    new_student_grade,
+                    new_student_edid
+                ):
+                    st.success(f"✅ Added {new_student_name} to {new_student_program} Program")
+                    st.rerun()
+            except (ValidationError, AppError) as e:
+                st.error(e.user_message)
+    
+    st.markdown("---")
+    st.markdown("### Current Students by Program")
+    
+    # Group students by program
+    program_tabs = st.tabs(["📘 Junior Primary", "📗 Primary Years", "📙 Senior Years", "📚 All Students"])
+    
+    programs = ['JP', 'PY', 'SY']
+    
+    for idx, program in enumerate(programs):
+        with program_tabs[idx]:
+            students_in_program = get_students_by_program(program, include_archived=False)
+            
+            if not students_in_program:
+                st.info(f"No students currently in {program} program")
+            else:
+                st.markdown(f"**Total Students:** {len(students_in_program)}")
+                
+                # Create a dataframe for better display
+                student_data = []
+                for student in students_in_program:
+                    age = calculate_age(student.get('dob', ''))
+                    student_data.append({
+                        'Name': student['name'],
+                        'Grade': student['grade'],
+                        'EDID': student.get('edid', 'N/A'),
+                        'Age': age,
+                        'DOB': student.get('dob', 'N/A'),
+                        'Status': student.get('profile_status', 'Draft'),
+                        'Added': student.get('created_date', 'N/A')
+                    })
+                
+                df = pd.DataFrame(student_data)
+                st.dataframe(df, use_container_width=True, hide_index=True)
+    
+    # All students view
+    with program_tabs[3]:
+        all_students = [s for s in st.session_state.students_list if not s.get('archived', False)]
+        
+        if not all_students:
+            st.info("No students in the system")
+        else:
+            st.markdown(f"**Total Students Across All Programs:** {len(all_students)}")
+            
+            # Summary by program
+            col_jp, col_py, col_sy = st.columns(3)
+            with col_jp:
+                jp_count = len(get_students_by_program('JP', include_archived=False))
+                st.metric("JP Students", jp_count)
+            with col_py:
+                py_count = len(get_students_by_program('PY', include_archived=False))
+                st.metric("PY Students", py_count)
+            with col_sy:
+                sy_count = len(get_students_by_program('SY', include_archived=False))
+                st.metric("SY Students", sy_count)
+            
+            st.markdown("---")
+            
+            # Full student list
+            student_data = []
+            for student in sorted(all_students, key=lambda x: (x.get('program', ''), x.get('name', ''))):
+                age = calculate_age(student.get('dob', ''))
+                student_data.append({
+                    'Name': student['name'],
+                    'Program': student['program'],
+                    'Grade': student['grade'],
+                    'EDID': student.get('edid', 'N/A'),
+                    'Age': age,
+                    'DOB': student.get('dob', 'N/A'),
+                    'Status': student.get('profile_status', 'Draft'),
+                })
+            
+            df = pd.DataFrame(student_data)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+def calculate_age(dob_str: str) -> str:
+    """Calculate age from date of birth string."""
+    try:
+        if not dob_str:
+            return "N/A"
+        dob = datetime.strptime(dob_str, '%Y-%m-%d').date()
+        today = datetime.now().date()
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        return str(age)
+    except Exception as e:
+        logger.error(f"Error calculating age: {e}")
+        return "N/A"
 
 # --- STAFF SELECTOR COMPONENT ---
 
