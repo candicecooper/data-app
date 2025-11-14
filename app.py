@@ -143,6 +143,7 @@ def process_abch_step_one(student: Dict[str, str], form_data: Dict[str, Any]):
         'date': form_data['log_date'],
         'start_time': form_data['start_time'],
         'end_time': form_data['end_time'],
+        # Duration calculation using time objects combined with a dummy date
         'duration_minutes': (datetime.combine(datetime.min, form_data['end_time']) - datetime.combine(datetime.min, form_data['start_time'])).seconds / 60,
         'location': form_data['location'],
         'reported_by_id': form_data['reported_by_id'],
@@ -309,6 +310,9 @@ def render_incident_log_form(student: Dict[str, str]):
         with st.form("incident_step_one_form"):
             col1, col2 = st.columns(2)
             
+            # Calculate default end time 5 minutes from now for the fix
+            default_end_time = (datetime.now() + timedelta(minutes=5)).time()
+
             # Date and Time
             with col1:
                 log_date = st.date_input("Date of Incident", value=datetime.today(), key="log_date_input")
@@ -321,7 +325,8 @@ def render_incident_log_form(student: Dict[str, str]):
                 start_time = st.time_input("Incident Start Time", value=datetime.now().time(), key="start_time_input")
                 
             with col2:
-                end_time = st.time_input("Incident End Time", value=datetime.now().time() + timedelta(minutes=5), key="end_time_input")
+                # FIX APPLIED HERE: Added datetime.now() to timedelta to get a proper datetime object first.
+                end_time = st.time_input("Incident End Time", value=default_end_time, key="end_time_input")
                 location = st.text_input("Location (e.g., Classroom 7, Oval, Yard)", key="location_input")
                 
                 behavior_type = st.selectbox(
