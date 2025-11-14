@@ -652,8 +652,17 @@ def render_critical_incident_abch_form():
         
         for idx, outcome in enumerate(outcome_options):
             col_t, col_o, col_c = st.columns([1, 4, 1])
+            
+            # Check if this outcome is selected
+            is_selected = st.session_state.get(f"outcome_check_{idx}", False)
+            
             with col_t:
-                st.time_input(f"Time {idx}", key=f"outcome_time_{idx}", label_visibility="collapsed")
+                if is_selected:
+                    # Show time input only if selected
+                    st.time_input(f"Time {idx}", key=f"outcome_time_{idx}", label_visibility="collapsed")
+                else:
+                    # Show empty space when not selected
+                    st.markdown("")
             with col_o:
                 st.markdown(outcome)
             with col_c:
