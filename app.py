@@ -150,17 +150,13 @@ def generate_hypothesis(antecedent: str, support_type: str) -> str:
     )
     return hypothesis
 
-# --- 3. FORM RENDERING FUNCTIONS ---
+# --- 3. FORM RENDERING FUNCTIONS (FIXED) ---
 
 def render_enhanced_log_form(student: Dict[str, str]):
     """Renders the comprehensive, single-step incident log form."""
     
     st.markdown(f"## Quick Incident Log (Student: **{student['name']}**)")
     st.markdown("---")
-
-    # Initialize a temporary state for managing the critical incident navigation flow
-    if 'temp_reported_by' not in st.session_state:
-        st.session_state.temp_reported_by = {'id': None, 'name': '--- Select Staff ---'}
 
     with st.form("enhanced_incident_log_form"):
         st.markdown("### 1. Incident Details")
@@ -190,18 +186,13 @@ def render_enhanced_log_form(student: Dict[str, str]):
         # Staff and Behavior
         col_staff, col_behavior = st.columns(2)
         with col_staff:
-            # Use a callback to store the selected staff object for easy access
-            def update_reported_by():
-                st.session_state.temp_reported_by = st.session_state.reported_by_obj
-
+            # FIX: Removed the on_change callback and temporary state manipulation
             reported_by = st.selectbox(
                 "Reported By (Staff Member)",
                 options=[{'id': None, 'name': '--- Select Staff ---'}] + get_active_staff(),
                 format_func=lambda x: x['name'],
-                key="reported_by_obj",
-                on_change=update_reported_by
+                key="reported_by_obj" # The returned value is the selected dictionary object
             )
-            reported_by = st.session_state.temp_reported_by
 
         with col_behavior:
             behavior_type = st.selectbox(
@@ -272,6 +263,7 @@ def render_enhanced_log_form(student: Dict[str, str]):
         
         if submit_button:
             # UPDATED VALIDATION CHECK for dropdowns
+            # We now use the 'reported_by' variable directly, which holds the selected dictionary object
             if location == "--- Select Location ---" or reported_by['id'] is None or behavior_type == "--- Select Behavior ---":
                  st.error("Please select a valid Location, Staff Member, and Behavior Type before submitting.")
             else:
