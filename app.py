@@ -131,19 +131,28 @@ VALID_PAGES = ['landing', 'direct_log_form', 'critical_incident_abch', 'student_
 
 # --- MOCK DATA GENERATION ---
 
-@st.cache_resource
 def generate_mock_incidents():
     """Generates mock incident data for testing the analysis section."""
     incidents = []
     
     # Generate 15 incidents for Izack N. (high frequency student)
     for i in range(15):
-        incident_date = (datetime.now() - pd.Timedelta(days=random.randint(1, 45))).strftime('%Y-%m-%d')
+        incident_date = (datetime.now() - timedelta(days=random.randint(1, 45))).strftime('%Y-%m-%d')
         incident_time = datetime.now().replace(
             hour=random.randint(8, 14),
             minute=random.choice([0, 15, 30, 45]),
             second=0
         ).time()
+        
+        # Calculate session
+        if time(9, 0) <= incident_time <= time(11, 0):
+            session = 'Morning (9:00am - 11:00am)'
+        elif time(11, 0, 1) <= incident_time <= time(13, 0):
+            session = 'Middle (11:01am - 1:00pm)'
+        elif time(13, 0, 1) <= incident_time <= time(14, 45):
+            session = 'Afternoon (1:01pm - 2:45pm)'
+        else:
+            session = 'Outside School Hours (N/A)'
         
         is_critical = random.choice([True, True, False])
         severity = random.choice([4, 5]) if is_critical else random.choice([1, 2, 3])
@@ -154,7 +163,7 @@ def generate_mock_incidents():
             'date': incident_date,
             'time': incident_time.strftime('%H:%M:%S'),
             'day': datetime.strptime(incident_date, '%Y-%m-%d').strftime('%A'),
-            'session': get_session_window(incident_time),
+            'session': session,
             'location': random.choice(['JP Classroom', 'Yard', 'Gate', 'Playground', 'JP Spill Out']),
             'reported_by_name': 'Emily Jones (JP)',
             'reported_by_id': 's1',
@@ -170,12 +179,21 @@ def generate_mock_incidents():
     
     # Generate 5 incidents for Mia K.
     for i in range(5):
-        incident_date = (datetime.now() - pd.Timedelta(days=random.randint(1, 30))).strftime('%Y-%m-%d')
+        incident_date = (datetime.now() - timedelta(days=random.randint(1, 30))).strftime('%Y-%m-%d')
         incident_time = datetime.now().replace(
             hour=random.randint(8, 14),
             minute=random.choice([0, 15, 30, 45]),
             second=0
         ).time()
+        
+        if time(9, 0) <= incident_time <= time(11, 0):
+            session = 'Morning (9:00am - 11:00am)'
+        elif time(11, 0, 1) <= incident_time <= time(13, 0):
+            session = 'Middle (11:01am - 1:00pm)'
+        elif time(13, 0, 1) <= incident_time <= time(14, 45):
+            session = 'Afternoon (1:01pm - 2:45pm)'
+        else:
+            session = 'Outside School Hours (N/A)'
         
         incident = {
             'id': str(uuid.uuid4()),
@@ -183,7 +201,7 @@ def generate_mock_incidents():
             'date': incident_date,
             'time': incident_time.strftime('%H:%M:%S'),
             'day': datetime.strptime(incident_date, '%Y-%m-%d').strftime('%A'),
-            'session': get_session_window(incident_time),
+            'session': session,
             'location': random.choice(['PY Classroom', 'Library', 'Yard']),
             'reported_by_name': 'Daniel Lee (PY)',
             'reported_by_id': 's2',
@@ -199,12 +217,21 @@ def generate_mock_incidents():
     
     # Generate 3 incidents for Liam B.
     for i in range(3):
-        incident_date = (datetime.now() - pd.Timedelta(days=random.randint(1, 20))).strftime('%Y-%m-%d')
+        incident_date = (datetime.now() - timedelta(days=random.randint(1, 20))).strftime('%Y-%m-%d')
         incident_time = datetime.now().replace(
             hour=random.randint(8, 14),
             minute=random.choice([0, 15, 30, 45]),
             second=0
         ).time()
+        
+        if time(9, 0) <= incident_time <= time(11, 0):
+            session = 'Morning (9:00am - 11:00am)'
+        elif time(11, 0, 1) <= incident_time <= time(13, 0):
+            session = 'Middle (11:01am - 1:00pm)'
+        elif time(13, 0, 1) <= incident_time <= time(14, 45):
+            session = 'Afternoon (1:01pm - 2:45pm)'
+        else:
+            session = 'Outside School Hours (N/A)'
         
         incident = {
             'id': str(uuid.uuid4()),
@@ -212,7 +239,7 @@ def generate_mock_incidents():
             'date': incident_date,
             'time': incident_time.strftime('%H:%M:%S'),
             'day': datetime.strptime(incident_date, '%Y-%m-%d').strftime('%A'),
-            'session': get_session_window(incident_time),
+            'session': session,
             'location': random.choice(['SY Classroom', 'Yard', 'Admin']),
             'reported_by_name': 'Sarah Chen (SY)',
             'reported_by_id': 's3',
