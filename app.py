@@ -620,25 +620,110 @@ def render_critical_incident_abch_form():
         st.markdown("---")
         st.markdown("---")
         
-        # Outcomes & Review Section (below chronology)
-        st.markdown("### Outcomes & Review (H)")
+        # INTENDED OUTCOMES Section (below chronology)
+        st.markdown("### INTENDED OUTCOMES")
         
-        outcome_col1, outcome_col2 = st.columns(2)
+        # Time-stamped outcomes
+        st.markdown("#### Time-Stamped Outcomes")
+        outcome_time_col1, outcome_time_col2, outcome_time_col3 = st.columns([1, 4, 1])
         
-        with outcome_col1:
-            st.text_area(
-                "Follow-up / Post-Incident Reflection",
-                key="abch_follow_up",
-                height=150,
-                placeholder="Debrief held, action plans, scheduled meetings, support provided"
-            )
+        outcomes_data = []
         
-        with outcome_col2:
-            st.markdown("##### Mandatory Notifications/Outcomes")
-            st.checkbox("Line Manager Notified (Required)", key="abch_manager_notify")
-            st.checkbox("Emergency Contact Notified (Required)", key="abch_parent_notify")
-            st.checkbox("Physical Restraint Used/Reported", key="abch_restraint_used")
-            st.checkbox("External Agency (e.g., SAPOL/Ambulance) Contacted", key="abch_external_contact")
+        with outcome_time_col1:
+            st.markdown("**TIME**")
+        with outcome_time_col2:
+            st.markdown("**OUTCOMES**")
+        with outcome_time_col3:
+            st.markdown("**Select**")
+        
+        # Outcome options with time inputs
+        outcome_options = [
+            "Send Home. Parent / Caregiver notified via Phone Call. Conversation documented in file",
+            "Student Leaving supervised areas / leaving school grounds",
+            "Sexualised behaviour",
+            "Incident – student to student",
+            "Complaint by co-located school / member of public",
+            "Property damage",
+            "Stealing",
+            "Toileting issue",
+            "ED155: Staff Injury (submit with report)",
+            "ED155: Student injury (submit with report)"
+        ]
+        
+        for idx, outcome in enumerate(outcome_options):
+            col_t, col_o, col_c = st.columns([1, 4, 1])
+            with col_t:
+                st.time_input(f"Time {idx}", key=f"outcome_time_{idx}", label_visibility="collapsed")
+            with col_o:
+                st.markdown(outcome)
+            with col_c:
+                st.checkbox("", key=f"outcome_check_{idx}", label_visibility="collapsed")
+        
+        st.markdown("---")
+        
+        # Emergency Services and Incident Management sections
+        col_emergency, col_internal = st.columns(2)
+        
+        with col_emergency:
+            st.markdown("#### Emergency Services")
+            
+            st.markdown("**SAPOL**")
+            sapol_col1, sapol_col2 = st.columns([3, 1])
+            with sapol_col1:
+                st.checkbox("Drug possession", key="sapol_drug")
+                st.checkbox("Assault", key="sapol_assault")
+                st.checkbox("Absconding", key="sapol_absconding")
+                st.checkbox("Removal", key="sapol_removal")
+                st.checkbox("Call Out", key="sapol_callout")
+                st.checkbox("Stealing", key="sapol_stealing")
+                st.checkbox("Vandalism", key="sapol_vandalism")
+            with sapol_col2:
+                st.text_input("Report number:", key="sapol_report_number")
+            
+            st.markdown("**SA Ambulance Services**")
+            st.checkbox("Call out", key="ambulance_callout")
+            st.checkbox("Taken to Hospital", key="ambulance_hospital")
+        
+        with col_internal:
+            st.markdown("#### Incident Internally Managed")
+            st.checkbox("Restorative Session", key="internal_restorative")
+            st.checkbox("Community Service", key="internal_community")
+            st.checkbox("Re-Entry", key="internal_reentry")
+            st.text_area("Re-Entry Details:", key="internal_reentry_details", 
+                        placeholder="E.g., A TAC meeting will be held to discuss solutions to support the student.",
+                        height=80)
+            st.checkbox("Case Review", key="internal_case_review")
+            st.checkbox("Make-up Time", key="internal_makeup")
+            st.text_input("Other", key="internal_other")
+        
+        st.markdown("---")
+        
+        # Mandatory notifications
+        st.markdown("#### Mandatory Notifications")
+        notif_col1, notif_col2, notif_col3 = st.columns(3)
+        
+        with notif_col1:
+            st.checkbox("**Notified Line Manager of Critical Incident** (Required)", key="abch_manager_notify")
+        with notif_col2:
+            st.checkbox("**Notified Parent/Caregiver of Critical Incident** (Required)", key="abch_parent_notify")
+        with notif_col3:
+            st.checkbox("**Copy of Critical Incident in student file**", key="abch_file_copy")
+        
+        st.markdown("---")
+        
+        # Administration Only Section
+        st.markdown("#### ADMINISTRATION ONLY")
+        admin_col1, admin_col2 = st.columns(2)
+        
+        with admin_col1:
+            st.text_input("Line Manager Signature:", key="admin_line_manager_sig")
+            st.text_input("Manager Signature:", key="admin_manager_sig")
+        
+        with admin_col2:
+            st.text_area("Safety and Risk Plan: To be developed / reviewed:", 
+                        key="admin_safety_plan", height=100)
+            st.text_area("Other outcomes to be pursued by Management:", 
+                        key="admin_other_outcomes", height=100)
 
         st.markdown("---")
         
@@ -677,14 +762,69 @@ def render_critical_incident_abch_form():
                         }
                         behavior_chains.append(chain_data)
                     
+                    # Collect timestamped outcomes
+                    timestamped_outcomes = []
+                    outcome_options = [
+                        "Send Home",
+                        "Student Leaving supervised areas",
+                        "Sexualised behaviour",
+                        "Incident – student to student",
+                        "Complaint by co-located school",
+                        "Property damage",
+                        "Stealing",
+                        "Toileting issue",
+                        "ED155: Staff Injury",
+                        "ED155: Student injury"
+                    ]
+                    for idx, outcome in enumerate(outcome_options):
+                        if st.session_state.get(f'outcome_check_{idx}', False):
+                            timestamped_outcomes.append({
+                                "time": st.session_state.get(f'outcome_time_{idx}', ''),
+                                "outcome": outcome
+                            })
+                    
+                    # Collect emergency services data
+                    emergency_services = {
+                        "sapol": {
+                            "drug_possession": st.session_state.get('sapol_drug', False),
+                            "assault": st.session_state.get('sapol_assault', False),
+                            "absconding": st.session_state.get('sapol_absconding', False),
+                            "removal": st.session_state.get('sapol_removal', False),
+                            "call_out": st.session_state.get('sapol_callout', False),
+                            "stealing": st.session_state.get('sapol_stealing', False),
+                            "vandalism": st.session_state.get('sapol_vandalism', False),
+                            "report_number": st.session_state.get('sapol_report_number', '')
+                        },
+                        "ambulance": {
+                            "call_out": st.session_state.get('ambulance_callout', False),
+                            "hospital": st.session_state.get('ambulance_hospital', False)
+                        }
+                    }
+                    
+                    # Collect internal management data
+                    internal_management = {
+                        "restorative_session": st.session_state.get('internal_restorative', False),
+                        "community_service": st.session_state.get('internal_community', False),
+                        "reentry": st.session_state.get('internal_reentry', False),
+                        "reentry_details": st.session_state.get('internal_reentry_details', ''),
+                        "case_review": st.session_state.get('internal_case_review', False),
+                        "makeup_time": st.session_state.get('internal_makeup', False),
+                        "other": st.session_state.get('internal_other', '')
+                    }
+                    
                     final_log_entry.update({
                         "is_critical": True,
                         "behavior_chains": behavior_chains,
-                        "abch_follow_up": st.session_state.get('abch_follow_up', ''),
+                        "timestamped_outcomes": timestamped_outcomes,
+                        "emergency_services": emergency_services,
+                        "internal_management": internal_management,
                         "outcome_manager_notified": st.session_state.abch_manager_notify,
                         "outcome_parent_notified": st.session_state.abch_parent_notify,
-                        "outcome_restraint_used": st.session_state.get('abch_restraint_used', False),
-                        "outcome_external_contact": st.session_state.get('abch_external_contact', False),
+                        "outcome_file_copy": st.session_state.get('abch_file_copy', False),
+                        "admin_line_manager_sig": st.session_state.get('admin_line_manager_sig', ''),
+                        "admin_manager_sig": st.session_state.get('admin_manager_sig', ''),
+                        "admin_safety_plan": st.session_state.get('admin_safety_plan', ''),
+                        "admin_other_outcomes": st.session_state.get('admin_other_outcomes', '')
                     })
                     
                     st.success(f"Critical Incident Report for {student['name']} FINALIZED and Saved!")
