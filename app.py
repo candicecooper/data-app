@@ -551,6 +551,284 @@ def render_critical_incident_abch_form():
                 st.markdown("#### **Antecedent**")
                 st.markdown("##### Location")
                 if chain_idx == 0:
+                    st.text_input("Location", value=preliminary_data['location'], key=f"abch_location_{chain_idx}", label_visibility="collapsed")
+                else:
+                    st.text_input("Location", key=f"abch_location_{chain_idx}", placeholder="Enter location", label_visibility="collapsed")
+            
+            with col2:
+                st.markdown("#### **(Trigger)**")
+                st.markdown("##### Context")
+                context_text = st.text_area("Context", key=f"abch_context_{chain_idx}", height=200, placeholder="What was happening? Student's state/mood?", label_visibility="collapsed")
+            
+            with col3:
+                st.markdown("#### **Behaviour**")
+                st.markdown("##### Time")
+                if chain_idx == 0:
+                    st.time_input("Time", value=datetime.strptime(preliminary_data['time'], "%I:%M:%S %p").time(), key=f"abch_time_{chain_idx}", label_visibility="collapsed")
+                else:
+                    st.time_input("Time", key=f"abch_time_{chain_idx}", label_visibility="collapsed")
+            
+            with col4:
+                st.markdown("#### ** **")
+                st.markdown("##### What did student do?")
+                behavior_desc = st.text_area("Behavior", key=f"abch_behavior_{chain_idx}", height=200, placeholder="Observable behavior (what you saw/heard)", label_visibility="collapsed")
+            
+            with col5:
+                st.markdown("#### **Consequences**")
+                st.markdown("##### What happened after?")
+                st.text_area("Consequences", key=f"abch_consequence_{chain_idx}", height=200, placeholder="How did people react? What changed?", label_visibility="collapsed")
+            
+            with col6:
+                st.markdown("#### **Hypothesis**")
+                st.markdown("##### Best guess function")
+                
+                if context_text and behavior_desc:
+                    hypothesis_text = generate_hypothesis_from_context(context_text, behavior_desc)
+                    st.info(f"{hypothesis_text}", icon="💡")
+                
+                st.text_area("Hypothesis", key=f"abch_hypothesis_{chain_idx}", height=150, placeholder="Function of behavior", label_visibility="collapsed")
+            
+            if chain_idx < st.session_state.behavior_chain_count - 1:
+                st.markdown("---")
+        
+        if st.form_submit_button("➕ Add Another Behavior Episode"):
+            st.session_state.behavior_chain_count += 1
+            st.rerun()
+        
+        st.markdown("---")
+        st.markdown("---")
+        
+        st.markdown("### INTENDED OUTCOMES")
+        
+        st.markdown("#### Time-Stamped Outcomes")
+        st.markdown("*Only fill in the time for outcomes you select with the checkbox*")
+        outcome_time_col1, outcome_time_col2, outcome_time_col3 = st.columns([1, 4, 1])
+        
+        with outcome_time_col1:
+            st.markdown("**TIME**")
+        with outcome_time_col2:
+            st.markdown("**OUTCOMES**")
+        with outcome_time_col3:
+            st.markdown("**Select**")
+        
+        outcome_options = [
+            "Send Home. Parent / Caregiver notified via Phone Call. Conversation documented in file",
+            "Student Leaving supervised areas / leaving school grounds",
+            "Sexualised behaviour",
+            "Incident – student to student",
+            "Complaint by co-located school / member of public",
+            "Property damage",
+            "Stealing",
+            "Toileting issue",
+            "ED155: Staff Injury (submit with report)",
+            "ED155: Student injury (submit with report)"
+        ]
+        
+        for idx, outcome in enumerate(outcome_options):
+            col_t, col_o, col_c = st.columns([1, 4, 1])
+            with col_t:
+                st.time_input(f"Time {idx}", key=f"outcome_time_{idx}", label_visibility="collapsed", value=None)
+            with col_o:
+                st.markdown(outcome)
+            with col_c:
+                st.checkbox("", key=f"outcome_check_{idx}", label_visibility="collapsed")
+        
+        st.markdown("---")
+        
+        col_emergency, col_internal = st.columns(2)
+        
+        with col_emergency:
+            st.markdown("#### Emergency Services")
+            st.markdown("**SAPOL**")
+            sapol_col1, sapol_col2 = st.columns([3, 1])
+            with sapol_col1:
+                st.checkbox("Drug possession", key="sapol_drug")
+                st.checkbox("Assault", key="sapol_assault")
+                st.checkbox("Absconding", key="sapol_absconding")
+                st.checkbox("Removal", key="sapol_removal")
+                st.checkbox("Call Out", key="sapol_callout")
+                st.checkbox("Stealing", key="sapol_stealing")
+                st.checkbox("Vandalism", key="sapol_vandalism")
+            with sapol_col2:
+                st.text_input("Report number:", key="sapol_report_number")
+            
+            st.markdown("**SA Ambulance Services**")
+            st.checkbox("Call out", key="ambulance_callout")
+            st.checkbox("Taken to Hospital", key="ambulance_hospital")
+        
+        with col_internal:
+            st.markdown("#### Incident Internally Managed")
+            st.checkbox("Restorative Session", key="internal_restorative")
+            st.checkbox("Community Service", key="internal_community")
+            st.checkbox("Re-Entry", key="internal_reentry")
+            st.text_area("Re-Entry Details:", key="internal_reentry_details", placeholder="E.g., A TAC meeting will be held to discuss solutions to support the student.", height=80)
+            st.checkbox("Case Review", key="internal_case_review")
+            st.checkbox("Make-up Time", key="internal_makeup")
+            st.text_input("Other", key="internal_other")
+        
+        st.markdown("---")
+        
+        st.markdown("#### Mandatory Notifications")
+        notif_col1, notif_col2, notif_col3 = st.columns(3)
+        
+        with notif_col1:
+            st.checkbox("**Notified Line Manager of Critical Incident** (Required)", key="abch_manager_notify")
+        with notif_col2:
+            st.checkbox("**Notified Parent/Caregiver of Critical Incident** (Required)", key="abch_parent_notify")
+        with notif_col3:
+            st.checkbox("**Copy of Critical Incident in student file**", key="abch_file_copy")
+        
+        st.markdown("---")
+        st.markdown("#### Staff Certification")
+        
+        reporting_staff_name = preliminary_data.get('reported_by_name', 'Staff Member')
+        st.info(f"**Completing Staff Member:** {reporting_staff_name}")
+        
+        st.markdown("""
+        By checking the box below, I certify that:
+        - All information provided in this Critical Incident Report is accurate to the best of my knowledge
+        - All mandatory notifications have been completed
+        - I have documented the incident according to school policy
+        """)
+        
+        st.checkbox(f"**I, {reporting_staff_name}, certify that all information is correct and complete**", key="staff_certification_check")
+        
+        if st.session_state.get('staff_certification_check', False):
+            st.success("✓ Form certified by staff member")
+        
+        st.markdown("---")
+        
+        st.markdown("#### ADMINISTRATION ONLY")
+        st.info("📝 This section is completed by Line Manager/Manager during review process")
+        admin_col1, admin_col2 = st.columns(2)
+        
+        with admin_col1:
+            st.text_input("Line Manager Signature:", key="admin_line_manager_sig", placeholder="To be completed by Line Manager")
+            st.text_input("Manager Signature:", key="admin_manager_sig", placeholder="To be completed by Manager")
+        
+        with admin_col2:
+            st.text_area("Safety and Risk Plan: To be developed / reviewed:", key="admin_safety_plan", height=100, placeholder="To be completed during management review")
+            st.text_area("Other outcomes to be pursued by Management:", key="admin_other_outcomes", height=100, placeholder="To be completed during management review")
+        
+        st.markdown("---")
+        st.markdown("### Submit Report")
+        
+        col_cancel, col_space, col_submit = st.columns([1, 1, 2])
+        
+        with col_cancel:
+            cancel_clicked = st.form_submit_button("❌ Cancel & Go Back", use_container_width=True)
+                
+        with col_submit:
+            submit_clicked = st.form_submit_button("📧 Send to Line Manager & Log Incident", type="primary", use_container_width=True)
+        
+        # Handle button clicks
+        if cancel_clicked:
+            st.session_state.preliminary_abch_data = None
+            st.session_state.behavior_chain_count = 1
+            navigate_to('landing')
+        
+        if submit_clicked:
+            can_submit = (
+                st.session_state.get('abch_manager_notify', False) and 
+                st.session_state.get('abch_parent_notify', False) and
+                st.session_state.get('staff_certification_check', False)
+            )
+            
+            if not can_submit:
+                st.error("⚠️ Please complete all mandatory requirements")
+            else:
+                try:
+                    validate_abch_form(
+                        st.session_state.get('abch_context_0', ''),
+                        st.session_state.get('abch_location_0', ''),
+                        st.session_state.get('abch_behavior_0', ''),
+                        st.session_state.get('abch_consequence_0', ''),
+                        True, True
+                    )
+                    
+                    final_log_entry = preliminary_data.copy()
+                    behavior_chains = []
+                    for chain_idx in range(st.session_state.get('behavior_chain_count', 1)):
+                        behavior_chains.append({
+                            "location": st.session_state.get(f'abch_location_{chain_idx}', ''),
+                            "context": st.session_state.get(f'abch_context_{chain_idx}', ''),
+                            "time": str(st.session_state.get(f'abch_time_{chain_idx}', '')),
+                            "behavior": st.session_state.get(f'abch_behavior_{chain_idx}', ''),
+                            "consequence": st.session_state.get(f'abch_consequence_{chain_idx}', ''),
+                            "hypothesis": st.session_state.get(f'abch_hypothesis_{chain_idx}', '')
+                        })
+                    
+                    final_log_entry.update({
+                        "is_critical": True,
+                        "behavior_chains": behavior_chains,
+                        "staff_certified_by": reporting_staff_name,
+                        "staff_certification_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "status": "Pending Line Manager Review"
+                    })
+                    
+                    send_line_manager_notification(final_log_entry, student)
+                    
+                    st.success(f"✅ Critical Incident Report LOGGED!")
+                    st.info("📧 Email sent to candice.cooper330@schools.sa.edu.au")
+                    st.balloons()
+                    
+                    st.session_state.preliminary_abch_data = None
+                    st.session_state.behavior_chain_count = 1
+                    
+                except ValidationError as e:
+                    st.error(e.user_message)
+                except Exception as e:
+                    logger.error(f"Error: {e}", exc_info=True)
+                    st.error("An error occurred. Please try again.")
+    """Renders the detailed Critical Incident (ABCH) form with data continuity."""
+    
+    preliminary_data = st.session_state.get('preliminary_abch_data')
+    student = get_student_by_id(st.session_state.get('selected_student_id', ''))
+    
+    if not preliminary_data:
+        st.error("Error: Critical incident data not found. Returning to log selection.")
+        if st.button("Return to Main Page"):
+            navigate_to('landing')
+        return
+    
+    if not student:
+        st.error("Error: Student data not found. Returning to log selection.")
+        if st.button("Return to Main Page"):
+            navigate_to('landing')
+        return
+
+    st.title(f"🚨 Critical Incident Report (ABCH) - {student['name']}")
+
+    st.markdown("### Preliminary Incident Data (From Quick Log)")
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        st.metric("Date & Time", f"{preliminary_data['date']} @ {preliminary_data['time']}")
+    with col2:
+        st.metric("Location", preliminary_data['location'])
+    with col3:
+        st.metric("Reported By", preliminary_data['reported_by_name'])
+    with col4:
+        st.metric("Severity", f"Level {preliminary_data['severity']}", delta="CRITICAL", delta_color="inverse")
+    with col5:
+        st.metric("Initial Antecedent", preliminary_data['antecedent'])
+        
+    st.markdown("---")
+    st.markdown("## Critical Incident Form (A → B → C → H)")
+    
+    with st.form("critical_incident_form_unique"):
+        if 'behavior_chain_count' not in st.session_state:
+            st.session_state.behavior_chain_count = 1
+        
+        for chain_idx in range(st.session_state.behavior_chain_count):
+            st.markdown(f"### Behavior Episode {chain_idx + 1}")
+            
+            col1, col2, col3, col4, col5, col6 = st.columns(6)
+            
+            with col1:
+                st.markdown("#### **Antecedent**")
+                st.markdown("##### Location")
+                if chain_idx == 0:
                     location_display = st.text_input(
                         "Location",
                         value=preliminary_data['location'],
