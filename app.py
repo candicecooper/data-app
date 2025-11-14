@@ -512,11 +512,12 @@ def render_critical_incident_abch_form():
         for chain_idx in range(st.session_state.behavior_chain_count):
             st.markdown(f"### Behavior Episode {chain_idx + 1}")
             
-            # Row 1: Antecedent (Trigger) - Location and Context
-            st.markdown("#### **Antecedent (Trigger)**")
-            ant_col1, ant_col2 = st.columns(2)
+            # Create 6 columns across the screen
+            col1, col2, col3, col4, col5, col6 = st.columns(6)
             
-            with ant_col1:
+            # Column 1: Location (Antecedent - Trigger)
+            with col1:
+                st.markdown("#### **Antecedent**")
                 st.markdown("##### Location")
                 if chain_idx == 0:
                     # First chain uses preliminary data
@@ -530,25 +531,25 @@ def render_critical_incident_abch_form():
                     location_display = st.text_input(
                         "Location",
                         key=f"abch_location_{chain_idx}",
-                        placeholder="Enter location for this episode",
+                        placeholder="Enter location",
                         label_visibility="collapsed"
                     )
             
-            with ant_col2:
+            # Column 2: Context (Antecedent - Trigger)
+            with col2:
+                st.markdown("#### **(Trigger)**")
                 st.markdown("##### Context")
                 context_text = st.text_area(
                     "Context",
                     key=f"abch_context_{chain_idx}",
-                    height=100,
-                    placeholder="What was happening? Student's state/mood? Setting/activity?",
+                    height=200,
+                    placeholder="What was happening? Student's state/mood?",
                     label_visibility="collapsed"
                 )
             
-            # Row 2: Behaviour - Time and What Student Did
-            st.markdown("#### **Behaviour**")
-            beh_col1, beh_col2 = st.columns(2)
-            
-            with beh_col1:
+            # Column 3: Time (Behaviour)
+            with col3:
+                st.markdown("#### **Behaviour**")
                 st.markdown("##### Time")
                 if chain_idx == 0:
                     # First chain uses preliminary data but is amendable
@@ -565,45 +566,46 @@ def render_critical_incident_abch_form():
                         label_visibility="collapsed"
                     )
             
-            with beh_col2:
-                st.markdown("##### What did the student do?")
+            # Column 4: What did student do? (Behaviour)
+            with col4:
+                st.markdown("#### ** **")
+                st.markdown("##### What did student do?")
                 behavior_desc = st.text_area(
                     "Behavior",
                     key=f"abch_behavior_{chain_idx}",
-                    height=100,
-                    placeholder="Observable description of the behavior (what you saw/heard)",
+                    height=200,
+                    placeholder="Observable behavior (what you saw/heard)",
                     label_visibility="collapsed"
                 )
             
-            # Row 3: Consequences and Hypothesis
-            cons_hyp_col1, cons_hyp_col2 = st.columns(2)
-            
-            with cons_hyp_col1:
+            # Column 5: What happened after? (Consequences)
+            with col5:
                 st.markdown("#### **Consequences**")
-                st.markdown("##### What happened after the behaviour? How did people react?")
+                st.markdown("##### What happened after?")
                 consequence_text = st.text_area(
                     "Consequences",
                     key=f"abch_consequence_{chain_idx}",
-                    height=100,
-                    placeholder="Staff response, peer reactions, environmental changes",
+                    height=200,
+                    placeholder="How did people react? What changed?",
                     label_visibility="collapsed"
                 )
             
-            with cons_hyp_col2:
+            # Column 6: Hypothesis
+            with col6:
                 st.markdown("#### **Hypothesis**")
-                st.markdown("##### Best guess behaviour function")
+                st.markdown("##### Best guess function")
                 
                 # Auto-generate hypothesis based on context if available
                 if context_text and behavior_desc:
                     # Simple function determination based on keywords
                     hypothesis_text = generate_hypothesis_from_context(context_text, behavior_desc)
-                    st.info(f"**Suggested Function:** {hypothesis_text}")
+                    st.info(f"{hypothesis_text}", icon="💡")
                 
                 hypothesis_override = st.text_area(
                     "Hypothesis",
                     key=f"abch_hypothesis_{chain_idx}",
-                    height=100,
-                    placeholder="Best guess at why the behavior occurred (function)",
+                    height=150,
+                    placeholder="Function of behavior",
                     label_visibility="collapsed"
                 )
             
