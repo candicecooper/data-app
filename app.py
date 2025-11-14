@@ -207,7 +207,6 @@ def generate_hypothesis_from_context(context: str, behavior: str) -> str:
     """Generates hypothesis based on context and behavior description."""
     try:
         context_lower = context.lower()
-        behavior_lower = behavior.lower()
         
         if any(word in context_lower for word in ['demand', 'instruction', 'asked to', 'told to', 'transition', 'task']):
             return "Escape/Avoidance (escaping demand or task)"
@@ -229,7 +228,7 @@ def generate_hypothesis_from_context(context: str, behavior: str) -> str:
 def send_line_manager_notification(incident_data: dict, student: dict):
     """Simulates sending email notification to Line Manager."""
     try:
-        line_manager_email = "linemanager@school.edu.au"
+        line_manager_email = "candice.cooper330@schools.sa.edu.au"
         staff_name = incident_data.get('staff_certified_by', 'Staff Member')
         student_name = student.get('name', 'Student')
         incident_date = incident_data.get('date', 'Unknown Date')
@@ -265,7 +264,6 @@ def send_line_manager_notification(incident_data: dict, student: dict):
         """
         
         logger.info(f"Email Body: {email_body}")
-        
         return True
         
     except Exception as e:
@@ -375,11 +373,7 @@ def render_enhanced_log_form(student: Dict[str, str]):
             default_time = datetime.now().time()
             incident_time = st.time_input("Time of Incident (e.g., 2:30 PM)", default_time, key="incident_time")
         with col_loc:
-            location = st.selectbox(
-                "Location", 
-                options=LOCATIONS, 
-                key="location_input"
-            )
+            location = st.selectbox("Location", options=LOCATIONS, key="location_input")
         
         session_window = get_session_window(incident_time)
         st.markdown(f"""
@@ -398,40 +392,20 @@ def render_enhanced_log_form(student: Dict[str, str]):
             )
 
         with col_behavior:
-            behavior_type = st.selectbox(
-                "Primary Behavior Type", 
-                options=["--- Select Behavior ---"] + BEHAVIORS_FBA,
-                key="behavior_type_input"
-            )
+            behavior_type = st.selectbox("Primary Behavior Type", options=["--- Select Behavior ---"] + BEHAVIORS_FBA, key="behavior_type_input")
 
         st.markdown("### 2. Context & Intervention Data")
         
         col_ant, col_int, col_sup = st.columns(3)
         with col_ant:
-            antecedent = st.selectbox(
-                "Antecedent (What happened IMMEDIATELY before?)",
-                options=["--- Select Antecedent ---"] + ANTECEDENTS_NEW,
-                key="antecedent_input"
-            )
+            antecedent = st.selectbox("Antecedent (What happened IMMEDIATELY before?)", options=["--- Select Antecedent ---"] + ANTECEDENTS_NEW, key="antecedent_input")
         with col_int:
-            intervention = st.selectbox(
-                "Intervention Applied (Staff action)",
-                options=["--- Select Intervention ---"] + INTERVENTIONS,
-                key="intervention_input"
-            )
+            intervention = st.selectbox("Intervention Applied (Staff action)", options=["--- Select Intervention ---"] + INTERVENTIONS, key="intervention_input")
         with col_sup:
-            type_of_support = st.selectbox(
-                "Type of Support Student was Receiving",
-                options=SUPPORT_TYPES,
-                key="support_type_input"
-            )
+            type_of_support = st.selectbox("Type of Support Student was Receiving", options=SUPPORT_TYPES, key="support_type_input")
             
         st.markdown("---")
-        severity_level = st.slider(
-            "Severity Level (1: Minor, 5: Extreme/Critical)",
-            min_value=1, max_value=5, value=1, step=1,
-            key="severity_level"
-        )
+        severity_level = st.slider("Severity Level (1: Minor, 5: Extreme/Critical)", min_value=1, max_value=5, value=1, step=1, key="severity_level")
         
         st.text_area("Any Additional Information (Optional):", key="description_input", height=150)
 
@@ -721,7 +695,6 @@ def render_critical_incident_abch_form():
         with col_submit:
             submit_clicked = st.form_submit_button("📧 Send to Line Manager & Log Incident", type="primary", use_container_width=True)
         
-        # Handle button clicks
         if cancel_clicked:
             st.session_state.preliminary_abch_data = None
             st.session_state.behavior_chain_count = 1
@@ -781,518 +754,6 @@ def render_critical_incident_abch_form():
                 except Exception as e:
                     logger.error(f"Error: {e}", exc_info=True)
                     st.error("An error occurred. Please try again.")
-    """Renders the detailed Critical Incident (ABCH) form with data continuity."""
-    
-    preliminary_data = st.session_state.get('preliminary_abch_data')
-    student = get_student_by_id(st.session_state.get('selected_student_id', ''))
-    
-    if not preliminary_data:
-        st.error("Error: Critical incident data not found. Returning to log selection.")
-        if st.button("Return to Main Page"):
-            navigate_to('landing')
-        return
-    
-    if not student:
-        st.error("Error: Student data not found. Returning to log selection.")
-        if st.button("Return to Main Page"):
-            navigate_to('landing')
-        return
-
-    st.title(f"🚨 Critical Incident Report (ABCH) - {student['name']}")
-
-    st.markdown("### Preliminary Incident Data (From Quick Log)")
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    with col1:
-        st.metric("Date & Time", f"{preliminary_data['date']} @ {preliminary_data['time']}")
-    with col2:
-        st.metric("Location", preliminary_data['location'])
-    with col3:
-        st.metric("Reported By", preliminary_data['reported_by_name'])
-    with col4:
-        st.metric("Severity", f"Level {preliminary_data['severity']}", delta="CRITICAL", delta_color="inverse")
-    with col5:
-        st.metric("Initial Antecedent", preliminary_data['antecedent'])
-        
-    st.markdown("---")
-    st.markdown("## Critical Incident Form (A → B → C → H)")
-    
-    with st.form("critical_incident_form_unique"):
-        if 'behavior_chain_count' not in st.session_state:
-            st.session_state.behavior_chain_count = 1
-        
-        for chain_idx in range(st.session_state.behavior_chain_count):
-            st.markdown(f"### Behavior Episode {chain_idx + 1}")
-            
-            col1, col2, col3, col4, col5, col6 = st.columns(6)
-            
-            with col1:
-                st.markdown("#### **Antecedent**")
-                st.markdown("##### Location")
-                if chain_idx == 0:
-                    location_display = st.text_input(
-                        "Location",
-                        value=preliminary_data['location'],
-                        key=f"abch_location_{chain_idx}",
-                        label_visibility="collapsed"
-                    )
-                else:
-                    location_display = st.text_input(
-                        "Location",
-                        key=f"abch_location_{chain_idx}",
-                        placeholder="Enter location",
-                        label_visibility="collapsed"
-                    )
-            
-            with col2:
-                st.markdown("#### **(Trigger)**")
-                st.markdown("##### Context")
-                context_text = st.text_area(
-                    "Context",
-                    key=f"abch_context_{chain_idx}",
-                    height=200,
-                    placeholder="What was happening? Student's state/mood?",
-                    label_visibility="collapsed"
-                )
-            
-            with col3:
-                st.markdown("#### **Behaviour**")
-                st.markdown("##### Time")
-                if chain_idx == 0:
-                    time_display = st.time_input(
-                        "Time",
-                        value=datetime.strptime(preliminary_data['time'], "%I:%M:%S %p").time(),
-                        key=f"abch_time_{chain_idx}",
-                        label_visibility="collapsed"
-                    )
-                else:
-                    time_display = st.time_input(
-                        "Time",
-                        key=f"abch_time_{chain_idx}",
-                        label_visibility="collapsed"
-                    )
-            
-            with col4:
-                st.markdown("#### ** **")
-                st.markdown("##### What did student do?")
-                behavior_desc = st.text_area(
-                    "Behavior",
-                    key=f"abch_behavior_{chain_idx}",
-                    height=200,
-                    placeholder="Observable behavior (what you saw/heard)",
-                    label_visibility="collapsed"
-                )
-            
-            with col5:
-                st.markdown("#### **Consequences**")
-                st.markdown("##### What happened after?")
-                consequence_text = st.text_area(
-                    "Consequences",
-                    key=f"abch_consequence_{chain_idx}",
-                    height=200,
-                    placeholder="How did people react? What changed?",
-                    label_visibility="collapsed"
-                )
-            
-            with col6:
-                st.markdown("#### **Hypothesis**")
-                st.markdown("##### Best guess function")
-                
-                if context_text and behavior_desc:
-                    hypothesis_text = generate_hypothesis_from_context(context_text, behavior_desc)
-                    st.info(f"{hypothesis_text}", icon="💡")
-                
-                hypothesis_override = st.text_area(
-                    "Hypothesis",
-                    key=f"abch_hypothesis_{chain_idx}",
-                    height=150,
-                    placeholder="Function of behavior",
-                    label_visibility="collapsed"
-                )
-            
-            if chain_idx < st.session_state.behavior_chain_count - 1:
-                st.markdown("---")
-        
-        if st.form_submit_button("➕ Add Another Behavior Episode"):
-            st.session_state.behavior_chain_count += 1
-            st.rerun()
-        
-        st.markdown("---")
-        st.markdown("---")
-        
-        st.markdown("### INTENDED OUTCOMES")
-        
-        st.markdown("#### Time-Stamped Outcomes")
-        st.markdown("*Only fill in the time for outcomes you select with the checkbox*")
-        outcome_time_col1, outcome_time_col2, outcome_time_col3 = st.columns([1, 4, 1])
-        
-        with outcome_time_col1:
-            st.markdown("**TIME**")
-        with outcome_time_col2:
-            st.markdown("**OUTCOMES**")
-        with outcome_time_col3:
-            st.markdown("**Select**")
-        
-        outcome_options = [
-            "Send Home. Parent / Caregiver notified via Phone Call. Conversation documented in file",
-            "Student Leaving supervised areas / leaving school grounds",
-            "Sexualised behaviour",
-            "Incident – student to student",
-            "Complaint by co-located school / member of public",
-            "Property damage",
-            "Stealing",
-            "Toileting issue",
-            "ED155: Staff Injury (submit with report)",
-            "ED155: Student injury (submit with report)"
-        ]
-        
-        for idx, outcome in enumerate(outcome_options):
-            col_t, col_o, col_c = st.columns([1, 4, 1])
-            with col_t:
-                st.time_input(f"Time {idx}", key=f"outcome_time_{idx}", label_visibility="collapsed", value=None)
-            with col_o:
-                st.markdown(outcome)
-            with col_c:
-                st.checkbox("", key=f"outcome_check_{idx}", label_visibility="collapsed")
-        
-        st.markdown("---")
-        
-        col_emergency, col_internal = st.columns(2)
-        
-        with col_emergency:
-            st.markdown("#### Emergency Services")
-            
-            st.markdown("**SAPOL**")
-            sapol_col1, sapol_col2 = st.columns([3, 1])
-            with sapol_col1:
-                st.checkbox("Drug possession", key="sapol_drug")
-                st.checkbox("Assault", key="sapol_assault")
-                st.checkbox("Absconding", key="sapol_absconding")
-                st.checkbox("Removal", key="sapol_removal")
-                st.checkbox("Call Out", key="sapol_callout")
-                st.checkbox("Stealing", key="sapol_stealing")
-                st.checkbox("Vandalism", key="sapol_vandalism")
-            with sapol_col2:
-                st.text_input("Report number:", key="sapol_report_number")
-            
-            st.markdown("**SA Ambulance Services**")
-            st.checkbox("Call out", key="ambulance_callout")
-            st.checkbox("Taken to Hospital", key="ambulance_hospital")
-        
-        with col_internal:
-            st.markdown("#### Incident Internally Managed")
-            st.checkbox("Restorative Session", key="internal_restorative")
-            st.checkbox("Community Service", key="internal_community")
-            st.checkbox("Re-Entry", key="internal_reentry")
-            st.text_area("Re-Entry Details:", key="internal_reentry_details", 
-                        placeholder="E.g., A TAC meeting will be held to discuss solutions to support the student.",
-                        height=80)
-            st.checkbox("Case Review", key="internal_case_review")
-            st.checkbox("Make-up Time", key="internal_makeup")
-            st.text_input("Other", key="internal_other")
-        
-        st.markdown("---")
-        
-        st.markdown("#### Mandatory Notifications")
-        notif_col1, notif_col2, notif_col3 = st.columns(3)
-        
-        with notif_col1:
-            st.checkbox("**Notified Line Manager of Critical Incident** (Required)", key="abch_manager_notify")
-        with notif_col2:
-            st.checkbox("**Notified Parent/Caregiver of Critical Incident** (Required)", key="abch_parent_notify")
-        with notif_col3:
-            st.checkbox("**Copy of Critical Incident in student file**", key="abch_file_copy")
-        
-        # Staff Certification Section
-        st.markdown("---")
-        st.markdown("#### Staff Certification")
-        
-        reporting_staff_name = preliminary_data.get('reported_by_name', 'Staff Member')
-        
-        st.info(f"**Completing Staff Member:** {reporting_staff_name}")
-        
-        # Check if notifications are complete
-        manager_check = st.session_state.get('abch_manager_notify', False)
-        parent_check = st.session_state.get('abch_parent_notify', False)
-        
-        if not (manager_check and parent_check):
-            st.warning("⚠️ Please check both mandatory notifications above before certifying")
-        
-        st.markdown("""
-        By checking the box below, I certify that:
-        - All information provided in this Critical Incident Report is accurate to the best of my knowledge
-        - All mandatory notifications have been completed
-        - I have documented the incident according to school policy
-        """)
-        
-        # Certification checkbox
-        st.checkbox(
-            f"**I, {reporting_staff_name}, certify that all information is correct and complete**",
-            key="staff_certification_check"
-        )
-        
-        if st.session_state.get('staff_certification_check', False):
-            st.success("✓ Form certified by staff member")
-        
-        st.markdown("---")
-        
-        st.markdown("#### ADMINISTRATION ONLY")
-        admin_col1, admin_col2 = st.columns(2)
-        
-        with admin_col1:
-            st.text_input("Line Manager Signature:", key="admin_line_manager_sig")
-            st.text_input("Manager Signature:", key="admin_manager_sig")
-        
-        with admin_col2:
-            st.text_area("Safety and Risk Plan: To be developed / reviewed:", 
-                        key="admin_safety_plan", height=100)
-            st.text_area("Other outcomes to be pursued by Management:", 
-                        key="admin_other_outcomes", height=100)
-        
-        st.markdown("---")
-        
-        col_cancel, col_submit = st.columns([1, 3])
-        with col_cancel:
-            if st.form_submit_button("Cancel & Go Back"):
-                st.session_state.preliminary_abch_data = None
-                navigate_to('landing')
-                
-        with col_submit:
-            can_finalize = (
-                st.session_state.get('abch_manager_notify', False) and 
-                st.session_state.get('abch_parent_notify', False) and
-                st.session_state.get('staff_certification', False)
-            )
-            
-            if st.form_submit_button(
-                "Finalize Critical Incident Report (ABCH)", 
-                type="primary",
-                disabled=not can_finalize
-            ):
-                else:
-                    try:
-                        validate_abch_form(
-                            st.session_state.get('abch_context_0', ''),
-                            st.session_state.get('abch_location_0', ''),
-                            st.session_state.get('abch_behavior_0', ''),
-                            st.session_state.get('abch_consequence_0', ''),
-                            st.session_state.get('abch_manager_notify', False),
-                            st.session_state.get('abch_parent_notify', False)
-                        )
-                        
-                        final_log_entry = preliminary_data.copy()
-                        
-                        behavior_chains = []
-                        for chain_idx in range(st.session_state.get('behavior_chain_count', 1)):
-                            chain_data = {
-                                "location": st.session_state.get(f'abch_location_{chain_idx}', ''),
-                                "context": st.session_state.get(f'abch_context_{chain_idx}', ''),
-                                "time": str(st.session_state.get(f'abch_time_{chain_idx}', '')),
-                                "behavior": st.session_state.get(f'abch_behavior_{chain_idx}', ''),
-                                "consequence": st.session_state.get(f'abch_consequence_{chain_idx}', ''),
-                                "hypothesis": st.session_state.get(f'abch_hypothesis_{chain_idx}', '')
-                            }
-                            behavior_chains.append(chain_data)
-                        
-                        timestamped_outcomes = []
-                        outcome_options_short = [
-                            "Send Home",
-                            "Student Leaving supervised areas",
-                            "Sexualised behaviour",
-                            "Incident – student to student",
-                            "Complaint by co-located school",
-                            "Property damage",
-                            "Stealing",
-                            "Toileting issue",
-                            "ED155: Staff Injury",
-                            "ED155: Student injury"
-                        ]
-                        for idx, outcome in enumerate(outcome_options_short):
-                            if st.session_state.get(f'outcome_check_{idx}', False):
-                                time_val = st.session_state.get(f'outcome_time_{idx}')
-                                timestamped_outcomes.append({
-                                    "time": str(time_val) if time_val else '',
-                                    "outcome": outcome
-                                })
-                        
-                        emergency_services = {
-                            "sapol": {
-                                "drug_possession": st.session_state.get('sapol_drug', False),
-                                "assault": st.session_state.get('sapol_assault', False),
-                                "absconding": st.session_state.get('sapol_absconding', False),
-                                "removal": st.session_state.get('sapol_removal', False),
-                                "call_out": st.session_state.get('sapol_callout', False),
-                                "stealing": st.session_state.get('sapol_stealing', False),
-                                "vandalism": st.session_state.get('sapol_vandalism', False),
-                                "report_number": st.session_state.get('sapol_report_number', '')
-                            },
-                            "ambulance": {
-                                "call_out": st.session_state.get('ambulance_callout', False),
-                                "hospital": st.session_state.get('ambulance_hospital', False)
-                            }
-                        }
-                        
-                        internal_management = {
-                            "restorative_session": st.session_state.get('internal_restorative', False),
-                            "community_service": st.session_state.get('internal_community', False),
-                            "reentry": st.session_state.get('internal_reentry', False),
-                            "reentry_details": st.session_state.get('internal_reentry_details', ''),
-                            "case_review": st.session_state.get('internal_case_review', False),
-                            "makeup_time": st.session_state.get('internal_makeup', False),
-                            "other": st.session_state.get('internal_other', '')
-                        }
-                        
-                        submission_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        
-                        final_log_entry.update({
-                            "is_critical": True,
-                            "behavior_chains": behavior_chains,
-                            "timestamped_outcomes": timestamped_outcomes,
-                            "emergency_services": emergency_services,
-                            "internal_management": internal_management,
-                            "outcome_manager_notified": st.session_state.abch_manager_notify,
-                            "outcome_parent_notified": st.session_state.abch_parent_notify,
-                            "outcome_file_copy": st.session_state.get('abch_file_copy', False),
-                            "staff_certified_by": preliminary_data.get('reported_by_name', ''),
-                            "staff_certification_timestamp": submission_timestamp,
-                            "admin_line_manager_sig": st.session_state.get('admin_line_manager_sig', ''),
-                            "admin_manager_sig": st.session_state.get('admin_manager_sig', ''),
-                            "admin_safety_plan": st.session_state.get('admin_safety_plan', ''),
-                            "admin_other_outcomes": st.session_state.get('admin_other_outcomes', ''),
-                            "status": "Pending Line Manager Review"
-                        })
-                        
-                        email_sent = send_line_manager_notification(final_log_entry, student)
-                        
-                        st.success(f"✅ Critical Incident Report for {student['name']} LOGGED SUCCESSFULLY!")
-                        
-                        if email_sent:
-                            st.info("📧 Email notification sent to Line Manager (candice.cooper330@schools.sa.edu.au) for review and approval")
-                        else:
-                            st.warning("⚠️ Report logged but email notification failed. Please notify Line Manager manually.")
-                        
-                        st.balloons()
-                        
-                        with st.expander("View Complete Report Data"):
-                            st.json(final_log_entry)
-                        
-                        st.session_state.preliminary_abch_data = None
-                        st.session_state.behavior_chain_count = 1
-                        
-                    except ValidationError as e:
-                        st.error(e.user_message)
-                    except Exception as e:
-                        logger.error(f"Error finalizing ABCH report: {e}", exc_info=True)
-                        st.error("An unexpected error occurred while saving the report. Please try again.")
-                    validate_abch_form(
-                        st.session_state.get('abch_context_0', ''),
-                        st.session_state.get('abch_location_0', ''),
-                        st.session_state.get('abch_behavior_0', ''),
-                        st.session_state.get('abch_consequence_0', ''),
-                        st.session_state.get('abch_manager_notify', False),
-                        st.session_state.get('abch_parent_notify', False)
-                    )
-                    
-                    final_log_entry = preliminary_data.copy()
-                    
-                    behavior_chains = []
-                    for chain_idx in range(st.session_state.get('behavior_chain_count', 1)):
-                        chain_data = {
-                            "location": st.session_state.get(f'abch_location_{chain_idx}', ''),
-                            "context": st.session_state.get(f'abch_context_{chain_idx}', ''),
-                            "time": str(st.session_state.get(f'abch_time_{chain_idx}', '')),
-                            "behavior": st.session_state.get(f'abch_behavior_{chain_idx}', ''),
-                            "consequence": st.session_state.get(f'abch_consequence_{chain_idx}', ''),
-                            "hypothesis": st.session_state.get(f'abch_hypothesis_{chain_idx}', '')
-                        }
-                        behavior_chains.append(chain_data)
-                    
-                    timestamped_outcomes = []
-                    outcome_options_short = [
-                        "Send Home",
-                        "Student Leaving supervised areas",
-                        "Sexualised behaviour",
-                        "Incident – student to student",
-                        "Complaint by co-located school",
-                        "Property damage",
-                        "Stealing",
-                        "Toileting issue",
-                        "ED155: Staff Injury",
-                        "ED155: Student injury"
-                    ]
-                    for idx, outcome in enumerate(outcome_options_short):
-                        if st.session_state.get(f'outcome_check_{idx}', False):
-                            time_val = st.session_state.get(f'outcome_time_{idx}')
-                            timestamped_outcomes.append({
-                                "time": str(time_val) if time_val else '',
-                                "outcome": outcome
-                            })
-                    
-                    emergency_services = {
-                        "sapol": {
-                            "drug_possession": st.session_state.get('sapol_drug', False),
-                            "assault": st.session_state.get('sapol_assault', False),
-                            "absconding": st.session_state.get('sapol_absconding', False),
-                            "removal": st.session_state.get('sapol_removal', False),
-                            "call_out": st.session_state.get('sapol_callout', False),
-                            "stealing": st.session_state.get('sapol_stealing', False),
-                            "vandalism": st.session_state.get('sapol_vandalism', False),
-                            "report_number": st.session_state.get('sapol_report_number', '')
-                        },
-                        "ambulance": {
-                            "call_out": st.session_state.get('ambulance_callout', False),
-                            "hospital": st.session_state.get('ambulance_hospital', False)
-                        }
-                    }
-                    
-                    internal_management = {
-                        "restorative_session": st.session_state.get('internal_restorative', False),
-                        "community_service": st.session_state.get('internal_community', False),
-                        "reentry": st.session_state.get('internal_reentry', False),
-                        "reentry_details": st.session_state.get('internal_reentry_details', ''),
-                        "case_review": st.session_state.get('internal_case_review', False),
-                        "makeup_time": st.session_state.get('internal_makeup', False),
-                        "other": st.session_state.get('internal_other', '')
-                    }
-                    
-                    submission_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    
-                    final_log_entry.update({
-                        "is_critical": True,
-                        "behavior_chains": behavior_chains,
-                        "timestamped_outcomes": timestamped_outcomes,
-                        "emergency_services": emergency_services,
-                        "internal_management": internal_management,
-                        "outcome_manager_notified": st.session_state.abch_manager_notify,
-                        "outcome_parent_notified": st.session_state.abch_parent_notify,
-                        "outcome_file_copy": st.session_state.get('abch_file_copy', False),
-                        "staff_certified_by": preliminary_data.get('reported_by_name', ''),
-                        "staff_certification_timestamp": submission_timestamp,
-                        "admin_line_manager_sig": st.session_state.get('admin_line_manager_sig', ''),
-                        "admin_manager_sig": st.session_state.get('admin_manager_sig', ''),
-                        "admin_safety_plan": st.session_state.get('admin_safety_plan', ''),
-                        "admin_other_outcomes": st.session_state.get('admin_other_outcomes', ''),
-                        "status": "Pending Line Manager Review"
-                    })
-                    
-                    send_line_manager_notification(final_log_entry, student)
-                    
-                    st.success(f"✅ Critical Incident Report for {student['name']} FINALIZED and Saved!")
-                    st.info("📧 Email notification sent to Line Manager for review and approval")
-                    st.balloons()
-                    st.json(final_log_entry)
-                    
-                    st.session_state.preliminary_abch_data = None
-                    st.session_state.behavior_chain_count = 1
-                    
-                except ValidationError as e:
-                    st.error(e.user_message)
-                except Exception as e:
-                    logger.error(f"Error finalizing ABCH report: {e}", exc_info=True)
-                    st.error("An unexpected error occurred while saving the report. Please try again.")
-            
-            if not can_finalize:
-                st.warning("⚠️ Please complete mandatory notifications and staff certification to finalize")
 
 @handle_errors("Unable to load landing page")
 def render_landing_page():
