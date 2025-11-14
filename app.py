@@ -638,8 +638,6 @@ def render_direct_log_form():
     
     render_enhanced_log_form(student)
 
-# --- 5. MAIN APP EXECUTION ---
-
 def main():
     """The main function to drive the Streamlit application logic."""
     
