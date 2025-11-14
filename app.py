@@ -63,7 +63,7 @@ SUPPORT_TYPES = [
     "Large Group (Whole class/assembly)"
 ]
 
-# NEW LOCATION CONSTANTS
+# LOCATION CONSTANTS
 LOCATIONS = [
     "--- Select Location ---",
     "JP Classroom",
@@ -163,9 +163,9 @@ def render_enhanced_log_form(student: Dict[str, str]):
         with col_time:
             # Set default time to now for session calculation
             default_time = datetime.now().time()
-            incident_time = st.time_input("Time of Incident", default_time, key="incident_time")
+            # The time input box itself (incident_time) uses local system format, but we save it as AM/PM
+            incident_time = st.time_input("Time of Incident (e.g., 2:30 PM)", default_time, key="incident_time")
         with col_loc:
-            # UPDATED: Location dropdown
             location = st.selectbox(
                 "Location", 
                 options=LOCATIONS, 
@@ -273,13 +273,16 @@ def render_enhanced_log_form(student: Dict[str, str]):
                  st.error("For Critical Incidents (Level 3+), you must confirm Line Manager and Emergency Contact notification.")
             else:
                 # --- MOCK SAVE LOGIC ---
+                # UPDATED: Save time in 12-hour format with AM/PM
+                time_str = incident_time.strftime("%I:%M:%S %p")
+                
                 log_entry = {
                     "id": str(uuid.uuid4()),
                     "student_id": student['id'],
                     "date": incident_date.strftime("%Y-%m-%d"),
-                    "time": incident_time.strftime("%H:%M:%S"),
+                    "time": time_str, 
                     "session": session_window,
-                    "location": location, # Saved as the selected value
+                    "location": location,
                     "reported_by_id": reported_by['id'],
                     "behavior_type": behavior_type,
                     "antecedent": antecedent,
@@ -290,7 +293,7 @@ def render_enhanced_log_form(student: Dict[str, str]):
                     "is_critical": severity_level >= 3,
                 }
 
-                st.success(f"Incident Log for {student['name']} saved successfully!")
+                st.success(f"Incident Log for {student['name']} saved successfully! Time recorded as: {time_str}")
                 st.balloons()
                 st.json(log_entry)
                 # navigate_to('landing') # Uncomment this to return to landing page after submission
