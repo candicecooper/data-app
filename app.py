@@ -127,7 +127,7 @@ LOCATIONS = [
     "Other"
 ]
 
-VALID_PAGES = ['landing', 'direct_log_form', 'critical_incident_abch']
+VALID_PAGES = ['landing', 'direct_log_form', 'critical_incident_abch', 'student_analysis']
 
 # --- 2. GLOBAL HELPERS & CORE LOGIC FUNCTIONS ---
 
@@ -355,6 +355,199 @@ def validate_abch_form(context, location, behavior_desc, consequence, manager_no
         )
 
 # --- 3. FORM RENDERING FUNCTIONS ---
+
+def get_time_slot(t):
+    """Converts time to the nearest half-hour slot for heatmap."""
+    if isinstance(t, str):
+        t = datetime.strptime(t, '%H:%M').time()
+    minutes = t.minute
+    hour = t.hour
+    if minutes < 30:
+        return f"{hour:02d}:00"
+    else:
+        return f"{hour:02d}:30"
+
+def generate_bpp_report_content(student, latest_plan_incident, df):
+    """Generates the structured text content for the full BPP report."""
+    total_incidents = len(df)
+    critical_incidents = df.get('is_critical', pd.Series([False])).sum() if not df.empty else 0
+    most_freq_behaviour = df['behavior_type'].mode().iloc[0] if not df.empty and 'behavior_type' in df.columns else 'N/A'
+    peak_risk = df['severity'].max() if not df.empty and 'severity' in df.columns else 'N/A'
+    
+    if most_freq_behaviour in ['Physical Aggression', 'Property Destruction'] or peak_risk >= 4:
+        cpi_stage = "High-Risk: Acting Out (Danger)"
+        cpi_response = "Nonviolent Physical Crisis Intervention (where appropriate) followed by Therapeutic Rapport."
+    elif peak_risk == 3:
+        cpi_stage = "Peak Risk: Defensive"
+        cpi_response = "Use Paraverbal Communication to reduce tension. Offer choices and avoid power struggles."
+    else:
+        cpi_stage = "Low-Risk: Questioning / Refusal"
+        cpi_response = "Use Supportive language and provide clear direction."
+    
+    content = f'''
+# BEHAVIOUR PROFILE PLAN
+## Student: {student['name']}
+**Grade:** {student['grade']}
+**Date Generated:** {datetime.now().strftime('%Y-%m-%d')}
+
+---
+
+## 1. Summary of Key Behavioural Data
+
+| Metric | Value |
+| :--- | :--- |
+| **Total Incidents (Last 60 Days)** | {total_incidents} |
+| **Critical Incidents** | {critical_incidents} |
+| **Most Frequent Behaviour** | {most_freq_behaviour} |
+| **Highest Risk Level** | {peak_risk} |
+
+---
+
+## 2. Crisis Prevention Institute (CPI) Protocol
+**Current Stage:** {cpi_stage}
+**Recommended Response:** {cpi_response}
+
+---
+
+## 3. Proactive Strategies (Berry Street Education Model)
+
+### A. Body (Regulation)
+Implement Mindfulness exercises for 3 minutes before transitions.
+
+### B. Brain (Skill-Building)
+Teach social scripts to manage primary triggers.
+
+### C. Belonging (Relational)
+Implement Check-in/Check-out system with designated Safe Adult.
+
+### D. Gifting (Purpose)
+Provide responsibility that allows positive contribution.
+
+---
+
+*This Behaviour Profile Plan is a dynamic document and must be reviewed after any critical incident.*
+'''
+    return content
+
+def render_data_analysis(student, df):
+    """Renders comprehensive data analysis with Plotly charts."""
+    st.subheader(f"📊 Comprehensive Data Analysis for: **{student['name']}**")
+    
+    if df.empty:
+        st.info("No incident data to analyze yet.")
+        return
+    
+    # Preprocessing
+    if 'time' in df.columns:
+        df['time_obj'] = pd.to_datetime(df['time'], format='%H:%M:%S', errors='coerce').dt.time
+        df['time_slot'] = df['time_obj'].apply(get_time_slot)
+        df['hour'] = pd.to_datetime(df['time'], format='%H:%M:%S', errors='coerce').dt.hour
+    
+    day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    if 'day' in df.columns:
+        df['day'] = pd.Categorical(df['day'], categories=day_order, ordered=True)
+    
+    # Metrics
+    total_incidents = len(df)
+    critical_incidents = df.get('is_critical', pd.Series([False])).sum()
+    
+    col_t1, col_t2, col_t3 = st.columns(3)
+    col_t1.metric("Total Incidents Logged", total_incidents)
+    col_t2.metric("Critical Incidents", critical_incidents)
+    col_t3.metric("Criticality Rate", f"{critical_incidents / total_incidents * 100:.1f}%" if total_incidents > 0 else "0.0%")
+    
+    st.markdown("---")
+    st.markdown("#### Key Incident Tracking Visualizations")
+    
+    # Time Slot Heatmap
+    if 'time_slot' in df.columns:
+        st.markdown("##### 🕰️ Incident Frequency by Time Slot")
+        time_slot_counts = df.groupby('time_slot').size().reset_index(name='Count')
+        all_time_slots = [f"{h:02d}:{m:02d}" for h in range(8, 15) for m in [0, 30]] + ["15:00"]
+        time_slot_counts_full = pd.DataFrame({'time_slot': all_time_slots}).merge(time_slot_counts, on='time_slot', how='left').fillna(0)
+        
+        fig_heatmap = px.bar(
+            time_slot_counts_full,
+            x='time_slot',
+            y='Count',
+            title='Incidents by Half-Hour Time Slot',
+            template=PLOTLY_THEME,
+            color='Count',
+            color_continuous_scale=px.colors.sequential.Viridis
+        )
+        fig_heatmap.update_layout(xaxis={'tickangle': -45})
+        st.plotly_chart(fig_heatmap, use_container_width=True)
+    
+    # Severity Breakdown
+    col_graph2, col_graph3 = st.columns(2)
+    
+    with col_graph2:
+        if 'severity' in df.columns:
+            st.markdown("##### ⭐ Severity Breakdown")
+            severity_counts = df['severity'].value_counts().reset_index()
+            severity_counts.columns = ['Severity', 'Count']
+            fig_severity = px.bar(
+                severity_counts,
+                x='Severity',
+                y='Count',
+                title='Incidents by Severity Level',
+                template=PLOTLY_THEME,
+                color_discrete_sequence=['#FF5733']
+            )
+            st.plotly_chart(fig_severity, use_container_width=True)
+    
+    with col_graph3:
+        if 'location' in df.columns:
+            st.markdown("##### 📍 Incidents by Location")
+            location_counts = df['location'].value_counts().reset_index()
+            location_counts.columns = ['Location', 'Count']
+            fig_location = px.bar(
+                location_counts,
+                x='Location',
+                y='Count',
+                title='Incident Frequency by Location',
+                template=PLOTLY_THEME,
+                color_discrete_sequence=['#8E44AD']
+            )
+            fig_location.update_layout(xaxis={'tickangle': -45})
+            st.plotly_chart(fig_location, use_container_width=True)
+    
+    # Day of Week
+    if 'day' in df.columns:
+        st.markdown("##### 📅 Incidents by Day of the Week")
+        day_counts = df.groupby('day').size().reset_index(name='Count')
+        fig_day = px.bar(
+            day_counts,
+            x='day',
+            y='Count',
+            title='Incident Frequency by Day',
+            template=PLOTLY_THEME,
+            color_discrete_sequence=['#3498DB']
+        )
+        st.plotly_chart(fig_day, use_container_width=True)
+    
+    # Clinical Analysis
+    st.markdown("---")
+    st.markdown("## 🧠 Clinical Analysis and Recommendations")
+    
+    most_freq_behaviour = df['behavior_type'].mode().iloc[0] if 'behavior_type' in df.columns and not df.empty else 'N/A'
+    peak_risk = df['severity'].max() if 'severity' in df.columns and not df.empty else 'N/A'
+    
+    st.markdown("### 1. Key Patterns and Findings")
+    st.markdown(f"""
+    Based on analysis of **{total_incidents}** incidents:
+    * **Core Behaviour:** {most_freq_behaviour}
+    * **Peak Risk Level:** {peak_risk}
+    * **Critical Incidents:** {critical_incidents} ({critical_incidents / total_incidents * 100:.1f}% of total)
+    """)
+    
+    st.markdown("### 2. Trauma-Informed Practice (Berry Street Model)")
+    st.markdown("""
+    * **Body:** Implement sensory check-ins and calm down signals
+    * **Brain:** Teach replacement behaviours explicitly  
+    * **Belonging:** Daily check-in/check-out with safe adult
+    * **Gifting:** Identify contribution opportunities
+    """)
 
 @handle_errors("Unable to load incident log form")
 def render_enhanced_log_form(student: Dict[str, str]):
@@ -781,7 +974,19 @@ def render_landing_page():
 
     with col_view:
         st.subheader("2. View Profiles & Data")
-        st.info("Profiles & Data visualization not implemented in this version.")
+        st.markdown("Select a student to view their behavior profile and data analysis.")
+        
+        options = [{'id': None, 'name': '--- Select a Student ---'}] + MOCK_STUDENTS
+        selected_student_for_view = st.selectbox(
+            "Select Student for Analysis",
+            options=options,
+            format_func=lambda x: x['name'],
+            key="student_view_select"
+        )
+        
+        if selected_student_for_view and selected_student_for_view['id']:
+            if st.button(f"View Profile & Data for {selected_student_for_view['name']}"):
+                navigate_to('student_analysis', selected_student_for_view['id'])
 
 @handle_errors("Unable to load incident log form")
 def render_direct_log_form():
@@ -809,6 +1014,72 @@ def render_direct_log_form():
     
     render_enhanced_log_form(student)
 
+@handle_errors("Unable to load student analysis")
+def render_student_analysis():
+    """Renders the student analysis page with data and BPP."""
+    student_id = st.session_state.get('selected_student_id')
+    
+    if not student_id:
+        st.error("No student selected.")
+        if st.button("Return to Main Page"):
+            navigate_to('landing')
+        return
+    
+    student = get_student_by_id(student_id)
+    
+    if not student:
+        st.error("Student not found.")
+        if st.button("Return to Main Page"):
+            navigate_to('landing')
+        return
+    
+    col_title, col_back = st.columns([4, 1])
+    with col_title:
+        st.title(f"Student Profile: {student['name']}")
+    with col_back:
+        if st.button("⬅ Back to Home"):
+            navigate_to('landing')
+    
+    st.markdown("---")
+    
+    # Get student incidents
+    incidents = [i for i in st.session_state.get('incidents', []) if i.get('student_id') == student_id]
+    
+    if not incidents:
+        st.info("No incident data logged for this student yet.")
+        return
+    
+    df = pd.DataFrame(incidents)
+    
+    # Tabs for different views
+    tab1, tab2 = st.tabs(["📊 Data Analysis", "📄 Behaviour Profile Plan"])
+    
+    with tab1:
+        render_data_analysis(student, df)
+    
+    with tab2:
+        st.markdown("### Behaviour Profile Plan")
+        
+        # Find latest critical incident
+        critical_incidents = [i for i in incidents if i.get('is_critical', False)]
+        latest_plan_incident = critical_incidents[-1] if critical_incidents else None
+        
+        if latest_plan_incident and not df.empty:
+            bpp_content = generate_bpp_report_content(student, latest_plan_incident, df)
+            st.markdown(bpp_content)
+            
+            st.markdown("---")
+            # Download button
+            filename = f"BPP_Plan_{student['name'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.txt"
+            st.download_button(
+                label="⬇ Download Full Behaviour Profile Plan",
+                data=bpp_content,
+                file_name=filename,
+                mime="text/plain"
+            )
+        else:
+            st.warning("A Behaviour Profile Plan requires at least one Critical Incident to generate detailed analysis.")
+
 def main():
     """The main function to drive the Streamlit application logic."""
     
@@ -824,6 +1095,8 @@ def main():
             render_direct_log_form()
         elif current_page == 'critical_incident_abch':
             render_critical_incident_abch_form()
+        elif current_page == 'student_analysis':
+            render_student_analysis()
         else:
             logger.warning(f"Unknown page: {current_page}")
             st.error("Unknown page. Returning to main page.")
