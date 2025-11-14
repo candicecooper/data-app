@@ -70,9 +70,15 @@ MOCK_STAFF = [
     {'id': 's4', 'name': 'Admin User (ADM)', 'role': 'ADM', 'active': True, 'special': False},
 ]
 MOCK_STUDENTS = [
-    {'id': 'stu_001', 'name': 'Izack N.', 'grade': '7', 'profile_status': 'Complete'},
-    {'id': 'stu_002', 'name': 'Mia K.', 'grade': '8', 'profile_status': 'Draft'},
-    {'id': 'stu_003', 'name': 'Liam B.', 'grade': '9', 'profile_status': 'Pending'},
+    {'id': 'stu_001', 'name': 'Izack N.', 'grade': '7', 'profile_status': 'Complete', 'program': 'SY', 'archived': False},
+    {'id': 'stu_002', 'name': 'Mia K.', 'grade': '8', 'profile_status': 'Draft', 'program': 'PY', 'archived': False},
+    {'id': 'stu_003', 'name': 'Liam B.', 'grade': '9', 'profile_status': 'Pending', 'program': 'SY', 'archived': False},
+    {'id': 'stu_004', 'name': 'Emma T.', 'grade': 'R', 'profile_status': 'Complete', 'program': 'JP', 'archived': False},
+    {'id': 'stu_005', 'name': 'Oliver S.', 'grade': 'Y2', 'profile_status': 'Complete', 'program': 'JP', 'archived': False},
+    {'id': 'stu_006', 'name': 'Sophie M.', 'grade': 'Y5', 'profile_status': 'Complete', 'program': 'PY', 'archived': False},
+    # Archived students
+    {'id': 'stu_arch_001', 'name': 'Jackson P.', 'grade': 'Y10', 'profile_status': 'Complete', 'program': 'SY', 'archived': True},
+    {'id': 'stu_arch_002', 'name': 'Ava L.', 'grade': 'Y6', 'profile_status': 'Complete', 'program': 'PY', 'archived': True},
 ]
 BEHAVIOR_LEVELS = ['1 - Low Intensity', '2 - Moderate', '3 - High Risk']
 BEHAVIORS_FBA = ['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)', 'Other - Specify'] 
@@ -127,7 +133,7 @@ LOCATIONS = [
     "Other"
 ]
 
-VALID_PAGES = ['landing', 'direct_log_form', 'critical_incident_abch', 'student_analysis']
+VALID_PAGES = ['landing', 'program_students', 'direct_log_form', 'critical_incident_abch', 'student_analysis', 'admin_portal']
 
 # --- MOCK DATA GENERATION ---
 
@@ -261,7 +267,7 @@ if 'incidents' not in st.session_state:
 
 # --- 2. GLOBAL HELPERS & CORE LOGIC FUNCTIONS ---
 
-def navigate_to(page: str, student_id: Optional[str] = None):
+def navigate_to(page: str, student_id: Optional[str] = None, program: Optional[str] = None):
     """Changes the current page in session state with error handling."""
     try:
         if page not in VALID_PAGES:
@@ -270,6 +276,8 @@ def navigate_to(page: str, student_id: Optional[str] = None):
         st.session_state.current_page = page
         if student_id:
             st.session_state.selected_student_id = student_id
+        if program:
+            st.session_state.selected_program = program
         st.rerun()
     except Exception as e:
         logger.error(f"Navigation error: {e}")
@@ -1081,6 +1089,234 @@ def render_critical_incident_abch_form():
 @handle_errors("Unable to load landing page")
 def render_landing_page():
     """Renders the main selection page."""
+    
+    # Custom CSS for sleek landing page
+    st.markdown("""
+    <style>
+    .main-title {
+        text-align: center;
+        font-size: 3rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+        text-align: center;
+        font-size: 1.2rem;
+        color: #888;
+        margin-bottom: 3rem;
+    }
+    .program-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        text-align: center;
+        cursor: pointer;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        height: 200px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        margin-bottom: 1rem;
+    }
+    .program-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+    .program-card h2 {
+        color: white;
+        font-size: 2.5rem;
+        margin: 0;
+        font-weight: 700;
+    }
+    .program-card p {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1rem;
+        margin-top: 0.5rem;
+    }
+    .quick-action-card {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        text-align: center;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+    }
+    .quick-action-card:hover {
+        transform: translateY(-3px);
+    }
+    .admin-card {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        text-align: center;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+    }
+    .admin-card:hover {
+        transform: translateY(-3px);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Main title
+    st.markdown('<h1 class="main-title">Behaviour Support & Data Analysis</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">Select a program to view students or access quick actions</p>', unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Program Selection Cards
+    st.markdown("### 📚 Select Program")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("""
+        <div class="program-card">
+            <h2>JP</h2>
+            <p>Junior Primary</p>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Enter JP Program", key="jp_btn", use_container_width=True, type="primary"):
+            navigate_to('program_students', program='JP')
+    
+    with col2:
+        st.markdown("""
+        <div class="program-card">
+            <h2>PY</h2>
+            <p>Primary Years</p>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Enter PY Program", key="py_btn", use_container_width=True, type="primary"):
+            navigate_to('program_students', program='PY')
+    
+    with col3:
+        st.markdown("""
+        <div class="program-card">
+            <h2>SY</h2>
+            <p>Senior Years</p>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Enter SY Program", key="sy_btn", use_container_width=True, type="primary"):
+            navigate_to('program_students', program='SY')
+    
+    st.markdown("---")
+    
+    # Quick Actions
+    st.markdown("### ⚡ Quick Actions")
+    
+    col_quick1, col_quick2 = st.columns(2)
+    
+    with col_quick1:
+        st.markdown("""
+        <div class="quick-action-card">
+            <h3 style="color: white; margin: 0;">📝 Quick Incident Log</h3>
+            <p style="color: rgba(255, 255, 255, 0.9); margin-top: 0.5rem;">Log an incident without program navigation</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Quick log selection
+        all_active_students = [s for s in MOCK_STUDENTS if not s.get('archived', False)]
+        student_options = [{'id': None, 'name': '--- Select Student ---'}] + all_active_students
+        selected_student = st.selectbox(
+            "Select Student",
+            options=student_options,
+            format_func=lambda x: x['name'],
+            key="quick_log_student",
+            label_visibility="collapsed"
+        )
+        
+        if selected_student and selected_student['id']:
+            if st.button("Start Quick Log", key="quick_log_btn", use_container_width=True, type="primary"):
+                navigate_to('direct_log_form', student_id=selected_student['id'])
+    
+    with col_quick2:
+        st.markdown("""
+        <div class="admin-card">
+            <h3 style="color: white; margin: 0;">🔐 Admin Portal</h3>
+            <p style="color: rgba(255, 255, 255, 0.9); margin-top: 0.5rem;">System administration and reports</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        if st.button("Access Admin Portal", key="admin_btn", use_container_width=True, type="primary"):
+            navigate_to('admin_portal')
+
+@handle_errors("Unable to load program students")
+def render_program_students():
+    """Renders the student list for a selected program."""
+    program = st.session_state.get('selected_program', 'JP')
+    
+    # Header with back button
+    col_title, col_back = st.columns([4, 1])
+    with col_title:
+        program_names = {'JP': 'Junior Primary', 'PY': 'Primary Years', 'SY': 'Senior Years'}
+        st.title(f"{program_names.get(program, program)} Program")
+    with col_back:
+        if st.button("⬅ Back to Home", key="back_to_home"):
+            navigate_to('landing')
+    
+    st.markdown("---")
+    
+    # Tabs for Current and Archived students
+    tab1, tab2 = st.tabs(["📚 Current Students", "📦 Archived Students"])
+    
+    with tab1:
+        current_students = [s for s in MOCK_STUDENTS if s.get('program') == program and not s.get('archived', False)]
+        
+        if not current_students:
+            st.info(f"No current students in the {program} program.")
+        else:
+            st.markdown(f"### Current Students ({len(current_students)})")
+            
+            # Display students in a grid
+            cols_per_row = 3
+            for i in range(0, len(current_students), cols_per_row):
+                cols = st.columns(cols_per_row)
+                for idx, student in enumerate(current_students[i:i+cols_per_row]):
+                    with cols[idx]:
+                        with st.container(border=True):
+                            st.markdown(f"### {student['name']}")
+                            st.markdown(f"**Grade:** {student['grade']}")
+                            
+                            # Get incident count
+                            incident_count = len([inc for inc in st.session_state.get('incidents', []) if inc.get('student_id') == student['id']])
+                            st.metric("Incidents", incident_count)
+                            
+                            col_view, col_log = st.columns(2)
+                            with col_view:
+                                if st.button("👁️ View", key=f"view_{student['id']}", use_container_width=True):
+                                    navigate_to('student_analysis', student_id=student['id'])
+                            with col_log:
+                                if st.button("📝 Log", key=f"log_{student['id']}", use_container_width=True):
+                                    navigate_to('direct_log_form', student_id=student['id'])
+    
+    with tab2:
+        archived_students = [s for s in MOCK_STUDENTS if s.get('program') == program and s.get('archived', False)]
+        
+        if not archived_students:
+            st.info(f"No archived students in the {program} program.")
+        else:
+            st.markdown(f"### Archived Students ({len(archived_students)})")
+            st.caption("These students have completed the program and their records are read-only.")
+            
+            # Display archived students
+            for student in archived_students:
+                with st.expander(f"📦 {student['name']} - Grade {student['grade']}"):
+                    st.markdown(f"**Profile Status:** {student.get('profile_status', 'N/A')}")
+                    
+                    incident_count = len([inc for inc in st.session_state.get('incidents', []) if inc.get('student_id') == student['id']])
+                    st.metric("Total Incidents", incident_count)
+                    
+                    if st.button("View Historical Data", key=f"view_arch_{student['id']}"):
+                        navigate_to('student_analysis', student_id=student['id'])
+
+@handle_errors("Unable to load landing page")
+def render_landing_page():
+    """Renders the main selection page."""
     st.title("Behaviour Support & Data Analysis Tool")
     st.markdown("---")
 
@@ -1221,12 +1457,19 @@ def main():
         
         if current_page == 'landing':
             render_landing_page()
+        elif current_page == 'program_students':
+            render_program_students()
         elif current_page == 'direct_log_form':
             render_direct_log_form()
         elif current_page == 'critical_incident_abch':
             render_critical_incident_abch_form()
         elif current_page == 'student_analysis':
             render_student_analysis()
+        elif current_page == 'admin_portal':
+            st.title("🔐 Admin Portal")
+            st.info("Admin portal functionality - to be discussed and implemented next")
+            if st.button("⬅ Back to Home"):
+                navigate_to('landing')
         else:
             logger.warning(f"Unknown page: {current_page}")
             st.error("Unknown page. Returning to main page.")
