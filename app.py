@@ -129,6 +129,109 @@ LOCATIONS = [
 
 VALID_PAGES = ['landing', 'direct_log_form', 'critical_incident_abch', 'student_analysis']
 
+# --- MOCK DATA GENERATION ---
+
+@st.cache_resource
+def generate_mock_incidents():
+    """Generates mock incident data for testing the analysis section."""
+    incidents = []
+    
+    # Generate 15 incidents for Izack N. (high frequency student)
+    for i in range(15):
+        incident_date = (datetime.now() - pd.Timedelta(days=random.randint(1, 45))).strftime('%Y-%m-%d')
+        incident_time = datetime.now().replace(
+            hour=random.randint(8, 14),
+            minute=random.choice([0, 15, 30, 45]),
+            second=0
+        ).time()
+        
+        is_critical = random.choice([True, True, False])
+        severity = random.choice([4, 5]) if is_critical else random.choice([1, 2, 3])
+        
+        incident = {
+            'id': str(uuid.uuid4()),
+            'student_id': 'stu_001',
+            'date': incident_date,
+            'time': incident_time.strftime('%H:%M:%S'),
+            'day': datetime.strptime(incident_date, '%Y-%m-%d').strftime('%A'),
+            'session': get_session_window(incident_time),
+            'location': random.choice(['JP Classroom', 'Yard', 'Gate', 'Playground', 'JP Spill Out']),
+            'reported_by_name': 'Emily Jones (JP)',
+            'reported_by_id': 's1',
+            'behavior_type': random.choice(['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)']),
+            'antecedent': random.choice(ANTECEDENTS_NEW),
+            'intervention': random.choice(INTERVENTIONS),
+            'support_type': random.choice(SUPPORT_TYPES),
+            'severity': severity,
+            'description': f"Incident {i+1}: {'Critical incident requiring detailed follow-up.' if is_critical else 'Standard incident log.'}",
+            'is_critical': is_critical,
+        }
+        incidents.append(incident)
+    
+    # Generate 5 incidents for Mia K.
+    for i in range(5):
+        incident_date = (datetime.now() - pd.Timedelta(days=random.randint(1, 30))).strftime('%Y-%m-%d')
+        incident_time = datetime.now().replace(
+            hour=random.randint(8, 14),
+            minute=random.choice([0, 15, 30, 45]),
+            second=0
+        ).time()
+        
+        incident = {
+            'id': str(uuid.uuid4()),
+            'student_id': 'stu_002',
+            'date': incident_date,
+            'time': incident_time.strftime('%H:%M:%S'),
+            'day': datetime.strptime(incident_date, '%Y-%m-%d').strftime('%A'),
+            'session': get_session_window(incident_time),
+            'location': random.choice(['PY Classroom', 'Library', 'Yard']),
+            'reported_by_name': 'Daniel Lee (PY)',
+            'reported_by_id': 's2',
+            'behavior_type': random.choice(['Verbal Refusal', 'Out of Seat', 'Non-Compliance']),
+            'antecedent': random.choice(ANTECEDENTS_NEW),
+            'intervention': random.choice(INTERVENTIONS),
+            'support_type': random.choice(SUPPORT_TYPES),
+            'severity': random.choice([1, 2, 3]),
+            'description': f"Incident {i+1}: Standard log.",
+            'is_critical': False,
+        }
+        incidents.append(incident)
+    
+    # Generate 3 incidents for Liam B.
+    for i in range(3):
+        incident_date = (datetime.now() - pd.Timedelta(days=random.randint(1, 20))).strftime('%Y-%m-%d')
+        incident_time = datetime.now().replace(
+            hour=random.randint(8, 14),
+            minute=random.choice([0, 15, 30, 45]),
+            second=0
+        ).time()
+        
+        incident = {
+            'id': str(uuid.uuid4()),
+            'student_id': 'stu_003',
+            'date': incident_date,
+            'time': incident_time.strftime('%H:%M:%S'),
+            'day': datetime.strptime(incident_date, '%Y-%m-%d').strftime('%A'),
+            'session': get_session_window(incident_time),
+            'location': random.choice(['SY Classroom', 'Yard', 'Admin']),
+            'reported_by_name': 'Sarah Chen (SY)',
+            'reported_by_id': 's3',
+            'behavior_type': random.choice(['Verbal Refusal', 'Property Destruction']),
+            'antecedent': random.choice(ANTECEDENTS_NEW),
+            'intervention': random.choice(INTERVENTIONS),
+            'support_type': random.choice(SUPPORT_TYPES),
+            'severity': random.choice([2, 3]),
+            'description': f"Incident {i+1}: Standard log.",
+            'is_critical': random.choice([True, False]),
+        }
+        incidents.append(incident)
+    
+    return incidents
+
+# Initialize incidents in session state
+if 'incidents' not in st.session_state:
+    st.session_state.incidents = generate_mock_incidents()
+
 # --- 2. GLOBAL HELPERS & CORE LOGIC FUNCTIONS ---
 
 def navigate_to(page: str, student_id: Optional[str] = None):
