@@ -916,6 +916,265 @@ def calculate_age(dob_str: str) -> str:
         logger.error(f"Error calculating age: {e}")
         return "N/A"
 
+def generate_student_report(student: Dict[str, Any], incidents: List[Dict[str, Any]]) -> Optional[str]:
+    """Generates a comprehensive Word document report with charts and analysis."""
+    try:
+        import subprocess
+        
+        # Create temporary directory for charts
+        chart_dir = "/home/claude/report_charts"
+        subprocess.run(['mkdir', '-p', chart_dir], check=True)
+        
+        # Generate and save charts as images
+        chart_files = {}
+        
+        # 1. Timeline chart
+        timeline_data = pd.DataFrame([{
+            'Date': inc['date'],
+            'Count': 1
+        } for inc in incidents])
+        timeline_data['Date'] = pd.to_datetime(timeline_data['Date'])
+        daily_counts = timeline_data.groupby('Date').size().reset_index(name='Count')
+        
+        fig = px.line(daily_counts, x='Date', y='Count', title='Incidents Over Time', markers=True)
+        fig.write_image(f"{chart_dir}/timeline.png", width=800, height=400)
+        chart_files['timeline'] = f"{chart_dir}/timeline.png"
+        
+        # 2. Behavior frequency chart
+        behavior_counts = pd.DataFrame(incidents)['behavior_type'].value_counts().reset_index()
+        behavior_counts.columns = ['Behavior', 'Count']
+        fig = px.bar(behavior_counts, x='Count', y='Behavior', orientation='h', title='Behavior Frequency')
+        fig.write_image(f"{chart_dir}/behaviors.png", width=800, height=400)
+        chart_files['behaviors'] = f"{chart_dir}/behaviors.png"
+        
+        # 3. Day of week chart
+        day_counts = pd.DataFrame(incidents)['day'].value_counts().reset_index()
+        day_counts.columns = ['Day', 'Count']
+        day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        day_counts['Day'] = pd.Categorical(day_counts['Day'], categories=day_order, ordered=True)
+        day_counts = day_counts.sort_values('Day')
+        fig = px.bar(day_counts, x='Day', y='Count', title='Incidents by Day of Week')
+        fig.write_image(f"{chart_dir}/days.png", width=800, height=400)
+        chart_files['days'] = f"{chart_dir}/days.png"
+        
+        # 4. Location chart
+        location_counts = pd.DataFrame(incidents)['location'].value_counts().reset_index()
+        location_counts.columns = ['Location', 'Count']
+        fig = px.bar(location_counts.head(10), x='Count', y='Location', orientation='h', title='Top 10 Incident Locations')
+        fig.write_image(f"{chart_dir}/locations.png", width=800, height=400)
+        chart_files['locations'] = f"{chart_dir}/locations.png"
+        
+        # Calculate key statistics
+        avg_severity = sum([inc.get('severity', 0) for inc in incidents]) / len(incidents)
+        critical_count = len([inc for inc in incidents if inc.get('is_critical', False)])
+        critical_rate = (critical_count / len(incidents) * 100) if len(incidents) > 0 else 0
+        
+        behavior_counts_dict = pd.DataFrame(incidents)['behavior_type'].value_counts()
+        top_behavior = behavior_counts_dict.index[0] if len(behavior_counts_dict) > 0 else "N/A"
+        top_behavior_count = behavior_counts_dict.iloc[0] if len(behavior_counts_dict) > 0 else 0
+        
+        antecedent_counts = pd.DataFrame(incidents)['antecedent'].value_counts()
+        top_antecedent = antecedent_counts.index[0] if len(antecedent_counts) > 0 else "N/A"
+        
+        location_counts_stat = pd.DataFrame(incidents)['location'].value_counts()
+        top_location = location_counts_stat.index[0] if len(location_counts_stat) > 0 else "N/A"
+        
+        day_counts_stat = pd.DataFrame(incidents)['day'].value_counts()
+        top_day = day_counts_stat.index[0] if len(day_counts_stat) > 0 else "N/A"
+        
+        session_counts = pd.DataFrame(incidents)['session'].value_counts()
+        top_session = session_counts.index[0] if len(session_counts) > 0 else "N/A"
+        
+        behavior_pct = (top_behavior_count/len(incidents)*100) if len(incidents) > 0 else 0
+        
+        # Create Node.js script for document generation (continued in next part due to length)
+        script_content = """const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, ImageRun, 
+        AlignmentType, HeadingLevel, BorderStyle, WidthType, ShadingType, LevelFormat } = require('docx');
+const fs = require('fs');
+
+const doc = new Document({
+  styles: {
+    default: { document: { run: { font: "Arial", size: 22 } } },
+    paragraphStyles: [
+      { id: "Title", name: "Title", basedOn: "Normal",
+        run: { size: 56, bold: true, color: "2C3E50", font: "Arial" },
+        paragraph: { spacing: { before: 240, after: 240 }, alignment: AlignmentType.CENTER } },
+      { id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true,
+        run: { size: 32, bold: true, color: "34495E", font: "Arial" },
+        paragraph: { spacing: { before: 360, after: 180 }, outlineLevel: 0 } },
+      { id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal", quickFormat: true,
+        run: { size: 28, bold: true, color: "5D6D7E", font: "Arial" },
+        paragraph: { spacing: { before: 240, after: 120 }, outlineLevel: 1 } },
+      { id: "Heading3", name: "Heading 3", basedOn: "Normal", next: "Normal", quickFormat: true,
+        run: { size: 24, bold: true, color: "7B8794", font: "Arial" },
+        paragraph: { spacing: { before: 180, after: 100 }, outlineLevel: 2 } }
+    ]
+  },
+  numbering: {
+    config: [{
+      reference: "bullet-list",
+      levels: [{ level: 0, format: LevelFormat.BULLET, text: "•", alignment: AlignmentType.LEFT,
+        style: { paragraph: { indent: { left: 720, hanging: 360 } } } }]
+    }]
+  },
+  sections: [{
+    properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
+    children: [
+      new Paragraph({ heading: HeadingLevel.TITLE, children: [new TextRun("Student Behavior Analysis Report")] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 },
+        children: [new TextRun({ text: "%STUDENT_NAME%", size: 32, bold: true, color: "2C3E50" })] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 360 },
+        children: [new TextRun({ text: "Grade %GRADE% | %PROGRAM% Program", size: 24, color: "7B8794" })] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 },
+        children: [new TextRun({ text: "Report Generated: %DATE%", size: 20, color: "95A5A6" })] }),
+      new Paragraph({ pageBreakBefore: true, heading: HeadingLevel.HEADING_1, children: [new TextRun("Executive Summary")] }),
+      new Paragraph({ spacing: { after: 120 },
+        children: [new TextRun("This report analyzes behavioral incidents and provides evidence-based recommendations.")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Key Statistics")] }),
+      new Table({ columnWidths: [3120, 3120, 3120], margins: { top: 100, bottom: 100, left: 180, right: 180 },
+        rows: [
+          new TableRow({ children: [
+            new TableCell({ width: { size: 3120, type: WidthType.DXA }, shading: { fill: "D5E8F0", type: ShadingType.CLEAR },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Total Incidents", bold: true })] })] }),
+            new TableCell({ width: { size: 3120, type: WidthType.DXA }, shading: { fill: "D5E8F0", type: ShadingType.CLEAR },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Critical Incidents", bold: true })] })] }),
+            new TableCell({ width: { size: 3120, type: WidthType.DXA }, shading: { fill: "D5E8F0", type: ShadingType.CLEAR },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Average Severity", bold: true })] })] })
+          ]}),
+          new TableRow({ children: [
+            new TableCell({ width: { size: 3120, type: WidthType.DXA },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "%TOTAL_INCIDENTS%", size: 28, bold: true, color: "2C3E50" })] })] }),
+            new TableCell({ width: { size: 3120, type: WidthType.DXA },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "%CRITICAL_COUNT% (%CRITICAL_RATE%)", size: 28, bold: true, color: "E74C3C" })] })] }),
+            new TableCell({ width: { size: 3120, type: WidthType.DXA },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "%AVG_SEVERITY%/5", size: 28, bold: true, color: "F39C12" })] })] })
+          ]})
+        ]
+      }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Key Patterns")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 },
+        children: [new TextRun({ text: "Primary Behavior: ", bold: true }), new TextRun("%TOP_BEHAVIOR% (%BEHAVIOR_COUNT% incidents, %BEHAVIOR_PCT%)")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 },
+        children: [new TextRun({ text: "Most Common Trigger: ", bold: true }), new TextRun("%TOP_ANTECEDENT%")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 },
+        children: [new TextRun({ text: "Highest Risk Time: ", bold: true }), new TextRun("%TOP_DAY%, %TOP_SESSION%")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 240 },
+        children: [new TextRun({ text: "Highest Risk Location: ", bold: true }), new TextRun("%TOP_LOCATION%")] }),
+      new Paragraph({ pageBreakBefore: true, heading: HeadingLevel.HEADING_1, children: [new TextRun("Data Visualizations")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Incident Timeline")] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 },
+        children: [new ImageRun({ type: "png", data: fs.readFileSync("%CHART_TIMELINE%"),
+          transformation: { width: 600, height: 300 }, altText: { title: "Timeline", description: "Timeline", name: "Timeline" } })] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Behavior Frequency")] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 },
+        children: [new ImageRun({ type: "png", data: fs.readFileSync("%CHART_BEHAVIORS%"),
+          transformation: { width: 600, height: 300 }, altText: { title: "Behaviors", description: "Behaviors", name: "Behaviors" } })] }),
+      new Paragraph({ pageBreakBefore: true, heading: HeadingLevel.HEADING_2, children: [new TextRun("Incidents by Day")] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 },
+        children: [new ImageRun({ type: "png", data: fs.readFileSync("%CHART_DAYS%"),
+          transformation: { width: 600, height: 300 }, altText: { title: "Days", description: "Days", name: "Days" } })] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Top Locations")] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 360 },
+        children: [new ImageRun({ type: "png", data: fs.readFileSync("%CHART_LOCATIONS%"),
+          transformation: { width: 600, height: 300 }, altText: { title: "Locations", description: "Locations", name: "Locations" } })] }),
+      new Paragraph({ pageBreakBefore: true, heading: HeadingLevel.HEADING_1, children: [new TextRun("Evidence-Based Recommendations")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("CPI Framework")] }),
+      new Paragraph({ spacing: { after: 120 }, children: [new TextRun("Based on CPI's Nonviolent Crisis Intervention model:")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Use empathic listening and validate feelings")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Provide choices to restore control")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Set clear limits using SETM approach")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 240 }, children: [new TextRun("Maintain safe distance and use paraverbal communication")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Trauma-Informed Practice")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Safety: ", bold: true }), new TextRun("Review %TOP_LOCATION% for triggers")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Trustworthiness: ", bold: true }), new TextRun("Explain interventions in advance")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Peer Support: ", bold: true }), new TextRun("Facilitate positive relationships")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 240 }, children: [new TextRun({ text: "Empowerment: ", bold: true }), new TextRun("Offer structured choices")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Berry Street Education Model")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Body: ", bold: true }), new TextRun("Movement breaks, sensory tools, breathing")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Relationship: ", bold: true }), new TextRun("2x10 strategy, repair & reconnect")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Stamina: ", bold: true }), new TextRun("Task chunking, progress charts")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Engagement: ", bold: true }), new TextRun("Student interests, voice & agency")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 240 }, children: [new TextRun({ text: "Character: ", bold: true }), new TextRun("SEL lessons, restorative practices")] }),
+      new Paragraph({ pageBreakBefore: true, heading: HeadingLevel.HEADING_2, children: [new TextRun("SMART Training")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Square breathing (4-4-4-4)")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Mindfulness at transitions")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 240 }, children: [new TextRun("5-4-3-2-1 grounding technique")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Australian Curriculum Integration")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Self-Awareness: ", bold: true }), new TextRun("Emotional vocabulary, identify strengths")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Self-Management: ", bold: true }), new TextRun("Impulse control, behavioral goals")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 360 }, children: [new TextRun({ text: "Social Management: ", bold: true }), new TextRun("Assertive communication, conflict resolution")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("Action Plan")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun("Immediate (1-2 Weeks)")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Review %TOP_LOCATION% for triggers")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Daily 2-minute connections")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 240 }, children: [new TextRun("Introduce 3 regulation strategies")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun("Short-Term (1 Month)")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Apply CPI strategies for %TOP_BEHAVIOR%")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("BSEM Body & Relationship focus")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 240 }, children: [new TextRun("Weekly data review")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun("Long-Term (Term/Semester)")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Full Trauma-Informed environment")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("BSEM across all 5 domains")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 360 }, children: [new TextRun("Gradual fading of support")] }),
+      new Paragraph({ pageBreakBefore: true, alignment: AlignmentType.CENTER, spacing: { before: 240 },
+        children: [new TextRun({ text: "End of Report", italics: true, color: "95A5A6" })] }),
+      new Paragraph({ alignment: AlignmentType.CENTER,
+        children: [new TextRun({ text: "Generated by Behaviour Support & Data Analysis Tool", size: 18, color: "95A5A6" })] })
+    ]
+  }]
+});
+
+Packer.toBuffer(doc).then(buffer => {
+  fs.writeFileSync('%OUTPUT_PATH%', buffer);
+  console.log('Report generated');
+});
+"""
+        
+        # Replace placeholders
+        replacements = {
+            '%STUDENT_NAME%': student['name'],
+            '%GRADE%': student['grade'],
+            '%PROGRAM%': student['program'],
+            '%DATE%': datetime.now().strftime('%B %d, %Y'),
+            '%TOTAL_INCIDENTS%': str(len(incidents)),
+            '%CRITICAL_COUNT%': str(critical_count),
+            '%CRITICAL_RATE%': f"{critical_rate:.1f}%",
+            '%AVG_SEVERITY%': f"{avg_severity:.1f}",
+            '%TOP_BEHAVIOR%': top_behavior,
+            '%BEHAVIOR_COUNT%': str(top_behavior_count),
+            '%BEHAVIOR_PCT%': f"{behavior_pct:.1f}%",
+            '%TOP_ANTECEDENT%': top_antecedent,
+            '%TOP_DAY%': top_day,
+            '%TOP_SESSION%': top_session,
+            '%TOP_LOCATION%': top_location,
+            '%CHART_TIMELINE%': chart_files['timeline'],
+            '%CHART_BEHAVIORS%': chart_files['behaviors'],
+            '%CHART_DAYS%': chart_files['days'],
+            '%CHART_LOCATIONS%': chart_files['locations'],
+            '%OUTPUT_PATH%': f"/mnt/user-data/outputs/{student['name'].replace(' ', '_')}_Analysis_Report.docx"
+        }
+        
+        for placeholder, value in replacements.items():
+            script_content = script_content.replace(placeholder, value)
+        
+        # Write and execute
+        script_path = f"{chart_dir}/generate_report.js"
+        with open(script_path, 'w') as f:
+            f.write(script_content)
+        
+        result = subprocess.run(['node', script_path], capture_output=True, text=True, check=True)
+        
+        output_path = f"/mnt/user-data/outputs/{student['name'].replace(' ', '_')}_Analysis_Report.docx"
+        
+        # Clean up
+        subprocess.run(['rm', '-rf', chart_dir], check=False)
+        
+        return output_path
+        
+    except Exception as e:
+        logger.error(f"Error generating report: {e}", exc_info=True)
+        return None
+
 # --- STAFF SELECTOR COMPONENT ---
 
 def render_staff_selector(label: str = "Staff Member", key: str = "staff_selector", include_special_options: bool = True):
@@ -1975,8 +2234,23 @@ def render_student_analysis():
             navigate_to('direct_log_form', student_id=student_id)
     
     with col_act2:
-        if st.button("📊 Export Data", use_container_width=True):
-            st.info("Export functionality - to be implemented")
+        if st.button("📊 Generate Report", use_container_width=True, type="secondary"):
+            with st.spinner("Generating comprehensive report..."):
+                try:
+                    report_path = generate_student_report(student, student_incidents)
+                    if report_path:
+                        st.success("✅ Report generated successfully!")
+                        with open(report_path, 'rb') as f:
+                            st.download_button(
+                                label="📥 Download Report",
+                                data=f,
+                                file_name=f"{student['name'].replace(' ', '_')}_Analysis_Report.docx",
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                use_container_width=True
+                            )
+                except Exception as e:
+                    logger.error(f"Error generating report: {e}")
+                    st.error("Failed to generate report. Please try again.")
     
     with col_act3:
         if st.button("↩️ Back to Program", use_container_width=True):
