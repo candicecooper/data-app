@@ -227,7 +227,8 @@ def render_enhanced_log_form(student: Dict[str, str]):
             key="severity_level"
         )
         
-        st.text_area("Detailed Description of the Incident:", key="description_input", height=150)
+        # UPDATED: Changed from "Detailed Description" to "Additional Information" (Optional)
+        st.text_area("Any Additional Information (Optional):", key="description_input", height=150)
 
         # --- Conditional Logic Section ---
         st.markdown("---")
@@ -273,7 +274,7 @@ def render_enhanced_log_form(student: Dict[str, str]):
                  st.error("For Critical Incidents (Level 3+), you must confirm Line Manager and Emergency Contact notification.")
             else:
                 # --- MOCK SAVE LOGIC ---
-                # UPDATED: Save time in 12-hour format with AM/PM
+                # Save time in 12-hour format with AM/PM
                 time_str = incident_time.strftime("%I:%M:%S %p")
                 
                 log_entry = {
@@ -289,7 +290,7 @@ def render_enhanced_log_form(student: Dict[str, str]):
                     "intervention": intervention,
                     "support_type": type_of_support,
                     "severity": severity_level,
-                    "description": st.session_state.description_input,
+                    "description": st.session_state.description_input, # Still saved to 'description' key
                     "is_critical": severity_level >= 3,
                 }
 
