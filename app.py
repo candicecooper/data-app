@@ -103,6 +103,11 @@ def get_active_staff(include_special=False) -> List[Dict[str, Any]]:
     """Returns a list of active staff for selection."""
     return [s for s in MOCK_STAFF if s['active'] and not s['special']]
 
+def get_staff_name_by_id(staff_id: str) -> str:
+    """Returns staff name based on ID."""
+    staff = next((s for s in MOCK_STAFF if s['id'] == staff_id), None)
+    return staff['name'] if staff else "Unknown Staff"
+
 def get_session_window(incident_time: time) -> str:
     """Calculates the Session window based on the incident time."""
     T_MORNING_START = time(9, 0, 0)
@@ -145,13 +150,17 @@ def generate_hypothesis(antecedent: str, support_type: str) -> str:
     )
     return hypothesis
 
-# --- 3. FORM RENDERING (UPDATED) ---
+# --- 3. FORM RENDERING FUNCTIONS ---
 
 def render_enhanced_log_form(student: Dict[str, str]):
     """Renders the comprehensive, single-step incident log form."""
     
     st.markdown(f"## Quick Incident Log (Student: **{student['name']}**)")
     st.markdown("---")
+
+    # Initialize a temporary state for managing the critical incident navigation flow
+    if 'temp_reported_by' not in st.session_state:
+        st.session_state.temp_reported_by = {'id': None, 'name': '--- Select Staff ---'}
 
     with st.form("enhanced_incident_log_form"):
         st.markdown("### 1. Incident Details")
@@ -161,9 +170,7 @@ def render_enhanced_log_form(student: Dict[str, str]):
         with col_date:
             incident_date = st.date_input("Date of Incident", datetime.now().date(), key="incident_date")
         with col_time:
-            # Set default time to now for session calculation
             default_time = datetime.now().time()
-            # The time input box itself (incident_time) uses local system format, but we save it as AM/PM
             incident_time = st.time_input("Time of Incident (e.g., 2:30 PM)", default_time, key="incident_time")
         with col_loc:
             location = st.selectbox(
@@ -183,12 +190,19 @@ def render_enhanced_log_form(student: Dict[str, str]):
         # Staff and Behavior
         col_staff, col_behavior = st.columns(2)
         with col_staff:
+            # Use a callback to store the selected staff object for easy access
+            def update_reported_by():
+                st.session_state.temp_reported_by = st.session_state.reported_by_obj
+
             reported_by = st.selectbox(
                 "Reported By (Staff Member)",
                 options=[{'id': None, 'name': '--- Select Staff ---'}] + get_active_staff(),
                 format_func=lambda x: x['name'],
-                key="reported_by_id_input"
+                key="reported_by_obj",
+                on_change=update_reported_by
             )
+            reported_by = st.session_state.temp_reported_by
+
         with col_behavior:
             behavior_type = st.selectbox(
                 "Primary Behavior Type", 
@@ -227,25 +241,15 @@ def render_enhanced_log_form(student: Dict[str, str]):
             key="severity_level"
         )
         
-        # UPDATED: Changed from "Detailed Description" to "Additional Information" (Optional)
+        # Optional Additional Information
         st.text_area("Any Additional Information (Optional):", key="description_input", height=150)
 
-        # --- Conditional Logic Section ---
+        # --- Conditional Logic Section for display ONLY (actual flow handled on submit) ---
         st.markdown("---")
 
         if severity_level >= 3:
             st.warning(f"⚠️ **CRITICAL INCIDENT TRIGGERED (Severity Level {severity_level})**")
-            st.markdown(f"""
-                <div style="padding: 15px; border-radius: 8px; border: 2px solid #ff9900; background-color: #402f1a; color: #fff;">
-                    <p style="font-weight: bold; margin-bottom: 10px;">Critical Incident Form (ABCH Detailed) Required</p>
-                    This severity level requires a formal, detailed report. Please complete the mandatory outcomes below.
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # Placeholder for Critical Incident specific fields
-            st.checkbox("Line Manager Notified", key="manager_notify")
-            st.checkbox("Emergency Contact Notified", key="parent_notify")
-            st.text_area("Detailed Outcomes & Staff Debrief Notes:", height=100)
+            st.info("Upon submission, you will be taken to the detailed ABCH Critical Incident Report form.")
             
         elif severity_level in [1, 2]:
             st.info(f"✅ **Moderate Incident (Severity Level {severity_level})**")
@@ -264,40 +268,181 @@ def render_enhanced_log_form(student: Dict[str, str]):
         
         st.markdown("---")
 
-        submit_button = st.form_submit_button("Submit Incident Log")
+        submit_button = st.form_submit_button("Submit Incident Log / Proceed to Critical Report")
         
         if submit_button:
             # UPDATED VALIDATION CHECK for dropdowns
             if location == "--- Select Location ---" or reported_by['id'] is None or behavior_type == "--- Select Behavior ---":
                  st.error("Please select a valid Location, Staff Member, and Behavior Type before submitting.")
-            elif severity_level >= 3 and not (st.session_state.manager_notify and st.session_state.parent_notify):
-                 st.error("For Critical Incidents (Level 3+), you must confirm Line Manager and Emergency Contact notification.")
             else:
-                # --- MOCK SAVE LOGIC ---
-                # Save time in 12-hour format with AM/PM
+                # --- PRELIMINARY DATA CAPTURE ---
                 time_str = incident_time.strftime("%I:%M:%S %p")
                 
-                log_entry = {
+                preliminary_data = {
                     "id": str(uuid.uuid4()),
                     "student_id": student['id'],
                     "date": incident_date.strftime("%Y-%m-%d"),
                     "time": time_str, 
                     "session": session_window,
                     "location": location,
+                    "reported_by_name": reported_by['name'], # Capture name for display
                     "reported_by_id": reported_by['id'],
                     "behavior_type": behavior_type,
                     "antecedent": antecedent,
                     "intervention": intervention,
                     "support_type": type_of_support,
                     "severity": severity_level,
-                    "description": st.session_state.description_input, # Still saved to 'description' key
-                    "is_critical": severity_level >= 3,
+                    "description": st.session_state.description_input,
                 }
+                
+                if severity_level >= 3:
+                    # CRITICAL INCIDENT FLOW: Save data to state and navigate to ABCH form
+                    st.session_state.preliminary_abch_data = preliminary_data
+                    navigate_to('critical_incident_abch', student['id'])
+                else:
+                    # MODERATE/MINOR INCIDENT FLOW: Save immediately
+                    log_entry = preliminary_data.copy()
+                    log_entry["is_critical"] = False
+                    
+                    st.success(f"Incident Log for {student['name']} saved successfully! Time recorded as: {time_str}")
+                    st.balloons()
+                    st.json(log_entry)
+                    # navigate_to('landing') # Optional: uncomment to return to landing page
 
-                st.success(f"Incident Log for {student['name']} saved successfully! Time recorded as: {time_str}")
-                st.balloons()
-                st.json(log_entry)
-                # navigate_to('landing') # Uncomment this to return to landing page after submission
+def render_critical_incident_abch_form():
+    """Renders the detailed Critical Incident (ABCH) form with data continuity."""
+    
+    preliminary_data = st.session_state.get('preliminary_abch_data')
+    student = get_student_by_id(st.session_state.selected_student_id)
+    
+    if not preliminary_data or not student:
+        st.error("Error: Critical incident data not found. Returning to log selection.")
+        navigate_to('landing')
+        return
+
+    st.title(f"🚨 Critical Incident Report (ABCH) - {student['name']}")
+
+    # --- Preliminary Data Panel (Top) ---
+    st.markdown("### Preliminary Incident Data (From Quick Log)")
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        st.metric("Date & Time", f"{preliminary_data['date']} @ {preliminary_data['time']}")
+    with col2:
+        st.metric("Location", preliminary_data['location'])
+    with col3:
+        st.metric("Reported By", preliminary_data['reported_by_name'])
+    with col4:
+        st.metric("Severity", f"Level {preliminary_data['severity']}", delta="CRITICAL", delta_color="inverse")
+    with col5:
+        st.metric("Initial Antecedent", preliminary_data['antecedent'])
+        
+    st.markdown("---")
+    st.markdown("## ABCH Chronology & Detailed Narrative (A → B → C → H)")
+    
+    with st.form("abch_detailed_form"):
+        # --- ABCH Columns (Left to Right Flow) ---
+        abch_col_a, abch_col_b, abch_col_c, abch_col_h = st.columns(4)
+
+        with abch_col_a:
+            st.markdown("#### 1. Context & Antecedent (A)")
+            st.markdown(f"**Initial Antecedent:** `{preliminary_data['antecedent']}`")
+            st.text_area(
+                "Context: State/Mood of Student Prior to Incident (required)",
+                key="abch_context_prior",
+                height=150,
+                placeholder="E.g., Visibly agitated after lunch, requested alone time, had a minor peer argument 5 minutes prior."
+            )
+            st.text_area(
+                "Specific Antecedent/Trigger (A): What was the *final* trigger?",
+                key="abch_antecedent_final",
+                height=150,
+                placeholder="E.g., Staff member asked student to put phone away. No warning signs were noted."
+            )
+
+        with abch_col_b:
+            st.markdown("#### 2. Behavior Episode (B)")
+            st.markdown(f"**Primary Behavior:** `{preliminary_data['behavior_type']}`")
+            st.text_area(
+                "Observable Description (B): What the behavior looked like (required)",
+                key="abch_behavior_description",
+                height=350,
+                placeholder="E.g., Student slammed hands on desk, yelled 'No!', grabbed the nearest textbook and threw it 5m across the room, then ran out the door. Duration: ~4 minutes."
+            )
+            
+        with abch_col_c:
+            st.markdown("#### 3. Intervention & Consequence (C)")
+            st.markdown(f"**Initial Intervention:** `{preliminary_data['intervention']}`")
+            st.text_area(
+                "Detailed Staff Response (C): Step-by-step actions taken (required)",
+                key="abch_staff_response",
+                height=200,
+                placeholder="E.g., Step 1: Staff member stood 3m away and lowered voice. Step 2: Offered a choice (break card vs. quiet work). Step 3: When behavior escalated, staff calmly exited room and called for support. Support staff arrived 2 minutes later."
+            )
+            st.text_area(
+                "Immediate Consequence: How was the situation resolved/concluded?",
+                key="abch_immediate_consequence",
+                height=120,
+                placeholder="E.g., Student returned to room after 10 minutes and apologized. Student was required to clean up damaged property."
+            )
+
+        with abch_col_h:
+            st.markdown("#### 4. Outcomes & Review (H)")
+            st.text_area(
+                "Follow-up / History (H): Post-Incident Reflection/Action Plan",
+                key="abch_follow_up",
+                height=100,
+                placeholder="E.g., Debrief held with student and staff member. Behaviour Support Coordinator was informed. Scheduled a follow-up meeting with parents."
+            )
+            st.markdown("##### Mandatory Notifications/Outcomes")
+            st.checkbox("Line Manager Notified (Required)", key="abch_manager_notify")
+            st.checkbox("Emergency Contact Notified (Required)", key="abch_parent_notify")
+            st.checkbox("Physical Restraint Used/Reported", key="abch_restraint_used")
+            st.checkbox("External Agency (e.g., SAPOL/Ambulance) Contacted", key="abch_external_contact")
+
+        st.markdown("---")
+        
+        # Final Action Row
+        col_cancel, col_submit = st.columns([1, 3])
+        with col_cancel:
+            # We use a button press to clear temporary data and navigate back
+            if st.form_submit_button("Cancel & Go Back"):
+                st.session_state.preliminary_abch_data = None
+                navigate_to('landing')
+                
+        with col_submit:
+            if st.form_submit_button("Finalize Critical Incident Report (ABCH)", type="primary"):
+                # --- FINAL ABCH SAVE LOGIC ---
+                if not all([st.session_state.get('abch_context_prior'), 
+                            st.session_state.get('abch_antecedent_final'), 
+                            st.session_state.get('abch_behavior_description'), 
+                            st.session_state.get('abch_staff_response')]):
+                    st.error("Please fill out all required fields (marked 'required' in sections 1, 2, and 3).")
+                elif not (st.session_state.abch_manager_notify and st.session_state.abch_parent_notify):
+                    st.error("You must confirm Line Manager and Emergency Contact notification to finalize this Critical Incident Report.")
+                else:
+                    final_log_entry = preliminary_data.copy()
+                    final_log_entry.update({
+                        "is_critical": True,
+                        "abch_context_prior": st.session_state.abch_context_prior,
+                        "abch_antecedent_final": st.session_state.abch_antecedent_final,
+                        "abch_behavior_description": st.session_state.abch_behavior_description,
+                        "abch_staff_response": st.session_state.abch_staff_response,
+                        "abch_immediate_consequence": st.session_state.abch_immediate_consequence,
+                        "abch_follow_up": st.session_state.abch_follow_up,
+                        "outcome_manager_notified": st.session_state.abch_manager_notify,
+                        "outcome_parent_notified": st.session_state.abch_parent_notify,
+                        "outcome_restraint_used": st.session_state.abch_restraint_used,
+                        "outcome_external_contact": st.session_state.abch_external_contact,
+                    })
+                    
+                    st.success(f"Critical Incident Report for {student['name']} FINALIZED and Saved!")
+                    st.balloons()
+                    st.json(final_log_entry)
+                    # Clear temporary data and return to landing
+                    st.session_state.preliminary_abch_data = None
+                    navigate_to('landing')
+
 
 # --- 4. NAVIGATION AND PAGE STRUCTURE ---
 
@@ -360,6 +505,8 @@ def main():
         render_landing_page()
     elif st.session_state.current_page == 'direct_log_form':
         render_direct_log_form()
+    elif st.session_state.current_page == 'critical_incident_abch':
+        render_critical_incident_abch_form()
 
 if __name__ == '__main__':
     main()
