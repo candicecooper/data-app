@@ -64,11 +64,16 @@ st.set_page_config(
 PLOTLY_THEME = 'plotly_dark'
 
 MOCK_STAFF = [
-    {'id': 's1', 'name': 'Emily Jones (JP)', 'role': 'JP', 'active': True, 'special': False},
-    {'id': 's2', 'name': 'Daniel Lee (PY)', 'role': 'PY', 'active': True, 'special': False},
-    {'id': 's3', 'name': 'Sarah Chen (SY)', 'role': 'SY', 'active': True, 'special': False},
-    {'id': 's4', 'name': 'Admin User (ADM)', 'role': 'ADM', 'active': True, 'special': False},
+    {'id': 's1', 'name': 'Emily Jones', 'role': 'JP', 'active': True, 'archived': False},
+    {'id': 's2', 'name': 'Daniel Lee', 'role': 'PY', 'active': True, 'archived': False},
+    {'id': 's3', 'name': 'Sarah Chen', 'role': 'SY', 'active': True, 'archived': False},
+    {'id': 's4', 'name': 'Admin User', 'role': 'ADM', 'active': True, 'archived': False},
+    {'id': 's5', 'name': 'Michael Torres', 'role': 'JP', 'active': True, 'archived': False},
+    {'id': 's6', 'name': 'Jessica Williams', 'role': 'PY', 'active': True, 'archived': False},
 ]
+
+# Staff roles available
+STAFF_ROLES = ['JP', 'PY', 'SY', 'ADM', 'TRT', 'External SSO']
 
 MOCK_STUDENTS = [
     {'id': 'stu_001', 'name': 'Izack N.', 'grade': '7', 'profile_status': 'Complete', 'program': 'SY', 'archived': False},
@@ -166,8 +171,9 @@ def generate_mock_incidents():
             'day': datetime.strptime(incident_date, '%Y-%m-%d').strftime('%A'),
             'session': session,
             'location': random.choice(['JP Classroom', 'Yard', 'Gate', 'Playground', 'JP Spill Out']),
-            'reported_by_name': 'Emily Jones (JP)',
+            'reported_by_name': 'Emily Jones',
             'reported_by_id': 's1',
+            'reported_by_role': 'JP',
             'behavior_type': random.choice(['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)']),
             'antecedent': random.choice(ANTECEDENTS_NEW),
             'intervention': random.choice(INTERVENTIONS),
@@ -199,8 +205,9 @@ def generate_mock_incidents():
             'day': datetime.strptime(incident_date, '%Y-%m-%d').strftime('%A'),
             'session': session,
             'location': random.choice(['PY Classroom', 'Library', 'Yard']),
-            'reported_by_name': 'Daniel Lee (PY)',
+            'reported_by_name': 'Daniel Lee',
             'reported_by_id': 's2',
+            'reported_by_role': 'PY',
             'behavior_type': random.choice(['Verbal Refusal', 'Out of Seat', 'Non-Compliance']),
             'antecedent': random.choice(ANTECEDENTS_NEW),
             'intervention': random.choice(INTERVENTIONS),
@@ -213,8 +220,18 @@ def generate_mock_incidents():
     
     return incidents
 
-if 'incidents' not in st.session_state:
-    st.session_state.incidents = generate_mock_incidents()
+# --- SESSION STATE INITIALIZATION ---
+
+def initialize_session_state():
+    """Initialize all session state variables"""
+    if 'incidents' not in st.session_state:
+        st.session_state.incidents = generate_mock_incidents()
+    
+    if 'staff_list' not in st.session_state:
+        st.session_state.staff_list = MOCK_STAFF.copy()
+    
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = 'landing'
 
 # --- 2. GLOBAL HELPERS & CORE LOGIC FUNCTIONS ---
 
@@ -247,12 +264,22 @@ def get_student_by_id(student_id: str) -> Optional[Dict[str, str]]:
         return None
 
 def get_active_staff() -> List[Dict[str, Any]]:
-    """Returns active staff."""
+    """Returns active, non-archived staff."""
     try:
-        return [s for s in MOCK_STAFF if s['active']]
+        return [s for s in st.session_state.staff_list if s['active'] and not s.get('archived', False)]
     except Exception as e:
         logger.error(f"Error retrieving staff: {e}")
         return []
+
+def get_staff_by_id(staff_id: str) -> Optional[Dict[str, Any]]:
+    """Retrieves staff member by ID."""
+    try:
+        if not staff_id:
+            return None
+        return next((s for s in st.session_state.staff_list if s['id'] == staff_id), None)
+    except Exception as e:
+        logger.error(f"Error retrieving staff member: {e}")
+        return None
 
 def get_session_window(incident_time: time) -> str:
     """Calculates session window."""
@@ -267,6 +294,74 @@ def get_session_window(incident_time: time) -> str:
             return "Outside School Hours (N/A)"
     except Exception as e:
         return "Unknown Session"
+
+def add_staff_member(name: str, role: str) -> bool:
+    """Adds a new staff member."""
+    try:
+        if not name or not name.strip():
+            raise ValidationError("Name cannot be empty", "Please enter a staff name")
+        
+        if not role or role == "--- Select Role ---":
+            raise ValidationError("Role must be selected", "Please select a role")
+        
+        # Check for duplicate names
+        existing = [s for s in st.session_state.staff_list if s['name'].lower() == name.strip().lower() and not s.get('archived', False)]
+        if existing:
+            raise ValidationError("Duplicate staff name", "A staff member with this name already exists")
+        
+        new_staff = {
+            'id': f"s_{uuid.uuid4().hex[:8]}",
+            'name': name.strip(),
+            'role': role,
+            'active': True,
+            'archived': False,
+            'created_date': datetime.now().strftime('%Y-%m-%d')
+        }
+        
+        st.session_state.staff_list.append(new_staff)
+        logger.info(f"Added staff member: {name} ({role})")
+        return True
+        
+    except ValidationError:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding staff: {e}")
+        raise AppError("Failed to add staff member", "Could not add staff member. Please try again.")
+
+def archive_staff_member(staff_id: str) -> bool:
+    """Archives a staff member."""
+    try:
+        staff = get_staff_by_id(staff_id)
+        if not staff:
+            raise ValidationError("Staff member not found", "Cannot archive: staff member not found")
+        
+        staff['archived'] = True
+        staff['active'] = False
+        staff['archived_date'] = datetime.now().strftime('%Y-%m-%d')
+        
+        logger.info(f"Archived staff member: {staff['name']}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error archiving staff: {e}")
+        raise AppError("Failed to archive staff member", "Could not archive staff member. Please try again.")
+
+def unarchive_staff_member(staff_id: str) -> bool:
+    """Unarchives a staff member."""
+    try:
+        staff = get_staff_by_id(staff_id)
+        if not staff:
+            raise ValidationError("Staff member not found", "Cannot unarchive: staff member not found")
+        
+        staff['archived'] = False
+        staff['active'] = True
+        
+        logger.info(f"Unarchived staff member: {staff['name']}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error unarchiving staff: {e}")
+        raise AppError("Failed to unarchive staff member", "Could not unarchive staff member. Please try again.")
 
 # --- VALIDATION FUNCTIONS ---
 
@@ -451,22 +546,327 @@ def render_program_students():
                     if st.button("View Historical Data", key=f"view_arch_{student['id']}"):
                         navigate_to('student_analysis', student_id=student['id'])
 
-# --- Placeholder for other render functions (keeping structure minimal for now) ---
+# --- ADMIN PORTAL ---
 
+@handle_errors("Unable to load admin portal")
+def render_admin_portal():
+    """Renders the admin portal with staff management."""
+    
+    col_title, col_back = st.columns([4, 1])
+    with col_title:
+        st.title("🔐 Admin Portal")
+    with col_back:
+        if st.button("⬅ Back to Home"):
+            navigate_to('landing')
+    
+    st.markdown("---")
+    
+    # Create tabs for different admin sections
+    tab1, tab2, tab3 = st.tabs(["👥 Staff Management", "📊 Reports", "⚙️ Settings"])
+    
+    with tab1:
+        render_staff_management()
+    
+    with tab2:
+        st.markdown("### 📊 System Reports")
+        st.info("Reports functionality - to be implemented")
+    
+    with tab3:
+        st.markdown("### ⚙️ System Settings")
+        st.info("Settings functionality - to be implemented")
+
+@handle_errors("Unable to load staff management")
+def render_staff_management():
+    """Renders staff management section."""
+    
+    st.markdown("## 👥 Staff Management")
+    st.markdown("---")
+    
+    # Sub-tabs for active and archived staff
+    staff_tab1, staff_tab2 = st.tabs(["✅ Active Staff", "📦 Archived Staff"])
+    
+    with staff_tab1:
+        st.markdown("### Add New Staff Member")
+        
+        col_add1, col_add2, col_add3 = st.columns([2, 2, 1])
+        
+        with col_add1:
+            new_staff_name = st.text_input("Staff Name", key="new_staff_name", placeholder="Enter full name")
+        
+        with col_add2:
+            new_staff_role = st.selectbox(
+                "Role",
+                options=["--- Select Role ---"] + STAFF_ROLES,
+                key="new_staff_role"
+            )
+        
+        with col_add3:
+            st.markdown("##")  # Spacing
+            if st.button("➕ Add Staff", type="primary", use_container_width=True):
+                try:
+                    if add_staff_member(new_staff_name, new_staff_role):
+                        st.success(f"✅ Added {new_staff_name} ({new_staff_role})")
+                        st.rerun()
+                except (ValidationError, AppError) as e:
+                    st.error(e.user_message)
+        
+        st.markdown("---")
+        st.markdown("### Current Active Staff")
+        
+        active_staff = [s for s in st.session_state.staff_list if not s.get('archived', False)]
+        
+        if not active_staff:
+            st.info("No active staff members")
+        else:
+            # Group staff by role
+            staff_by_role = {}
+            for staff in active_staff:
+                role = staff.get('role', 'Unknown')
+                if role not in staff_by_role:
+                    staff_by_role[role] = []
+                staff_by_role[role].append(staff)
+            
+            # Display by role
+            for role in STAFF_ROLES:
+                if role in staff_by_role:
+                    with st.expander(f"**{role}** ({len(staff_by_role[role])} staff)", expanded=True):
+                        for staff in staff_by_role[role]:
+                            col_staff1, col_staff2, col_staff3 = st.columns([3, 2, 1])
+                            
+                            with col_staff1:
+                                st.markdown(f"**{staff['name']}**")
+                            
+                            with col_staff2:
+                                if staff.get('created_date'):
+                                    st.caption(f"Added: {staff['created_date']}")
+                            
+                            with col_staff3:
+                                if st.button("🗄️ Archive", key=f"archive_{staff['id']}", use_container_width=True):
+                                    try:
+                                        if archive_staff_member(staff['id']):
+                                            st.success(f"Archived {staff['name']}")
+                                            st.rerun()
+                                    except AppError as e:
+                                        st.error(e.user_message)
+    
+    with staff_tab2:
+        st.markdown("### Archived Staff Members")
+        st.caption("These staff members are no longer active but remain in the system for historical records")
+        
+        archived_staff = [s for s in st.session_state.staff_list if s.get('archived', False)]
+        
+        if not archived_staff:
+            st.info("No archived staff members")
+        else:
+            for staff in archived_staff:
+                with st.expander(f"📦 {staff['name']} - {staff.get('role', 'N/A')}"):
+                    col_info1, col_info2 = st.columns(2)
+                    
+                    with col_info1:
+                        st.markdown(f"**Role:** {staff.get('role', 'N/A')}")
+                        if staff.get('created_date'):
+                            st.markdown(f"**Added:** {staff['created_date']}")
+                    
+                    with col_info2:
+                        if staff.get('archived_date'):
+                            st.markdown(f"**Archived:** {staff['archived_date']}")
+                    
+                    if st.button("♻️ Restore Staff Member", key=f"restore_{staff['id']}"):
+                        try:
+                            if unarchive_staff_member(staff['id']):
+                                st.success(f"Restored {staff['name']}")
+                                st.rerun()
+                        except AppError as e:
+                            st.error(e.user_message)
+
+# --- STAFF SELECTOR COMPONENT ---
+
+def render_staff_selector(label: str = "Staff Member", key: str = "staff_selector", include_special_options: bool = True):
+    """
+    Renders a staff selector with optional TRT and External SSO options.
+    Returns a dict with staff info, or special options if selected.
+    """
+    
+    active_staff = get_active_staff()
+    
+    # Build options list
+    options = [{'id': None, 'name': '--- Select Staff ---', 'role': None, 'special': False}]
+    
+    # Add special options if enabled
+    if include_special_options:
+        options.append({'id': 'TRT', 'name': 'TRT (Relief Teacher)', 'role': 'TRT', 'special': True})
+        options.append({'id': 'External_SSO', 'name': 'External SSO', 'role': 'External SSO', 'special': True})
+        options.append({'id': 'divider', 'name': '─────────────────', 'role': None, 'special': False})
+    
+    # Add active staff
+    options.extend([{**s, 'special': False} for s in active_staff])
+    
+    # Filter out divider from actual selection
+    selectable_options = [opt for opt in options if opt['id'] != 'divider']
+    
+    selected = st.selectbox(
+        label,
+        options=selectable_options,
+        format_func=lambda x: f"{x['name']}" + (f" ({x['role']})" if x['role'] and not x.get('special') else ""),
+        key=key
+    )
+    
+    # If TRT or External SSO selected, prompt for name
+    if selected and selected.get('special'):
+        st.markdown(f"**{selected['name']} selected** - Please enter their name:")
+        specific_name = st.text_input(
+            f"Enter {selected['role']} Name",
+            key=f"{key}_specific_name",
+            placeholder=f"Full name of {selected['role']}"
+        )
+        
+        if specific_name and specific_name.strip():
+            return {
+                'id': selected['id'],
+                'name': specific_name.strip(),
+                'role': selected['role'],
+                'is_special': True
+            }
+        else:
+            # Return with placeholder until name is entered
+            return {
+                'id': selected['id'],
+                'name': f"{selected['role']} (Name Required)",
+                'role': selected['role'],
+                'is_special': True,
+                'name_missing': True
+            }
+    
+    return selected
+
+# --- DIRECT LOG FORM ---
+
+@handle_errors("Unable to load incident form")
 def render_direct_log_form():
-    st.title("Direct Log Form")
+    """Renders the incident logging form."""
+    
     student_id = st.session_state.get('selected_student_id')
     student = get_student_by_id(student_id)
     
-    if student:
-        st.markdown(f"## Logging incident for: **{student['name']}**")
-        if st.button("⬅ Back"):
-            navigate_to('landing')
-        st.info("Incident log form will be rendered here")
-    else:
+    if not student:
         st.error("Student not found")
         if st.button("Return Home"):
             navigate_to('landing')
+        return
+    
+    col_title, col_back = st.columns([4, 1])
+    with col_title:
+        st.title(f"📝 Incident Log: {student['name']}")
+        st.caption(f"Grade {student['grade']} | {student['program']} Program")
+    with col_back:
+        if st.button("⬅ Back"):
+            navigate_to('program_students', program=student['program'])
+    
+    st.markdown("---")
+    
+    with st.form("incident_form"):
+        st.markdown("### Incident Details")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            incident_date = st.date_input("Date of Incident", value=datetime.now())
+            incident_time = st.time_input("Time of Incident", value=datetime.now().time())
+            location = st.selectbox("Location", options=LOCATIONS)
+        
+        with col2:
+            # Use the staff selector component
+            st.markdown("**Reported By**")
+            reported_by = render_staff_selector(
+                label="Select Staff Member",
+                key="incident_staff_selector",
+                include_special_options=True
+            )
+        
+        st.markdown("### Behavior Information")
+        
+        col3, col4 = st.columns(2)
+        
+        with col3:
+            behavior_type = st.selectbox(
+                "Behavior Type",
+                options=["--- Select Behavior ---"] + BEHAVIORS_FBA
+            )
+            antecedent = st.selectbox("Antecedent", options=ANTECEDENTS_NEW)
+        
+        with col4:
+            intervention = st.selectbox("Intervention Used", options=INTERVENTIONS)
+            support_type = st.selectbox("Support Type", options=SUPPORT_TYPES)
+        
+        severity_level = st.slider("Severity Level", 1, 5, 2)
+        
+        description = st.text_area(
+            "Additional Description",
+            placeholder="Provide additional context about the incident...",
+            height=100
+        )
+        
+        submitted = st.form_submit_button("Submit Incident Report", type="primary", use_container_width=True)
+        
+        if submitted:
+            try:
+                # Check if special staff needs name
+                if reported_by and reported_by.get('name_missing'):
+                    st.error("Please enter the name for the selected staff type (TRT or External SSO)")
+                    return
+                
+                # Validate form
+                validate_incident_form(
+                    location, reported_by, behavior_type,
+                    severity_level, incident_date, incident_time
+                )
+                
+                # Create incident record
+                incident_time_obj = datetime.combine(incident_date, incident_time)
+                session = get_session_window(incident_time)
+                
+                new_incident = {
+                    'id': str(uuid.uuid4()),
+                    'student_id': student_id,
+                    'date': incident_date.strftime('%Y-%m-%d'),
+                    'time': incident_time.strftime('%H:%M:%S'),
+                    'day': incident_date.strftime('%A'),
+                    'session': session,
+                    'location': location,
+                    'reported_by_name': reported_by['name'],
+                    'reported_by_id': reported_by['id'],
+                    'reported_by_role': reported_by['role'],
+                    'is_special_staff': reported_by.get('is_special', False),
+                    'behavior_type': behavior_type,
+                    'antecedent': antecedent,
+                    'intervention': intervention,
+                    'support_type': support_type,
+                    'severity': severity_level,
+                    'description': description,
+                    'is_critical': severity_level >= 4,
+                    'created_at': datetime.now().isoformat()
+                }
+                
+                st.session_state.incidents.append(new_incident)
+                
+                st.success("✅ Incident report submitted successfully!")
+                
+                if severity_level >= 4:
+                    st.warning("⚠️ This is a critical incident (Severity 4-5). Please complete a Critical Incident ABCH form.")
+                
+                # Option to add another or return
+                col_another, col_return = st.columns(2)
+                with col_another:
+                    if st.button("➕ Log Another Incident", use_container_width=True):
+                        st.rerun()
+                with col_return:
+                    if st.button("↩️ Return to Student List", use_container_width=True):
+                        navigate_to('program_students', program=student['program'])
+                        
+            except ValidationError as e:
+                st.error(e.user_message)
+
+# --- Placeholder for other render functions ---
 
 def render_critical_incident_abch_form():
     st.title("Critical Incident Form")
@@ -486,9 +886,9 @@ def main():
     """Main application logic."""
     
     try:
-        if 'current_page' not in st.session_state:
-            st.session_state.current_page = 'landing'
-            
+        # Initialize session state
+        initialize_session_state()
+        
         current_page = st.session_state.get('current_page', 'landing')
         
         if current_page == 'landing':
@@ -502,10 +902,7 @@ def main():
         elif current_page == 'student_analysis':
             render_student_analysis()
         elif current_page == 'admin_portal':
-            st.title("🔐 Admin Portal")
-            st.info("Admin portal - to be implemented")
-            if st.button("⬅ Back"):
-                navigate_to('landing')
+            render_admin_portal()
         else:
             st.error("Unknown page")
             navigate_to('landing')
