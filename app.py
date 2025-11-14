@@ -1174,12 +1174,13 @@ def render_student_analysis():
     st.markdown("---")
     
     # Create tabs for different analysis views
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "📅 Timeline", 
         "📊 Behavior Analysis", 
         "🕒 Time Patterns", 
         "📍 Location Analysis",
-        "📋 Incident Log"
+        "📋 Incident Log",
+        "🎯 Analysis & Recommendations"
     ])
     
     # TAB 1: TIMELINE
@@ -1510,6 +1511,458 @@ def render_student_analysis():
                 
                 if inc.get('description'):
                     st.markdown(f"**Notes:** {inc['description']}")
+    
+    # TAB 6: ANALYSIS & RECOMMENDATIONS
+    with tab6:
+        st.markdown("### 🎯 Data-Driven Analysis & Recommendations")
+        st.caption("Evidence-based recommendations informed by CPI, Trauma-Informed Practice, SMART Training, Berry Street Education Model & Australian Curriculum")
+        
+        # Generate insights
+        behavior_counts = pd.DataFrame(student_incidents)['behavior_type'].value_counts()
+        top_behavior = behavior_counts.index[0] if len(behavior_counts) > 0 else "N/A"
+        top_behavior_count = behavior_counts.iloc[0] if len(behavior_counts) > 0 else 0
+        
+        antecedent_counts = pd.DataFrame(student_incidents)['antecedent'].value_counts()
+        top_antecedent = antecedent_counts.index[0] if len(antecedent_counts) > 0 else "N/A"
+        
+        location_counts = pd.DataFrame(student_incidents)['location'].value_counts()
+        top_location = location_counts.index[0] if len(location_counts) > 0 else "N/A"
+        
+        day_counts = pd.DataFrame(student_incidents)['day'].value_counts()
+        top_day = day_counts.index[0] if len(day_counts) > 0 else "N/A"
+        
+        session_counts = pd.DataFrame(student_incidents)['session'].value_counts()
+        top_session = session_counts.index[0] if len(session_counts) > 0 else "N/A"
+        
+        critical_count = len([inc for inc in student_incidents if inc.get('is_critical', False)])
+        critical_rate = (critical_count / len(student_incidents) * 100) if len(student_incidents) > 0 else 0
+        
+        # Key Patterns Identified
+        st.markdown("### 📌 Key Patterns Identified")
+        
+        with st.container(border=True):
+            col_pat1, col_pat2 = st.columns(2)
+            
+            with col_pat1:
+                st.markdown("**Primary Behavior Concern:**")
+                st.markdown(f"- **{top_behavior}** ({top_behavior_count} incidents, {(top_behavior_count/len(student_incidents)*100):.1f}%)")
+                
+                st.markdown("**Most Common Trigger:**")
+                st.markdown(f"- {top_antecedent}")
+                
+                st.markdown("**Highest Risk Time:**")
+                st.markdown(f"- {top_day}, {top_session}")
+            
+            with col_pat2:
+                st.markdown("**Highest Risk Location:**")
+                st.markdown(f"- {top_location}")
+                
+                st.markdown("**Critical Incident Rate:**")
+                if critical_rate > 40:
+                    st.markdown(f"- 🔴 **High:** {critical_rate:.1f}% (Immediate intervention needed)")
+                elif critical_rate > 20:
+                    st.markdown(f"- 🟡 **Moderate:** {critical_rate:.1f}% (Enhanced support recommended)")
+                else:
+                    st.markdown(f"- 🟢 **Low:** {critical_rate:.1f}% (Preventative strategies in place)")
+        
+        st.markdown("---")
+        
+        # Evidence-Based Recommendations
+        st.markdown("### 💡 Evidence-Based Recommendations")
+        
+        # CPI Recommendations
+        with st.expander("🛡️ **Crisis Prevention Institute (CPI) Framework**", expanded=True):
+            st.markdown("""
+            **Based on CPI's Nonviolent Crisis Intervention® model:**
+            
+            **1. Crisis Development Model Response:**
+            """)
+            
+            if avg_severity < 2.5:
+                st.success("""
+                - **Anxiety Level:** Focus on supportive approaches
+                - Use **empathic listening** and validate feelings
+                - Provide choices to restore sense of control
+                - Maintain calm, non-threatening body language
+                """)
+            elif avg_severity < 3.5:
+                st.warning("""
+                - **Defensive Level:** Implement de-escalation strategies
+                - Set clear, simple limits using CPI's SETM (Set limit, Explain reason, offer choices, Time to decide)
+                - Maintain safe distance (1.5-3 arm lengths)
+                - Use **paraverbal communication** (tone, pace, volume)
+                - Avoid power struggles
+                """)
+            else:
+                st.error("""
+                - **Risk Behavior/Crisis Level:** Priority on safety
+                - Follow **Crisis Management Plan**
+                - Ensure team support is available
+                - Use CPI-trained physical intervention only if necessary
+                - Post-crisis therapeutic rapport rebuilding essential
+                """)
+            
+            st.markdown(f"""
+            **2. Pattern-Specific CPI Strategies for "{top_behavior}":**
+            """)
+            
+            if "Verbal Refusal" in top_behavior or "Non-Compliance" in top_behavior:
+                st.markdown("""
+                - **Directive vs. Choice:** Replace demands with structured choices
+                - "You need to complete this work" → "Would you like to start with question 1 or 3?"
+                - Use **proxemics** (personal space zones) - approach from side, not head-on
+                - Apply **Wait Time** - allow 5-10 seconds for processing
+                """)
+            elif "Elopement" in top_behavior or "Attempt to Leave" in top_behavior:
+                st.markdown("""
+                - **Prevention:** Implement environmental modifications (clear sightlines, secured perimeters)
+                - **Early Warning Signs:** Document precursor behaviors (pacing, looking at exits)
+                - **Rational Detachment:** Staff remain calm, use invitational language
+                - Develop **Safety Plan** with clear roles for team members
+                """)
+            elif "Aggression" in top_behavior or "Property Destruction" in top_behavior:
+                st.markdown("""
+                - **Staff Safety First:** Maintain safe distance, position near exits
+                - **Environmental Assessment:** Remove potential weapons/projectiles
+                - **Team Response:** Two-person minimum for high-risk situations
+                - **Verbal De-escalation:** Use low, calm tone; simple phrases; avoid questions
+                - **Postvention:** Therapeutic rapport re-building within 24 hours
+                """)
+            else:
+                st.markdown("""
+                - Apply **Integrated Experience** - meet student's needs holistically
+                - Focus on **Care, Welfare, Safety, and Security™** principles
+                - Document and analyze behavior patterns for prevention
+                """)
+        
+        # Trauma-Informed Practice
+        with st.expander("🧠 **Trauma-Informed Practice (TIP)**", expanded=True):
+            st.markdown("""
+            **Applying the 6 Key Principles of TIP:**
+            
+            **1. Safety (Physical & Psychological):**
+            """)
+            st.info(f"""
+            - **Environmental Safety:** Review {top_location} for sensory triggers
+            - Create predictable routines, especially during {top_session}
+            - Establish visual schedules and clear expectations
+            - Provide a designated 'safe space' for regulation
+            """)
+            
+            st.markdown("""
+            **2. Trustworthiness & Transparency:**
+            """)
+            st.info("""
+            - Explain all interventions and consequences in advance
+            - Follow through consistently on promises
+            - Avoid surprises or sudden changes in routine
+            - Use "we" language to build collaborative relationship
+            """)
+            
+            st.markdown("""
+            **3. Peer Support & Connection:**
+            """)
+            st.info("""
+            - Facilitate positive peer relationships in structured activities
+            - Consider peer mentoring program
+            - Use restorative practices after incidents
+            - Build sense of belonging in school community
+            """)
+            
+            st.markdown(f"""
+            **4. Collaboration & Mutuality:**
+            - Develop **Student Voice Plan** - involve student in behavior goal setting
+            - Given pattern shows triggers around "{top_antecedent}", collaborate on coping strategies
+            - Regular check-ins: "What's working? What's not?"
+            - Share power appropriately through meaningful choices
+            """)
+            
+            st.markdown("""
+            **5. Empowerment & Choice:**
+            """)
+            st.info("""
+            - Offer structured choices throughout the day
+            - Teach and practice self-advocacy skills
+            - Recognize and celebrate small successes
+            - Build on student's strengths and interests
+            """)
+            
+            st.markdown("""
+            **6. Cultural, Historical & Gender Responsiveness:**
+            """)
+            st.info("""
+            - Consider cultural background in intervention selection
+            - Acknowledge historical trauma if relevant
+            - Respect identity and individual needs
+            - Engage family in culturally responsive ways
+            """)
+        
+        # Berry Street Education Model (BSEM)
+        with st.expander("🌱 **Berry Street Education Model (BSEM)**", expanded=True):
+            st.markdown("""
+            **Implementing BSEM's 5 Domains:**
+            
+            **Domain 1: Body** *(Regulate the body to access learning)*
+            """)
+            st.success(f"""
+            - **Movement Breaks:** Given incidents peak at {top_session}, schedule regular movement breaks
+            - **Sensory Tools:** Provide fidgets, wobble cushions, weighted items
+            - **Breathing Techniques:** Teach "Breathe, Relax, Feel, Watch, Listen"
+            - **Physical Activity:** Start day with 10-15 min movement
+            - **Regulation Stations:** Create designated areas with regulation tools
+            """)
+            
+            st.markdown("""
+            **Domain 2: Relationship** *(Build positive relationships)*
+            """)
+            st.success("""
+            - **Morning Welcome:** Personalized greeting to start each day
+            - **2x10 Strategy:** 2 minutes per day for 10 days discussing student's interests
+            - **Repair & Reconnect:** After incidents, prioritize relationship repair
+            - **Key Adult Connection:** Ensure consistent, trusted adult available
+            - **Relationship Mapping:** Identify safe, supportive adults in student's life
+            """)
+            
+            st.markdown(f"""
+            **Domain 3: Stamina** *(Build persistence and work capacity)*
+            - **Task Chunking:** Given {top_behavior}, break tasks into 5-10 minute segments
+            - **Success Tracking:** Visual progress charts
+            - **Growth Mindset:** Reframe failures as learning opportunities
+            - **Incremental Goals:** Set achievable daily targets
+            - **Celebrate Effort:** Acknowledge persistence over outcomes
+            """)
+            
+            st.markdown("""
+            **Domain 4: Engagement** *(Foster intrinsic motivation)*
+            """)
+            st.success("""
+            - **Student Interests:** Embed preferred topics into learning
+            - **Real-World Connections:** Link curriculum to student's life
+            - **Positive Priming:** Start sessions with success activities
+            - **Flow Experiences:** Balance challenge with skill level
+            - **Voice & Agency:** Student input on learning activities
+            """)
+            
+            st.markdown("""
+            **Domain 5: Character** *(Develop ethical thinking & agency)*
+            """)
+            st.success("""
+            - **Values Education:** Teach and model BSEM values (respect, courage, trust, etc.)
+            - **Social-Emotional Learning:** Explicit SEL lessons 3x weekly
+            - **Restorative Practices:** Focus on harm repair, not punishment
+            - **Leadership Opportunities:** Give student responsibility roles
+            - **Community Contribution:** Connect to wider school community
+            """)
+        
+        # SMART Training
+        with st.expander("🎓 **SMART (Stress Management and Resilience Training)**", expanded=True):
+            st.markdown("""
+            **SMART Program Integration:**
+            
+            **1. Self-Regulation Skills:**
+            """)
+            st.info("""
+            - **Square Breathing:** Teach 4-4-4-4 breathing pattern
+            - **Mindful Moments:** 2-3 minute mindfulness at transitions
+            - **Body Scan:** Help identify early warning signs of stress
+            - **Grounding Techniques:** 5-4-3-2-1 sensory exercise
+            - **Progressive Muscle Relaxation:** For high-stress periods
+            """)
+            
+            st.markdown(f"""
+            **2. Cognitive Strategies:**
+            - **Thought Stopping:** Interrupt negative thought patterns
+            - **Positive Self-Talk:** Co-develop affirming phrases
+            - **Reframing:** Practice seeing situations differently
+            - **Problem-Solving Steps:** Teach structured approach to challenges
+            - **Emotional Literacy:** Build vocabulary for feelings (given pattern with {top_antecedent})
+            """)
+            
+            st.markdown("""
+            **3. Building Resilience:**
+            """)
+            st.info("""
+            - **Strengths Focus:** Weekly identification of personal strengths
+            - **Gratitude Practice:** Daily "3 good things" reflection
+            - **Social Support:** Identify and strengthen support network
+            - **Hope & Optimism:** Set and visualize achievable goals
+            - **Stress Awareness:** Create personalized "stress thermometer"
+            """)
+            
+            st.markdown(f"""
+            **4. Environmental Management:**
+            - **Trigger Awareness:** Document and plan for {top_antecedent}
+            - **Predictability:** Consistent routines, especially {top_day}s
+            - **Warning Systems:** Develop escalation/de-escalation plans
+            - **Coping Card:** Portable reminder of strategies
+            - **Support Signal:** Non-verbal way to request help
+            """)
+        
+        # Australian Curriculum Integration
+        with st.expander("📚 **Australian Curriculum Integration**", expanded=True):
+            st.markdown("""
+            **Personal & Social Capability (General Capability):**
+            
+            **Self-Awareness:**
+            """)
+            st.success(f"""
+            - **Identify Emotions:** Explicitly teach emotional vocabulary
+            - **Recognize Strengths:** Student identifies their own strengths weekly
+            - **Understand Impacts:** Reflect on how behavior affects others
+            - **Development Focus:** Age-appropriate for Grade {student['grade']}
+            """)
+            
+            st.markdown("""
+            **Self-Management:**
+            """)
+            st.success("""
+            - **Express Emotions Appropriately:** Teach communication skills
+            - **Develop Self-Discipline:** Practice impulse control strategies
+            - **Set Goals:** Weekly achievable behavioral goals
+            - **Work Independently:** Build stamina with scaffolded independence
+            - **Become Resilient:** Frame setbacks as learning opportunities
+            """)
+            
+            st.markdown("""
+            **Social Awareness:**
+            """)
+            st.success("""
+            - **Appreciate Diversity:** Value differences in others
+            - **Understand Relationships:** Teach healthy relationship skills
+            - **Contribute to Groups:** Structured collaborative activities
+            - **Perspective-Taking:** "How might others feel?" discussions
+            """)
+            
+            st.markdown("""
+            **Social Management:**
+            """)
+            st.success("""
+            - **Communicate Effectively:** Practice assertive (not aggressive) communication
+            - **Work Collaboratively:** Structured partner/group work
+            - **Make Decisions:** Teach decision-making framework
+            - **Negotiate & Resolve Conflict:** Restorative circles after incidents
+            - **Develop Leadership:** Assign meaningful leadership roles
+            """)
+            
+            st.markdown("""
+            **Cross-Curriculum Priority Links:**
+            """)
+            st.info("""
+            - **Aboriginal & Torres Strait Islander Histories/Cultures:** If relevant, incorporate cultural connections
+            - **Asia & Australia's Engagement:** Cultural awareness activities
+            - **Sustainability:** Build connection to environment/community
+            """)
+            
+            st.markdown(f"""
+            **Health & Physical Education (HPE) Links:**
+            - **Movement & Physical Activity:** Daily structured movement (addressing {top_session} patterns)
+            - **Personal, Social & Community Health:**
+              - Emotional regulation skills
+              - Help-seeking behaviors
+              - Positive relationships
+              - Mental health awareness
+            - **Communicating & Interacting:** Social skills practice
+            """)
+        
+        st.markdown("---")
+        
+        # Recommended Action Plan
+        st.markdown("### 📋 Recommended Action Plan")
+        
+        with st.container(border=True):
+            st.markdown("#### Immediate Actions (Next 1-2 Weeks):")
+            st.markdown(f"""
+            1. **Environmental Modification:** Review {top_location} for triggers and implement changes
+            2. **Relationship Building:** Initiate daily 2-minute connection conversations
+            3. **Regulation Tools:** Introduce 3 self-regulation strategies aligned with SMART training
+            4. **Visual Supports:** Create visual schedule and expectations chart
+            5. **Team Meeting:** Brief key staff on patterns and consistent response strategies
+            """)
+            
+            st.markdown(f"""
+            #### Short-Term Goals (1 Month):
+            1. **CPI Strategy Implementation:** Apply de-escalation techniques for "{top_behavior}"
+            2. **BSEM Domain Focus:** Prioritize "Body" and "Relationship" domains
+            3. **Functional Behavior Assessment (FBA):** Consider formal FBA given {len(student_incidents)} incidents
+            4. **Positive Behavior Support Plan:** Develop/refine PBS plan with student input
+            5. **Data Review:** Weekly check of incident trends to monitor effectiveness
+            6. **Family Engagement:** Share progress and strategies with family
+            """)
+            
+            st.markdown("""
+            #### Long-Term Goals (Term/Semester):
+            1. **Skill Development:** Explicitly teach Australian Curriculum Personal & Social Capabilities
+            2. **Trauma-Informed Environment:** Full implementation of TIP across all settings
+            3. **Berry Street Domains:** Progressive implementation across all 5 domains
+            4. **Peer Relationships:** Facilitate positive peer connections and social skills
+            5. **Independence Building:** Gradual fading of support as skills develop
+            6. **Transition Planning:** Prepare for next grade level with continuity of supports
+            """)
+        
+        st.markdown("---")
+        
+        # Success Indicators
+        st.markdown("### ✅ Success Indicators to Monitor")
+        
+        col_suc1, col_suc2 = st.columns(2)
+        
+        with col_suc1:
+            st.markdown("**Leading Indicators (Early Signs):**")
+            st.markdown("""
+            - ⬆️ Increased use of regulation strategies
+            - ⬆️ Requesting breaks before escalation
+            - ⬆️ Positive peer interactions
+            - ⬆️ Time on task/engagement
+            - ⬇️ Frequency of antecedent exposure
+            """)
+        
+        with col_suc2:
+            st.markdown("**Lagging Indicators (Outcome Measures):**")
+            st.markdown("""
+            - ⬇️ Total incident frequency
+            - ⬇️ Incident severity levels
+            - ⬇️ Critical incidents
+            - ⬆️ Academic achievement
+            - ⬆️ School attendance/connection
+            """)
+        
+        st.markdown("---")
+        
+        # Resources
+        with st.expander("📖 **Additional Resources & References**"):
+            st.markdown("""
+            **Crisis Prevention Institute (CPI):**
+            - Nonviolent Crisis Intervention® Training Manual
+            - CPI's Crisis Development Model℠
+            - www.crisisprevention.com
+            
+            **Trauma-Informed Practice:**
+            - SAMHSA's Six Key Principles of Trauma-Informed Approach
+            - "Helping Traumatized Children Learn" (Cole et al.)
+            - Australian Childhood Foundation trauma resources
+            
+            **Berry Street Education Model:**
+            - Berry Street Education Model Handbook
+            - Domain-specific teaching strategies
+            - www.berrystreet.org.au/bsem
+            
+            **SMART Training:**
+            - Stress Management and Resilience Training for Educators
+            - Mindfulness-based stress reduction resources
+            - Penn Resilience Program materials
+            
+            **Australian Curriculum:**
+            - Personal and Social Capability learning continuum
+            - Health and Physical Education curriculum documents
+            - www.australiancurriculum.edu.au
+            
+            **Additional Evidence-Based Resources:**
+            - Positive Behaviour for Learning (PBL) Australia
+            - Zones of Regulation®
+            - The Incredible Years® programs
+            - Social Thinking® methodology
+            - Collaborative & Proactive Solutions (CPS/Think:Kids)
+            """)
     
     # Action buttons at bottom
     st.markdown("---")
