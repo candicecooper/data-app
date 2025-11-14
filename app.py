@@ -736,7 +736,8 @@ def render_critical_incident_abch_form():
             
             if not can_submit:
                 st.error("⚠️ Please complete all mandatory requirements")
-            else:
+            
+            if can_submit:
                 try:
                     validate_abch_form(
                         st.session_state.get('abch_context_0', ''),
