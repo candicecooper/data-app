@@ -670,7 +670,7 @@ def main():
             st.code(str(e))
 
 if __name__ == '__main__':
-    main()date:
+    main()
             incident_date = st.date_input("Date of Incident", datetime.now().date(), key="incident_date")
         with col_time:
             default_time = datetime.now().time()
