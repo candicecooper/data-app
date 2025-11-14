@@ -2,10 +2,12 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, time, timedelta
 import random
-import uuid # Use uuid for robust unique IDs
+import uuid
 import plotly.express as px
 import numpy as np
-import time as time_module
+import base64 
+import os 
+import io 
 
 # --- Configuration and Aesthetics (High-Contrast Dark Look) ---
 
@@ -15,537 +17,414 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for a sleek, high-contrast, dark-mode inspired UI
-st.markdown(
-    """
-    <style>
-    /* High-Contrast Dark Theme for Accessibility and Modern Look */
-    
-    .stApp { background-color: #0F172A; color: #E2E8F0; }
-    h1, h2, h3, .stMarkdown, .st-emotion-cache-1jm69h1 { color: #F1F5F9 !important; }
-    
-    /* Widget Backgrounds */
-    .stForm, .stContainer, .stAlert, .stSelectbox, .stTextInput, .stTextArea,
-    .st-emotion-cache-6qob1p { background-color: #1E293B; border-radius: 12px; color: #F1F5F9; }
-    
-    /* Input Fields */
-    div[data-testid="stTextInput"] > div > input,
-    div[data-testid="stTextArea"] > textarea,
-    div[data-testid="stSelectbox"] > div[role="combobox"] {
-        background-color: #0F172A;
-        border: 1px solid #334155;
-        color: #F1F5F9;
-        border-radius: 8px;
-    }
-    
-    /* Buttons */
-    .stButton > button {
-        background-color: #4C51BF; /* Indigo */
-        color: white;
-        border-radius: 8px;
-        border: none;
-        padding: 10px 20px;
-        transition: background-color 0.3s;
-    }
-    .stButton > button:hover {
-        background-color: #4338CA;
-    }
+# Define Plotly Theme for Dark Mode Consistency
+PLOTLY_THEME = 'plotly_dark'
 
-    /* Primary Button (Quick Log/Save) */
-    .st-emotion-cache-nahz7x {
-        background-color: #10B981; /* Emerald Green */
-    }
-    .st-emotion-cache-nahz7x:hover {
-        background-color: #059669;
-    }
+# --- FBA and Data Constants ---
 
-    /* Metric/Card Styling */
-    div[data-testid="stMetric"] {
-        background-color: #1E293B;
-        border-radius: 12px;
-        padding: 20px;
-        border-left: 5px solid #6366F1;
-    }
-    
-    /* Streamlit Containers/Columns for better visual separation */
-    .st-emotion-cache-z5ttm3 { /* Specific selector for column content */
-        padding-top: 0;
-    }
-
-    /* Footer/Info Bar */
-    .st-emotion-cache-1c9vcm4 {
-        border-top: 1px solid #334155;
-        padding-top: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True
-)
-
-# --- MOCK DATA and CONFIGURATION ---
-
-# Staff roles and names
 MOCK_STAFF = [
-    {'id': 's1', 'name': 'Emily Jones', 'role': 'JP', 'active': True, 'email': 'emily@school.edu'},
-    {'id': 's2', 'name': 'Daniel Lee', 'role': 'PY', 'active': True, 'email': 'daniel@school.edu'},
-    {'id': 's3', 'name': 'Sarah Chen', 'role': 'SY', 'active': True, 'email': 'sarah@school.edu'},
-    {'id': 's4', 'name': 'Admin User', 'role': 'ADM', 'active': True, 'email': 'admin@school.edu'},
+    {'id': 's1', 'name': 'Emily Jones (JP)', 'role': 'JP', 'active': True, 'special': False},
+    {'id': 's2', 'name': 'Daniel Lee (PY)', 'role': 'PY', 'active': True, 'special': False},
+    {'id': 's3', 'name': 'Sarah Chen (SY)', 'role': 'SY', 'active': True, 'special': False},
+    {'id': 's4', 'name': 'Admin User (ADM)', 'role': 'ADM', 'active': True, 'special': False},
+    # Special roles that require manual name input
+    {'id': 's_trt', 'name': 'TRT', 'role': 'TRT', 'active': True, 'special': True},
+    {'id': 's_sso', 'name': 'External SSO', 'role': 'SSO', 'active': True, 'special': True},
 ]
 
-# Student Data
+# Minimal mock students and data to prevent immediate errors
 MOCK_STUDENTS = [
-    {'id': 'stu1', 'name': 'Izack P.', 'grade': '7', 'primary_staff_id': 's2', 'plan_summary': 'Sensory-seeking, requires frequent movement breaks and clear visual schedules.'},
-    {'id': 'stu2', 'name': 'Maya R.', 'grade': '10', 'primary_staff_id': 's3', 'plan_summary': 'Avoidance behaviour related to literacy tasks. Use choice boards and peer support.'},
-    {'id': 'stu3', 'name': 'Noah K.', 'grade': '4', 'primary_staff_id': 's1', 'plan_summary': 'Low frustration tolerance. Implement Check-In/Check-Out system and explicit teaching of emotional regulation.'},
+    {'id': 'std100', 'name': 'Alice Smith', 'group': 'JP', 'bpp_status': 'Active'},
+    {'id': 'std200', 'name': 'Bob Johnson', 'group': 'PY', 'bpp_status': 'In Review'},
+    {'id': 'std300', 'name': 'Charlie Brown', 'group': 'SY', 'bpp_status': 'Draft'},
 ]
 
-# Navigation Options per role
-nav_options = {
-    'ADM': {
-        'Dashboard': ('staff_area', None),
-        'All Students': ('staff_area', 'All Students'),
-        'Reports': ('staff_area', 'Reports'),
-        'Settings': ('staff_area', 'Settings'),
-    },
-    'PY': { # Primary Year
-        'Dashboard': ('staff_area', None),
-        'My Students': ('staff_area', 'My Students'),
-        'Quick Log': ('quick_log', None),
-    },
-    'SY': { # Secondary Year
-        'Dashboard': ('staff_area', None),
-        'My Students': ('staff_area', 'My Students'),
-        'Quick Log': ('quick_log', None),
-    },
-    'JP': { # Junior Primary
-        'Dashboard': ('staff_area', None),
-        'My Students': ('staff_area', 'My Students'),
-        'Quick Log': ('quick_log', None),
-    },
-}
+# Placeholder lists for form options
+BEHAVIOUR_TYPES = ['Physical Aggression', 'Verbal Disruption', 'Property Damage', 'Non-Compliance', 'Self-Injurious']
+ANTECEDENTS = ['Task Demands', 'Peer Conflict', 'Transition', 'Waiting', 'Sensory Overload']
+CONSEQUENCES = ['Time Out', 'Restraint', 'Redirection', 'Loss of Privilege', 'Ignored']
+FUNCTION_HYPOTHESIS = ['Attention', 'Escape', 'Tangible', 'Sensory']
+RISK_LEVELS = ['Low', 'Medium', 'High', 'Extreme']
 
 
-# FBA and Data Constants
-BEHAVIORS_FBA = ['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)', 'Self-Injurious Behaviour', 'Outburst (Vocal/Physical)']
-ANTECEDENTS = ['Task Demand', 'Transition', 'Unstructured Time', 'Sensory Overload', 'Peer Conflict', 'Attention from Adult/Peer']
-CONSEQUENCES = ['Task Escape', 'Access to Tangible/Activity', 'Staff Attention', 'Peer Attention', 'Sensory Input']
-LOCATIONS = ['Classroom', 'Yard', 'Specialist Room', 'Corridor', 'Office']
+# --- Utility Functions ---
 
-# --- Helper Functions ---
+def initialize_session_state():
+    """Initializes Streamlit session state variables."""
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = 'landing'
+    if 'current_role' not in st.session_state:
+        st.session_state.current_role = None
+    if 'students' not in st.session_state:
+        st.session_state.students = MOCK_STUDENTS
+    if 'incidents_df' not in st.session_state:
+        st.session_state.incidents_df = pd.DataFrame(columns=['id', 'student_id', 'date', 'time', 'risk_level', 'behaviour', 'antecedent', 'consequence', 'func_hypothesis', 'is_abch_completed', 'logged_by', 'role'])
+    if 'bpps_df' not in st.session_state:
+        st.session_state.bpps_df = pd.DataFrame(columns=['id', 'student_id', 'status', 'last_updated', 'plan_details'])
+    if 'temp_incident_data' not in st.session_state:
+        st.session_state.temp_incident_data = None
+    if 'abch_chronology' not in st.session_state:
+        st.session_state.abch_chronology = []
+    if 'selected_student_id' not in st.session_state:
+        st.session_state.selected_student_id = None
+    if 'temp_log_area' not in st.session_state:
+        st.session_state.temp_log_area = None
 
-def get_active_staff():
-    """Returns a list of active staff names for dropdowns."""
-    return [s['name'] for s in MOCK_STAFF if s['active']]
+def navigate_to(page, **kwargs):
+    """Handles navigation between pages and updates state."""
+    st.session_state.current_page = page
+    for key, value in kwargs.items():
+        if key == 'student_id':
+            st.session_state.selected_student_id = value
+        elif key == 'role':
+            st.session_state.current_role = value
+        # Add other navigation parameters as needed
+    st.rerun()
 
 def get_student_by_id(student_id):
-    """Finds student data by ID."""
-    return next((s for s in MOCK_STUDENTS if s['id'] == student_id), None)
+    """Finds a student dictionary by their ID."""
+    if not student_id:
+        return None
+    for student in st.session_state.students:
+        if student['id'] == student_id:
+            return student
+    return None
 
-def get_staff_by_id(staff_id):
-    """Finds staff data by ID."""
-    return next((s for s in MOCK_STAFF if s['id'] == staff_id), None)
+def get_base64_of_image(file_path):
+    """Reads an image file and returns its base64 encoded string."""
+    # This is the line that requires fba_icon.png to be in the same folder as app.py
+    with open(file_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode()
 
-def get_student_name(student_id):
-    """Returns student name from ID."""
-    student = get_student_by_id(student_id)
-    return student['name'] if student else 'Unknown Student'
-
-def navigate_to(page_key, **kwargs):
-    """Updates session state for page routing."""
-    st.session_state.page = page_key
-    for key, value in kwargs.items():
-        st.session_state[key] = value
-
-def initialize_state():
-    """Ensures necessary session state keys exist."""
-    if 'page' not in st.session_state:
-        st.session_state.page = 'landing'
-    if 'role' not in st.session_state:
-        st.session_state.role = None
-    if 'student' not in st.session_state:
-        st.session_state.student = None
-    if 'incident_logs' not in st.session_state:
-        # Mock incident data for charting
-        data = {
-            'date': [datetime.now().date() - timedelta(days=i % 30) for i in range(100)],
-            'student_id': [random.choice([s['id'] for s in MOCK_STUDENTS]) for _ in range(100)],
-            'student_name': [get_student_name(random.choice([s['id'] for s in MOCK_STUDENTS])) for _ in range(100)],
-            'antecedent': [random.choice(ANTECEDENTS) for _ in range(100)],
-            'behaviour': [random.choice(BEHAVIORS_FBA) for _ in range(100)],
-            'intensity': [random.randint(1, 5) for _ in range(100)],
-            'staff_id': [random.choice([s['id'] for s in MOCK_STAFF]) for _ in range(100)],
-        }
-        st.session_state.incident_logs = pd.DataFrame(data)
-
-def save_log_entry(data):
-    """Saves a new incident log entry to the session state."""
-    
-    # Ensure all columns exist, fill with None/default if missing from the form
-    required_cols = st.session_state.incident_logs.columns
-    for col in required_cols:
-        if col not in data:
-            data[col] = None
-            
-    # Convert data dictionary to DataFrame row
-    new_row_df = pd.DataFrame([data])
-    
-    # Ensure column order matches existing DataFrame before concatenation
-    new_row_df = new_row_df[required_cols]
-
-    # Append the new log entry
-    st.session_state.incident_logs = pd.concat(
-        [st.session_state.incident_logs, new_row_df], 
-        ignore_index=True
-    )
-    st.success("Log Entry Saved Successfully!")
-
-
-# --- UI Components ---
-
-# FIX APPLIED HERE (Around line 840)
-def staff_header(role):
-    """Renders the navigation menu based on the user's role."""
-    
-    st.title("Data-Driven Behaviour Support")
-    
-    nav_opts = nav_options.get(role, {})
-    num_cols = len(nav_opts)
-
-    # --- FIX FOR StreamlitInvalidColumnSpecError ---
-    if num_cols == 0:
-        st.warning(f"No navigation options configured for role: **{role}**.")
-        return
-    # -----------------------------------------------
-
-    cols = st.columns(num_cols) # This will now be > 0
-    
-    # Create navigation buttons
-    for i, (label, (page_key, sub_page)) in enumerate(nav_opts.items()):
-        with cols[i]:
-            if st.button(label, key=f"nav_{page_key}_{sub_page or ''}"):
-                navigate_to(page_key, staff_sub_page=sub_page, role=role)
-                st.rerun()
-
-def staff_selector_sidebar():
-    """Allows mock login for testing different roles."""
-    st.sidebar.title("Login / Role Selector")
-    
-    # Map staff names to their IDs for the dropdown
-    staff_map = {s['name']: s['id'] for s in MOCK_STAFF}
-    staff_options = list(staff_map.keys())
-    
-    selected_name = st.sidebar.selectbox(
-        "Select your Staff Profile:", 
-        options=[''] + staff_options, 
-        index=0,
-        key='login_staff_name'
-    )
-    
-    if st.sidebar.button("Log In"):
-        if selected_name:
-            staff_id = staff_map[selected_name]
-            staff_data = get_staff_by_id(staff_id)
-            if staff_data:
-                navigate_to('staff_area', role=staff_data['role'])
-                st.rerun()
-        else:
-            st.sidebar.error("Please select a staff profile.")
-
-def student_selector(role):
-    """Renders a dropdown to select a student for quick log or detail view."""
-    
-    # Filter students based on role (ADM sees all, others see only their primary students)
-    if role != 'ADM':
-        # Find the current staff ID
-        current_staff = next((s for s in MOCK_STAFF if s['role'] == role), None)
-        if current_staff:
-            filtered_students = [
-                s for s in MOCK_STUDENTS if s['primary_staff_id'] == current_staff['id']
-            ]
-        else:
-             filtered_students = []
-    else:
-        filtered_students = MOCK_STUDENTS
-
-    # Map student names to their IDs for the dropdown
-    student_map = {f"{s['name']} (Gr {s['grade']})": s['id'] for s in filtered_students}
-    student_options = list(student_map.keys())
-    
-    st.subheader("Student Context")
-    
-    selected_name = st.selectbox(
-        "Select a Student for Action or Analysis:", 
-        options=[''] + student_options, 
-        index=0,
-        key='selected_student_for_action'
-    )
-    
-    if selected_name:
-        student_id = student_map[selected_name]
-        st.session_state.student = student_id
+def set_landing_page_background(image_file):
+    """
+    Sets the given image as a full-page, fixed background using custom CSS.
+    """
+    try:
+        # Use a relative path if the file is in the same directory
+        b64 = get_base64_of_image(image_file)
         
-        # Display buttons for actions once a student is selected
-        col_log, col_detail = st.columns(2)
-        with col_log:
-            if st.button("Quick Log Incident", use_container_width=True, key='go_quick_log'):
-                navigate_to('quick_log', student=student_id, role=role)
-                st.rerun()
-        with col_detail:
-            if st.button("View Student Analysis", use_container_width=True, key='go_student_detail'):
-                navigate_to('student_detail', student=student_id, role=role)
-                st.rerun()
-    else:
-        st.session_state.student = None
-        st.info("Please select a student to enable actions.")
+        # Define a consistent blue-green color for the buttons
+        BUTTON_BG_COLOR = "#008080"  # Teal/Blue-Green
+        BUTTON_TEXT_COLOR = "#FFFFFF"
+        
+        css = f"""
+        <style>
+        /* 1. Set the fixed, full-page background image */
+        .stApp {{
+            background-image: url("data:image/png;base64,{b64}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed; 
+        }}
+        
+        /* 2. Make the main Streamlit content area transparent on the landing page */
+        .main {{
+            background-color: transparent !important;
+            padding-top: 0 !important; /* Start content higher */
+        }}
+        
+        /* NEW: Remove duplicate Streamlit title/header element */
+        header {{
+            display: none !important;
+        }}
+
+        /* 3. Custom button styling for landing page elements (Blue/Green) */
+        /* Target primary buttons within the main content of the landing page */
+        .stButton button[kind="primary"] {{
+            background-color: {BUTTON_BG_COLOR} !important;
+            color: {BUTTON_TEXT_COLOR} !important;
+            border-color: {BUTTON_BG_COLOR} !important;
+            transition: all 0.2s ease;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); /* Strong shadow for visibility */
+        }}
+
+        .stButton button[kind="primary"]:hover {{
+            background-color: #00AAAA !important; /* Slightly lighter on hover */
+            border-color: #00AAAA !important;
+            color: {BUTTON_TEXT_COLOR} !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.6);
+        }}
+        
+        /* 4. Style for content placed over the background to improve readability */
+        /* Apply a subtle text shadow for better contrast */
+        #landing-page-content h1, #landing-page-content h2, #landing-page-content h3, #landing-page-content h4, #landing-page-content p, #landing-page-content label {{
+            color: #FFFFFF !important;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); /* Adjusted shadow for all text */
+        }}
+        
+        /* 5. Placeholder for the three images/columns (UPDATED COLOR AND HOVER) */
+        .image-placeholder {{
+            background-color: rgba(44, 62, 80, 0.7); 
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            height: 250px;
+            color: white;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            cursor: default; 
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }}
+        
+        /* Interactive Hover Effect */
+        .image-placeholder:hover {{
+            background-color: rgba(52, 73, 94, 0.8); 
+            border: 2px solid #00FFFF; 
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
+        }}
+
+        </style>
+        """
+        st.markdown(css, unsafe_allow_html=True)
+    except FileNotFoundError:
+        # Note: If this warning appears, it means the file 'fba_icon.png' is not in the same directory.
+        st.warning(f"⚠️ Background image '{image_file}' not found. Please ensure it's in the same directory as app.py for the professional look.")
+    except Exception as e:
+        st.warning(f"⚠️ Error loading background image: {e}")
 
 
 # --- Page Rendering Functions ---
 
+# --- Landing Page Functions ---
+
+def render_role_select():
+    """Renders the four main area buttons for staff login."""
+    st.markdown("### Select Your Primary Area to Login:")
+    
+    col_jp, col_py, col_sy, col_adm = st.columns(4)
+    
+    with col_jp:
+        if st.button("Junior Primary (JP)", use_container_width=True, type="primary"):
+            navigate_to('staff_area', role='JP', mode='home')
+    with col_py:
+        if st.button("Primary Years (PY)", use_container_width=True, type="primary"):
+            navigate_to('staff_area', role='PY', mode='home')
+    with col_sy:
+        if st.button("Senior Years (SY)", use_container_width=True, type="primary"):
+            navigate_to('staff_area', role='SY', mode='home')
+    with col_adm:
+        if st.button("Admin Portal (ADM)", use_container_width=True, type="primary"):
+            navigate_to('staff_area', role='ADM', mode='home')
+
+def render_direct_log_select():
+    """
+    Renders the Direct Incident Log selection area,
+    with corrected button labels and primary styling.
+    """
+    st.markdown("---")
+    
+    st.markdown("### 📝 Quick Incident Log (Non-Specific Student)")
+    
+    # Use primary button style for prominence for the Quick Log
+    if st.button("**Start Quick Log Now**", use_container_width=True, type="primary", key="quick_log_start"): 
+        st.session_state.temp_log_area = 'quick_log'
+        st.session_state.current_role = 'direct_log_user' # Temporary role for context
+        # Use a dummy ID for quick log for form to know it's generic
+        navigate_to('direct_log_form', student_id='quick_log_id') 
+        
+    st.markdown("---")
+    
+    st.markdown("### 🔎 Direct Incident Log (By Student Name)")
+    
+    # Setup student map for selection
+    student_id_map = {s['name']: s['id'] for s in st.session_state.students}
+    student_names = sorted(student_id_map.keys())
+    
+    selected_student_name = st.selectbox("Select Student to Log Incident Directly:", options=[''] + student_names, index=0, key="direct_log_select_box")
+    
+    if selected_student_name:
+        selected_student_id = student_id_map[selected_student_name]
+        
+        # FIX APPLIED HERE: Label changed from 'Quick Log' to 'Start Log' for this specific log
+        if st.button(f"**Start Log for {selected_student_name}**", use_container_width=True, type="primary", key="direct_log_start"): 
+            st.session_state.temp_log_area = 'direct' 
+            st.session_state.current_role = 'direct_log_user' # Temporary role for context
+            navigate_to('direct_log_form', student_id=selected_student_id)
+
 def render_landing_page():
-    """Initial page for role selection."""
-    staff_selector_sidebar()
+    """Renders the initial application landing page."""
     
-    st.markdown("## Welcome to the Behaviour Data & Support Tool")
-    st.markdown("---")
-    st.info("Please select your staff profile from the sidebar to access the dashboard and support features.")
-
-def render_quick_log(role, student_id):
-    """Renders the simplified ABC Quick Log form."""
+    # 1. Apply the professional background and CSS
+    # --- FIX APPLIED: Changed file name to 'fba_icon.png' ---
+    set_landing_page_background("fba_icon.png")
     
-    student_data = get_student_by_id(student_id)
-    student_name = student_data['name']
-    
-    staff_header(role)
-    st.markdown("---")
-    st.header(f"Quick Log: Incident for {student_name}")
-
-    with st.form(key='quick_log_form'):
-        st.subheader("Incident Details")
-        
-        # Time and Location
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            incident_date = st.date_input("Date", datetime.now().date())
-        with col2:
-            incident_time = st.time_input("Time", datetime.now().time())
-        with col3:
-            location = st.selectbox("Location", options=LOCATIONS)
-
-        st.subheader("A - Antecedent (What happened right before?)")
-        antecedent = st.selectbox("Primary Antecedent", options=ANTECEDENTS)
-        context = st.text_area("Specific Context/Notes (What exactly was happening?)", key='log_context')
-        
-        st.subheader("B - Behaviour (What behaviour was observed?)")
-        behaviour = st.multiselect("Behaviour(s) Observed", options=BEHAVIORS_FBA)
-        intensity = st.slider("Intensity (1=Low, 5=High)", min_value=1, max_value=5, value=3)
-        
-        st.subheader("C - Consequence/Intervention (What happened right after?)")
-        consequence_action = st.selectbox("Primary Consequence/Intervention", options=CONSEQUENCES)
-        
-        incident_description = st.text_area("Detailed Incident Summary (mandatory for high intensity)", key='log_summary')
-        
-        submitted = st.form_submit_button("Submit Log Entry")
-        
-        if submitted:
-            if not behaviour or not incident_description:
-                st.error("Please select at least one Behaviour and provide a Detailed Incident Summary.")
-            else:
-                log_data = {
-                    'date': incident_date,
-                    'time': incident_time.strftime("%H:%M:%S"),
-                    'student_id': student_id,
-                    'student_name': student_name,
-                    'antecedent': antecedent,
-                    'behaviour': ", ".join(behaviour),
-                    'intensity': intensity,
-                    'consequence': consequence_action,
-                    'location': location,
-                    'context': context,
-                    'description': incident_description,
-                    'staff_id': next((s['id'] for s in MOCK_STAFF if s['role'] == role), 'unknown_staff_id'),
-                    'log_id': str(uuid.uuid4())
-                }
-                save_log_entry(log_data)
-                # Navigate back to staff area after saving
-                navigate_to('staff_area', role=role)
-                st.rerun()
-
-def render_student_analysis(student_id, role):
-    """Renders the data analysis dashboard for a selected student."""
-    
-    student_data = get_student_by_id(student_id)
-    if not student_data:
-        st.error("Student data not found.")
-        navigate_to('staff_area', role=role)
-        st.rerun()
-        return
-
-    student_name = student_data['name']
-    
-    staff_header(role)
-    st.markdown("---")
-    st.header(f"Data Analysis: {student_name}")
-    
-    # Filter logs for the selected student
-    student_logs = st.session_state.incident_logs[
-        st.session_state.incident_logs['student_id'] == student_id
-    ]
-    
-    # 1. Summary Metrics
-    st.subheader("Summary Metrics (Last 90 Days)")
-    
-    # Filter logs to last 90 days
-    cutoff_date = datetime.now().date() - timedelta(days=90)
-    recent_logs = student_logs[student_logs['date'] >= cutoff_date]
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("Total Incidents", recent_logs.shape[0])
-    
-    with col2:
-        avg_intensity = recent_logs['intensity'].mean() if not recent_logs.empty else 0
-        st.metric("Avg. Intensity", f"{avg_intensity:.1f}")
-        
-    with col3:
-        top_behaviour = recent_logs['behaviour'].mode().iloc[0] if not recent_logs.empty else "N/A"
-        st.metric("Most Frequent Behaviour", top_behaviour)
-
-    # 2. Incident Trend Chart
-    st.subheader("Incident Trend Over Time")
-    if not recent_logs.empty:
-        # Group by date and count incidents
-        trend_data = recent_logs.groupby('date').size().reset_index(name='Incident Count')
-        fig_trend = px.line(
-            trend_data, 
-            x='date', 
-            y='Incident Count', 
-            title=f"Incident Count for {student_name}",
-            color_discrete_sequence=['#6366F1']
+    # Use a central container for the content on top of the background
+    with st.container(border=False):
+        # A large, high-contrast title over the background
+        st.markdown(
+            """
+            <div id="landing-page-content" style="text-align: center; padding-top: 100px;">
+                <h1 style="color: #00FFFF; font-size: 3.5em; text-shadow: 2px 2px 6px rgba(0, 0, 0, 1);">
+                    Behaviour Support & Data Analysis Tool
+                </h1>
+                </div>
+            """, 
+            unsafe_allow_html=True
         )
-        fig_trend.update_layout(xaxis_title="Date", yaxis_title="Count", plot_bgcolor='#1E293B', paper_bgcolor='#1E293B', font_color='#F1F5F9')
-        st.plotly_chart(fig_trend, use_container_width=True)
-    else:
-        st.info("No recent log data available for this student.")
 
-
-    # 3. ABC Analysis Charts
-    st.subheader("ABC Frequency Analysis")
-    
-    if not recent_logs.empty:
-        col_ant, col_beh, col_con = st.columns(3)
+        # Content is placed in a central area with a max width
+        col_spacer_left, col_content, col_spacer_right = st.columns([1, 4, 1])
         
-        with col_ant:
-            ant_counts = recent_logs['antecedent'].value_counts().reset_index(name='Count')
-            fig_ant = px.pie(ant_counts, values='Count', names='antecedent', title='Antecedent Distribution', color_discrete_sequence=px.colors.sequential.Sunset)
-            fig_ant.update_layout(plot_bgcolor='#1E293B', paper_bgcolor='#1E293B', font_color='#F1F5F9')
-            st.plotly_chart(fig_ant, use_container_width=True)
-
-        with col_beh:
-            # Need to handle the multiselect behaviour column correctly for analysis
-            all_behaviours = [b.strip() for sublist in recent_logs['behaviour'].str.split(', ') for b in sublist]
-            beh_counts = pd.Series(all_behaviours).value_counts().reset_index(name='Count')
-            beh_counts.columns = ['Behaviour', 'Count']
-            fig_beh = px.bar(beh_counts.head(5), x='Behaviour', y='Count', title='Top 5 Behaviours', color='Behaviour', color_discrete_sequence=px.colors.qualitative.Pastel)
-            fig_beh.update_layout(xaxis_title="", yaxis_title="Count", plot_bgcolor='#1E293B', paper_bgcolor='#1E293B', font_color='#F1F5F9')
-            st.plotly_chart(fig_beh, use_container_width=True)
+        with col_content:
+            # --- 2. Feature Cards ---
+            st.markdown("<h4 style='text-align: center; margin-top: 30px; color: #FFFFFF;'>Core Capabilities</h4>", unsafe_allow_html=True)
+            col_1, col_2, col_3 = st.columns(3)
             
-        with col_con:
-            con_counts = recent_logs['consequence'].value_counts().reset_index(name='Count')
-            fig_con = px.pie(con_counts, values='Count', names='consequence', title='Consequence Distribution', color_discrete_sequence=px.colors.sequential.Plasma)
-            fig_con.update_layout(plot_bgcolor='#1E293B', paper_bgcolor='#1E293B', font_color='#F1F5F9')
-            st.plotly_chart(fig_con, use_container_width=True)
+            # Feature 1: Data-Driven Insights 
+            with col_1:
+                st.markdown(
+                    """
+                    <div class="image-placeholder">
+                        <img src="https://i.imgur.com/v8tT9oX.png" alt="Insights Icon" style="width: 80px; height: 80px; opacity: 0.8;"/>
+                        <h4 style="margin: 0; padding-top: 10px;">Data-Driven Insights</h4>
+                        <p style="font-size: 0.85em; text-align: center; margin-top: 5px;">Track incidents, identify patterns, and visualize risk areas for proactive planning.</p>
+                        <h3 style="color: #00FFFF;">INSIGHT</h3>
+                        <p style="font-size: 0.8em;">**Understand Patterns**</p>
+                    </div>
+                    """, 
+                    unsafe_allow_html=True
+                )
+            # Feature 2: Behaviour Profile Plans 
+            with col_2:
+                st.markdown(
+                    """
+                    <div class="image-placeholder">
+                        <img src="https://i.imgur.com/G5iM8qF.png" alt="BPP Icon" style="width: 80px; height: 80px; opacity: 0.8;"/>
+                        <h4 style="margin: 0; padding-top: 10px;">Behaviour Profile Plans</h4>
+                        <p style="font-size: 0.85em; text-align: center; margin-top: 5px;">Generate trauma-informed BPPs aligned with CPI and BSEM protocols.</p>
+                        <h3 style="color: #00FFFF;">PROGRESS</h3>
+                        <p style="font-size: 0.8em;">**Foster Growth**</p>
+                    </div>
+                    """, 
+                    unsafe_allow_html=True
+                )
 
-    # 4. Intervention Plan Summary
-    st.subheader(f"Current Behaviour Support Plan Summary")
-    st.success(student_data['plan_summary'])
+            # Feature 3: Quick and Detailed Logging 
+            with col_3:
+                st.markdown(
+                    """
+                    <div class="image-placeholder">
+                        <img src="https://i.imgur.com/tP0X8Lw.png" alt="Logging Icon" style="width: 80px; height: 80px; opacity: 0.8;"/>
+                        <h4 style="margin: 0; padding-top: 10px;">Quick and Detailed Logging</h4>
+                        <p style="font-size: 0.85em; text-align: center; margin-top: 5px;">Log a basic incident in seconds or complete a full ABCH follow-up when needed.</p>
+                        <h3 style="color: #00FFFF;">WELLBEING</h3>
+                        <p style="font-size: 0.8em;">**Promote Positive Outcomes**</p>
+                    </div>
+                    """, 
+                    unsafe_allow_html=True
+                )
 
-    # 5. Raw Data (optional)
-    if role == 'ADM':
-        st.subheader("Raw Incident Data (Admin View)")
-        st.dataframe(student_logs, use_container_width=True)
+            # --- 3. Role/Area Selection ---
+            st.markdown("---")
+            render_role_select()
+            
+            # --- 4. Direct/Quick Log Selection ---
+            st.markdown(
+                """
+                <h2 style="color: #FFFFFF; text-align: center; margin-top: 40px; margin-bottom: 20px; font-size: 1.8em; text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);">
+                    OR
+                </h2>
+                """, 
+                unsafe_allow_html=True
+            )
+            render_direct_log_select()
 
-    # Button to go back to dashboard
-    if st.button("← Back to Dashboard", key='back_from_detail'):
-        navigate_to('staff_area', role=role)
-        st.rerun()
+# --- Placeholder Functions for Other Screens (Required for App Structure) ---
+
+def render_incident_log_form(student):
+    """
+    PLACEHOLDER: Renders the core incident log form.
+    """
+    is_quick_log = st.session_state.selected_student_id == 'quick_log_id'
+    
+    st.markdown(f"### Logging Incident for: **{student['name'] if not is_quick_log else 'Non-Specific Student'}**")
+    
+    with st.form(key='incident_log_form'):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.date_input("Date of Incident", datetime.now().date())
+        with col2:
+            st.time_input("Time of Incident", datetime.now().time())
+        
+        st.selectbox("Behaviour Type (Primary)", options=BEHAVIOUR_TYPES, key='behaviour')
+        st.selectbox("Risk Level", options=RISK_LEVELS, key='risk_level')
+
+        # Simple input for initial log
+        st.text_area("Brief Description of Incident", height=150, key='description')
+        
+        # Determine submit button text
+        submit_label = "Submit Quick Log" if is_quick_log else "Submit Direct Log"
+
+        if st.form_submit_button(submit_label, type="primary"):
+            # Placeholder logic for saving
+            st.success(f"{submit_label} submitted successfully! Returning to home page.")
+            navigate_to('landing')
+
+def render_direct_log_form():
+    """Renders the incident log form directly after selection from the landing page."""
+    student_id = st.session_state.selected_student_id
+    
+    # Handle the 'quick_log' dummy ID
+    if student_id == 'quick_log_id':
+        student = {'id': 'quick_log_id', 'name': 'Quick Log', 'group': 'N/A', 'bpp_status': 'N/A'}
+    else:
+        student = get_student_by_id(student_id)
+
+    if student:
+        col_title, col_back = st.columns([4, 1])
+        with col_title:
+            # Title adjusts for quick log
+            log_type = "Quick Incident Log" if student_id == 'quick_log_id' else "Direct Student Log"
+            st.markdown(f"## {log_type}")
+        with col_back:
+            # If navigating back, clear the temporary direct log state
+            if st.button("⬅ Back to Selection", key="back_to_direct_select_form"):
+                st.session_state.temp_incident_data = None
+                st.session_state.abch_chronology = []
+                st.session_state.current_role = None
+                navigate_to('landing')
+        st.markdown("---")
+        
+        # Render the actual form
+        render_incident_log_form(student)
+    else:
+        st.error("No student selected. Returning to home page.")
+        navigate_to('landing')
 
 def render_staff_area():
-    """Renders the main staff dashboard."""
+    """PLACEHOLDER: Renders the main staff dashboard/area."""
+    st.title(f"Staff Dashboard: {st.session_state.current_role} Area")
+    st.info("This is the main working area for staff. Please build out the dashboard, student lists, and BPP management here.")
     
-    role = st.session_state.get('role')
-    sub_page = st.session_state.get('staff_sub_page')
-    
-    staff_header(role)
-    st.markdown("---")
-    
-    st.subheader(f"Welcome, {role} User. Current View: {sub_page or 'Dashboard'}")
-    
-    if sub_page is None or sub_page in ['My Students', 'All Students']:
-        # Dashboard or Student Selection View
-        student_selector(role)
-        
-    elif sub_page == 'Reports':
-        st.header("School-Wide Data Reports (ADM Only)")
-        st.markdown("**Placeholder for Aggregated School-Wide Reports/Heatmaps.**")
-        
-        # Example: Overall behaviour frequency
-        all_logs = st.session_state.incident_logs
-        if not all_logs.empty:
-            all_behaviours = [b.strip() for sublist in all_logs['behaviour'].str.split(', ') for b in sublist]
-            beh_counts = pd.Series(all_behaviours).value_counts().reset_index(name='Count')
-            beh_counts.columns = ['Behaviour', 'Count']
-            fig_all = px.bar(beh_counts.head(10), x='Behaviour', y='Count', title='Top 10 School-Wide Behaviours', color='Behaviour', color_discrete_sequence=px.colors.qualitative.Vivid)
-            fig_all.update_layout(xaxis_title="", yaxis_title="Total Count", plot_bgcolor='#1E293B', paper_bgcolor='#1E293B', font_color='#F1F5F9')
-            st.plotly_chart(fig_all, use_container_width=True)
-            
-        
-    elif sub_page == 'Settings':
-        st.header("User and System Settings")
-        st.markdown("**Placeholder for User Management, Constant Configuration, etc.**")
-        st.info(f"Your current email is: {next((s['email'] for s in MOCK_STAFF if s['role'] == role), 'N/A')}")
-        
-    
-    st.markdown("---")
-    st.info("This application uses a detailed ABCH Quick Log for context-rich data collection, feeding directly into data-driven student analysis.")
+    if st.button("⬅ Return to Landing Page"):
+        navigate_to('landing')
 
-
-# --- Main Application Loop ---
+# --- Main App Execution ---
 
 def main():
-    """Controls the main application flow based on session state."""
+    """The main function to drive the Streamlit application logic."""
     
-    # 1. Initialize data and state
-    initialize_state()
-
-    current_role = st.session_state.get('role')
-    current_student = st.session_state.get('student')
-
-    # 2. Page Routing Logic
-    if st.session_state.page == 'landing':
+    # Initialize session state only if it hasn't been done (ensures we don't reset state on rerun)
+    if 'current_page' not in st.session_state:
+        initialize_session_state()
+    
+    # Main routing logic
+    if st.session_state.current_page == 'landing':
         render_landing_page()
-
-    elif st.session_state.page == 'quick_log':
-        if current_student and current_role:
-             render_quick_log(current_role, current_student) 
-        else:
-            st.error("Missing context. Returning to dashboard.")
-            navigate_to('staff_area', role=current_role)
-
-
-    elif st.session_state.page == 'student_detail':
-        if current_student and current_role:
-            render_student_analysis(current_student, current_role)
-        else:
-            st.error("Student context missing. Please select a student.")
-            navigate_to('staff_area', role=current_role)
-
-    elif st.session_state.page == 'staff_area':
-        if current_role:
-            render_staff_area()
-        else:
-            # Should not happen if authenticated, but route back to landing for safety
-            navigate_to('landing')
-            st.rerun()
-
-if __name__ == "__main__":
+    elif st.session_state.current_page == 'staff_area':
+        render_staff_area()
+    elif st.session_state.current_page == 'direct_log_form':
+        render_direct_log_form()
+    # Add other pages here (e.g., abch_follow_up, bpp_editor)
+    
+if __name__ == '__main__':
     main()
