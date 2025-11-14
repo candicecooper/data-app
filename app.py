@@ -1,609 +1,408 @@
-import streamlit as st
-import pandas as pd
-from datetime import datetime, time, timedelta
-import random
-import uuid
-import plotly.express as px
-import numpy as np
-
-# --- Configuration and Aesthetics (High-Contrast Dark Look) ---
-
-st.set_page_config(
-    page_title="Behaviour Support & Data Analysis Tool",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
-# Define Plotly Theme for Dark Mode Consistency
-PLOTLY_THEME = 'plotly_dark'
-
-# --- Behaviour Profile Plan and Data Constants ---
-
-MOCK_STAFF = [
-    {'id': 's1', 'name': 'Emily Jones (JP)', 'role': 'JP', 'active': True, 'special': False},
-    {'id': 's2', 'name': 'Daniel Lee (PY)', 'role': 'PY', 'active': True, 'special': False},
-    {'id': 's3', 'name': 'Sarah Chen (SY)', 'role': 'SY', 'active': True, 'special': False},
-    {'id': 's4', 'name': 'Admin User (ADM)', 'role': 'ADM', 'active': True, 'special': False},
-    # Special roles that require manual name input (e.g., external staff)
-    {'id': 's_trt', 'name': 'TRT', 'role': 'TRT', 'active': True, 'special': True},
-    {'id': 's_sso', 'name': 'External SSO', 'role': 'SSO', 'active': True, 'special': True},
-]
-
-MOCK_STUDENTS = [
-    {'id': 'st1', 'name': 'Izack P.', 'class': 'JP-1', 'profile_status': 'Complete'},
-    {'id': 'st2', 'name': 'Chloe T.', 'class': 'PY-3', 'profile_status': 'Drafting'},
-    {'id': 'st3', 'name': 'Marcus A.', 'class': 'SY-5', 'profile_status': 'N/A'},
-]
-
-BEHAVIORS_FBA = [
-    'Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)',
-    'Self-Injurious Behaviour', 'Out of Area', 'Verbal Aggression (Staff)',
-    'Sexualised Behaviour', 'Defiance/Non-Compliance'
-]
-
-OUTCOMES_MAP = {
-    'o_a_send_home': 'Send Home / Parent Notified',
-    'o_b_left_area': 'Student Left Supervised Area',
-    'o_c_assault': 'Assault',
-    'o_d_property_damage': 'Property Damage',
-    'o_e_staff_injury': 'ED155: Staff Injury',
-    'o_f_sapol_callout': 'SAPOL Callout',
-    'o_g_restorative_session': 'Restorative Session',
-    'o_h_community_service': 'Community Service',
-    'o_i_make_up_time': 'Make-up Time',
-    'o_j_first_aid_amb': 'ED155: Student Injury (First Aid / Amb)',
-    'o_k_drug_possession': 'Drug Possession',
-    'o_l_absconding': 'Absconding',
-    'o_m_removal': 'Removal',
-    'o_n_stealing': 'Stealing',
-    'o_o_vandalism': 'Vandalism',
-    'o_p_internal_manage': 'Incident Internally Managed',
-    'o_q_re_entry': 'Re-Entry',
-    'o_r_call_out_amb': 'SA Ambulance Call Out',
-    'o_s_taken_to_hospital': 'Taken to Hospital'
-}
-
-# --- Utility Functions ---
-
-def initialise_state():
-    """Initialises or resets Streamlit session state variables."""
-    if 'current_page' not in st.session_state:
-        st.session_state.current_page = 'landing'
-    if 'current_role' not in st.session_state:
-        st.session_state.current_role = None
-    if 'selected_student_id' not in st.session_state:
-        st.session_state.selected_student_id = None
-    if 'incident_log' not in st.session_state:
-        st.session_state.incident_log = []
-    if 'temp_incident_data' not in st.session_state:
-        st.session_state.temp_incident_data = None
-    if 'abch_chronology' not in st.session_state:
-        st.session_state.abch_chronology = []
-
-def navigate_to(page_name):
-    """Sets the application's current page."""
-    st.session_state.current_page = page_name
-
-def get_active_staff(role):
-    """Filters MOCK_STAFF for active staff in a given role (or all non-special)."""
-    if role == 'ADM':
-        # Admin can log for everyone
-        return [s for s in MOCK_STAFF if s['active'] and not s['special']]
-    # Everyone else can only log for themselves
-    return [s for s in MOCK_STAFF if s['active'] and s['role'] == role and not s['special']]
-
-def get_student_by_id(student_id):
-    """Retrieves student object by ID."""
-    return next((s for s in MOCK_STUDENTS if s['id'] == student_id), None)
-
-def get_staff_name_by_id(staff_id):
-    """Retrieves staff name by ID."""
-    staff = next((s for s in MOCK_STAFF if s['id'] == staff_id), None)
-    return staff['name'] if staff else 'Unknown Staff'
-
-def get_color_for_role(role):
-    """Maps roles to a color for styling."""
-    colors = {
-        'JP': '#4F46E5',  # Indigo
-        'PY': '#F97316',  # Orange
-        'SY': '#10B981',  # Emerald
-        'TRT': '#EF4444', # Red
-        'SSO': '#0EA5E9', # Sky
-        'ADM': '#A855F7', # Purple
-        None: '#64748B'   # Slate
-    }
-    return colors.get(role, '#64748B')
-
-def add_log_entry(log_entry):
-    """Mock function to add a final log entry to the session state."""
-    log_entry['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    log_entry['incident_id'] = str(uuid.uuid4())
-    st.session_state.incident_log.append(log_entry)
-    st.toast("✅ Incident Logged Successfully!", icon="🎉")
-
-# --- Submission Handlers ---
-
-def submit_preliminary_log(preliminary_data, role):
-    """Handles the submission of the first step (Prelim Log) and transitions to ABCH."""
-    
-    # 1. Validate data
-    required_fields = ['student_name', 'staff_id', 'date', 'start_time', 'duration_minutes', 'primary_behavior', 'area', 'severity']
-    for field in required_fields:
-        if preliminary_data.get(field) is None or preliminary_data.get(field) == '':
-            st.error(f"Please fill out the required field: {field.replace('_', ' ').title()}")
-            return
-
-    # 2. Store data and transition state
-    st.session_state.temp_incident_data = preliminary_data
-    st.session_state.temp_incident_data['role_at_submission'] = role
-    st.session_state.current_page = 'abch_form'
-
-    # 3. Initialize ABCH-specific state
-    st.session_state.abch_chronology = []
-
-def submit_abch_log(preliminary_data):
-    """Handles the submission of the final ABCH form."""
-
-    # Retrieve data from session state
-    refined_wot = st.session_state.get('wot_refined', 'No refined WOT provided.')
-    final_context = st.session_state.get('context_refined', 'No context provided.')
-    how_to_respond_plan = st.session_state.get('how_to_respond_refined', 'No "How to respond" plan provided.')
-
-    # Validation (quick check for ABCH fields)
-    if not st.session_state.abch_chronology:
-         st.error("Please add at least one entry to the A-B-C Chronology.")
-         return
-
-    # Construct the final log entry
-    final_log_entry = preliminary_data.copy()
-    final_log_entry.update({
-        'is_abch_completed': True,
-        'chronology': st.session_state.abch_chronology,
-        'window_of_tolerance': refined_wot,
-        'context': final_context,
-        'how_to_respond': how_to_respond_plan,
-        'outcomes': {k: st.session_state.get(k, False) for k in OUTCOMES_MAP.keys()},
-    })
-
-    # Save the final entry
-    add_log_entry(final_log_entry)
-
-    # Clean up temporary session state data after final save
-    st.session_state.temp_incident_data = None
-    st.session_state.abch_chronology = []
-
-    # Navigate back to the landing page
-    navigate_to('landing')
-
-# --- Form Rendering ---
-
-def render_incident_log_form(student):
-    """Renders the main multi-step incident logging form."""
-    col_main = st.columns([1])[0]
-
-    with col_main:
-        # --- Step 1: Preliminary Log (If not completed) ---
-        if st.session_state.temp_incident_data is None:
-            st.markdown("### Preliminary Log - What, When, Who")
-
-            # Initialize form data container
-            preliminary_data = {}
-
-            # Set static fields
-            preliminary_data['student_id'] = student['id']
-            preliminary_data['student_name'] = student['name']
-
-            col1, col2, col3 = st.columns([1, 1, 1])
-
-            with col1:
-                st.write(f"**Student:** {student['name']} ({student['class']})")
-                preliminary_data['staff_id'] = st.selectbox(
-                    "Primary Logging Staff",
-                    options=[s['id'] for s in get_active_staff(st.session_state.current_role)],
-                    format_func=get_staff_name_by_id,
-                    key="log_staff_id",
-                    help="The staff member primarily logging this incident."
-                )
-                preliminary_data['area'] = st.text_input("Area of Incident", "Classroom")
-            
-            with col2:
-                current_date = datetime.now().date()
-                preliminary_data['date'] = st.date_input("Date", current_date)
-                
-                # Get a default time close to now for convenience
-                current_dt = datetime.now()
-                default_time = time(current_dt.hour, current_dt.minute)
-                preliminary_data['start_time'] = st.time_input("Start Time", default_time)
-                
-                # Default duration to 5 mins
-                preliminary_data['duration_minutes'] = st.number_input(
-                    "Duration (minutes)",
-                    min_value=1,
-                    max_value=360,
-                    value=5,
-                    step=1
-                )
-            
-            with col3:
-                preliminary_data['primary_behavior'] = st.selectbox(
-                    "Primary Behavior",
-                    options=BEHAVIORS_FBA,
-                    key="log_primary_behavior",
-                    help="The most prominent challenging behavior observed."
-                )
-                preliminary_data['severity'] = st.select_slider(
-                    'Severity Rating (1=Low, 5=Extreme)',
-                    options=[1, 2, 3, 4, 5],
-                    value=3,
-                    help="Rate the intensity/risk of the incident."
-                )
-            
-            st.markdown("---")
-            
-            if st.button("Continue to ABCH Details (Step 2)", use_container_width=True, type="primary"):
-                submit_preliminary_log(preliminary_data, st.session_state.current_role)
-
-        # --- Step 2: ABCH Form (If preliminary log is completed) ---
-        else:
-            preliminary_data = st.session_state.temp_incident_data
-            st.markdown(f"### ABCH Analysis for {preliminary_data['student_name']} - Step 2/2")
-
-            st.info(
-                f"**Incident Summary:** {preliminary_data['primary_behavior']} "
-                f"at {preliminary_data['start_time'].strftime('%H:%M')} on {preliminary_data['date'].strftime('%Y-%m-%d')} "
-                f"in the {preliminary_data['area']} for {preliminary_data['duration_minutes']} minutes. "
-                f"(Severity: {preliminary_data['severity']}/5)"
-            )
-
-            # ABCH Chronology Helper
-            st.markdown("#### A-B-C Chronology (Antecedent - Behavior - Consequence)")
-            with st.expander("Add New Chronology Entry", expanded=False):
-                col_c1, col_c2, col_c3 = st.columns(3)
-                
-                with col_c1:
-                    chrono_time = st.time_input("Time", datetime.now().time(), key="chrono_time")
-                with col_c2:
-                    chrono_description = st.text_area("Description of Event", key="chrono_desc")
-                with col_c3:
-                    chrono_type = st.selectbox(
-                        "Event Type",
-                        options=['Antecedent', 'Behavior', 'Consequence', 'Intervention'],
-                        key="chrono_type"
-                    )
-
-                if st.button("Add Entry to Chronology", key="add_chrono_btn"):
-                    if chrono_description:
-                        st.session_state.abch_chronology.append({
-                            'time': chrono_time.strftime('%H:%M'),
-                            'type': chrono_type,
-                            'description': chrono_description,
-                            'id': str(uuid.uuid4())
-                        })
-                        st.session_state.chrono_desc = "" # Clear the text area
-                        st.experimental_rerun() # Rerun to clear the text area and update list
-                    else:
-                        st.warning("Please provide a description for the event.")
-            
-            # Display Chronology
-            if st.session_state.abch_chronology:
-                chrono_df = pd.DataFrame(st.session_state.abch_chronology)
-                st.dataframe(
-                    chrono_df.sort_values(by='time'),
-                    use_container_width=True,
-                    hide_index=True,
-                    column_order=("time", "type", "description"),
-                    column_config={
-                        "time": st.column_config.TextColumn("Time", width="small"),
-                        "type": st.column_config.TextColumn("Type", width="small"),
-                        "description": st.column_config.TextColumn("Description"),
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Incident Log & FBA Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary-blue': '#1D4ED8',
+                        'secondary-gray': '#E5E7EB',
+                        'critical-red': '#DC2626',
+                        'warning-orange': '#F59E0B',
+                        'safe-green': '#10B981',
                     }
-                )
-            else:
-                st.info("No chronology entries added yet.")
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        
+        .container-card {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .critical-form {
+            border: 3px solid #DC2626;
+            background-color: #FEF2F2;
+        }
+        .hypothesis-box {
+            border: 2px solid #3B82F6;
+            background-color: #EFF6FF;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-8 font-sans">
 
-            st.markdown("---")
-
-            # --- Remaining ABCH Fields ---
-            col_wot, col_context = st.columns(2)
-            with col_wot:
-                st.markdown("#### Window of Tolerance (WOT)")
-                st.text_area(
-                    "Refined WOT Check & Summary",
-                    value="Refined WOT statement (e.g., Izack was in the hyper-arousal zone due to...)",
-                    key="wot_refined",
-                    height=150
-                )
-            with col_context:
-                st.markdown("#### Environmental/Physiological Context")
-                st.text_area(
-                    "Refined Context Summary (e.g., Medication changes, lack of sleep, class noise level)",
-                    value="No context provided.",
-                    key="context_refined",
-                    height=150
-                )
+    <div id="app" class="max-w-4xl mx-auto">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-primary-blue mb-6 border-b-4 border-primary-blue pb-2">
+            Preliminary Behaviour Incident Log
+        </h1>
+        
+        <div class="bg-white p-6 sm:p-8 rounded-xl container-card space-y-6">
             
-            st.markdown("---")
-            st.markdown("#### Post-Incident 'How to Respond' & Outcomes")
-
-            st.text_area(
-                "How to Respond (Immediate Follow-Up Plan for this situation)",
-                value="The agreed plan for staff response next time is...",
-                key="how_to_respond_refined",
-                height=100
-            )
-
-            st.markdown("##### Intended Outcomes/Consequences")
-            cols = st.columns(3)
-            # Use columns to display outcomes as checkboxes
-            outcome_keys = list(OUTCOMES_MAP.keys())
-            for i, key in enumerate(outcome_keys):
-                cols[i % 3].checkbox(OUTCOMES_MAP[key], key=key)
-
-            st.markdown("---")
-
-            col_submit, col_cancel = st.columns([4, 1])
-
-            with col_submit:
-                if st.button("Finalize and Save Incident Log", use_container_width=True, type="primary"):
-                    submit_abch_log(preliminary_data)
-
-            with col_cancel:
-                if st.button("Cancel Log", use_container_width=True, type="secondary", help="Discard all temporary data and return to landing."):
-                    st.session_state.temp_incident_data = None
-                    st.session_state.abch_chronology = []
-                    navigate_to('landing')
-
-# --- Page Rendering Functions ---
-
-def render_landing_page():
-    """The initial page where the user selects their role and navigates."""
-    
-    st.title("Behaviour Support & Incident Logger")
-    st.markdown("---")
-
-    col_role, col_action = st.columns([1, 2])
-
-    with col_role:
-        st.markdown("#### Select Your Role")
-        
-        # Use staff roles as options
-        role_options = sorted(list(set(s['role'] for s in MOCK_STAFF)))
-        selected_role = st.selectbox(
-            "Current Staff Role",
-            options=role_options,
-            index=role_options.index('ADM') if 'ADM' in role_options else 0,
-            key='landing_role_select'
-        )
-        st.session_state.current_role = selected_role
-        
-        # Simple status indicator
-        st.markdown(f"Current Role: **<span style='color:{get_color_for_role(selected_role)};'>{selected_role}</span>**", unsafe_allow_html=True)
-        
-        if selected_role == 'ADM':
-            st.markdown("*(Admin access grants full data visibility.)*")
-        else:
-             st.markdown("*(Logging is generally restricted to your area.)*")
-
-    with col_action:
-        st.markdown("#### Primary Actions")
-        
-        # Action 1: Log an incident directly
-        if st.button("➕ Quick Log Incident", use_container_width=True, type="primary"):
-            navigate_to('select_student_for_direct_log')
-
-        # Action 2: Go to data dashboard (for Admins or authorized staff)
-        if selected_role == 'ADM':
-             if st.button("📊 View Data Dashboard", use_container_width=True):
-                 navigate_to('dashboard')
-
-        # Action 3: Go to staff-specific area (e.g., viewing profiles for their students)
-        if st.button("👤 Go to My Area", use_container_width=True, type="secondary"):
-            navigate_to('staff_area')
+            <!-- --- Basic Log Details: What, When, Who --- -->
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label for="incidentDate" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                    <input type="date" id="incidentDate" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-primary-blue focus:border-primary-blue" value="">
+                </div>
+                <div>
+                    <label for="incidentTime" class="block text-sm font-medium text-gray-700 mb-1">Time of Incident</label>
+                    <input type="time" id="incidentTime" onchange="updateSession()" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-primary-blue focus:border-primary-blue" value="">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Session</label>
+                    <div id="sessionDisplay" class="w-full bg-secondary-gray text-gray-800 font-semibold rounded-lg p-2.5 h-10 flex items-center">
+                        <span class="text-gray-500">Enter time...</span>
+                    </div>
+                </div>
+            </section>
             
-    st.markdown("---")
-    
-    # Display recent incidents (for demo purposes)
-    st.markdown("#### Recent Incidents Logged (Demo View)")
-    if st.session_state.incident_log:
-        log_df = pd.DataFrame(st.session_state.incident_log).sort_values(by='timestamp', ascending=False)
-        
-        # Select and rename columns for display
-        display_cols = [
-            'timestamp', 'student_name', 'primary_behavior', 'severity', 
-            'duration_minutes', 'area', 'staff_id', 'is_abch_completed'
-        ]
-        
-        # Map staff ID back to name for display clarity
-        log_df['Staff'] = log_df['staff_id'].apply(get_staff_name_by_id)
-        
-        # Prepare final display DataFrame
-        display_df = log_df[display_cols].rename(columns={
-            'timestamp': 'Time',
-            'student_name': 'Student',
-            'primary_behavior': 'Behavior',
-            'severity': 'Severity',
-            'duration_minutes': 'Duration (min)',
-            'area': 'Area',
-            'staff_id': 'Logged By (ID)',
-            'is_abch_completed': 'ABCH Complete'
-        })
+            <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="staffMember" class="block text-sm font-medium text-gray-700 mb-1">Staff Member Logging</label>
+                    <select id="staffMember" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-primary-blue focus:border-primary-blue">
+                        <option value="">Select Staff</option>
+                        <option value="s1">Emily Jones</option>
+                        <option value="s2">Daniel Lee</option>
+                        <option value="s3">Sarah Chen</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="supportType" class="block text-sm font-medium text-gray-700 mb-1">Type of Support</label>
+                    <select id="supportType" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-primary-blue focus:border-primary-blue">
+                        <option value="1:1">1:1</option>
+                        <option value="Independent">Independent</option>
+                        <option value="Small Group">Small Group</option>
+                        <option value="Large Group">Large Group</option>
+                    </select>
+                </div>
+            </section>
 
-        st.dataframe(display_df.head(10), use_container_width=True, hide_index=True)
-        
-    else:
-        st.info("No incidents have been logged yet. Click 'Quick Log Incident' to start.")
+            <section class="space-y-6">
+                <div>
+                    <label for="behaviorWhat" class="block text-sm font-medium text-gray-700 mb-1">What Happened (Behavior)</label>
+                    <textarea id="behaviorWhat" rows="2" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-primary-blue focus:border-primary-blue" placeholder="Describe the observable behavior..."></textarea>
+                </div>
+            
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="antecedent" class="block text-sm font-medium text-gray-700 mb-1">Antecedent (What happened right before?)</label>
+                        <select id="antecedent" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-primary-blue focus:border-primary-blue">
+                            <option value="">Select Antecedent</option>
+                            <option value="Task demand/Transition">Task demand/Transition</option>
+                            <option value="Peer conflict/Teasing">Peer conflict/Teasing</option>
+                            <option value="Adult proximity/Correction">Adult proximity/Correction</option>
+                            <option value="Non-contingent access withdrawn">Non-contingent access withdrawn</option>
+                            <option value="Unstructured time/Boredom">Unstructured time/Boredom</option>
+                            <option value="Physical discomfort/Illness">Physical discomfort/Illness</option>
+                            <option value="Other">Other (Specify in Description)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="interventionApplied" class="block text-sm font-medium text-gray-700 mb-1">Intervention Applied</label>
+                        <select id="interventionApplied" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-primary-blue focus:border-primary-blue">
+                            <option value="">Select Intervention</option>
+                            <option value="Redirection/Prompting">Redirection/Prompting</option>
+                            <option value="Proximity Control">Proximity Control</option>
+                            <option value="Providing choice/Breaks">Providing choice/Breaks</option>
+                            <option value="Crisis management/Restraint">Crisis management/Restraint</option>
+                            <option value="Ignoring/Planned pacing">Ignoring/Planned pacing</option>
+                            <option value="Preferred item/activity access">Preferred item/activity access</option>
+                            <option value="Other">Other (Specify in Description)</option>
+                        </select>
+                    </div>
+                </div>
 
-def render_select_student_for_direct_log():
-    """Renders the student selection page before the log form."""
-    st.markdown("## Quick Incident Log - Select Student")
-    st.markdown("---")
-    
-    col_select, col_back = st.columns([3, 1])
+                <div>
+                    <label for="consequence" class="block text-sm font-medium text-gray-700 mb-1">Consequence (How did the staff/environment respond?)</label>
+                    <textarea id="consequence" rows="2" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-primary-blue focus:border-primary-blue" placeholder="Describe what happened immediately after the behavior..."></textarea>
+                </div>
 
-    with col_select:
-        student_names = [s['name'] for s in MOCK_STUDENTS]
-        selected_name = st.selectbox("Select Student to Log Incident For", options=student_names)
-        
-        # Map back to ID for state
-        selected_student = next(s for s in MOCK_STUDENTS if s['name'] == selected_name)
-        st.session_state.selected_student_id = selected_student['id']
-        
-        st.markdown(f"**Profile Status:** {selected_student['profile_status']}")
+                <div>
+                    <label for="severityLevel" class="block text-sm font-medium text-gray-700 mb-1">Severity Level</label>
+                    <select id="severityLevel" onchange="handleSeverityChange()" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-primary-blue focus:border-primary-blue">
+                        <option value="0">Select Severity (1=Minor, 4=Critical)</option>
+                        <option value="1">1: Minor (Low intensity/brief)</option>
+                        <option value="2">2: Moderate (Moderate intensity/disruption)</option>
+                        <option value="3">3: Serious (Safety risk/significant disruption) - Triggers Full Form</option>
+                        <option value="4">4: Critical (Immediate danger/external services required) - Triggers Full Form</option>
+                    </select>
+                </div>
+            </section>
 
-        if st.button("Start Log", use_container_width=True, type="primary"):
-            # Set the role context to ADM for the log submission step
-            # Note: The actual logging staff ID is selected within the form.
-            st.session_state.current_role = 'ADM' 
-            navigate_to('direct_log_form')
+            <!-- --- Hypothesis & Critical Incident Forms --- -->
+            <section id="dynamicOutput" class="pt-6 space-y-6">
+                <!-- Content will appear here based on severity level -->
+            </section>
+            
+            <button onclick="submitLog()" class="w-full bg-primary-blue text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition duration-200 mt-4">
+                Submit Preliminary Log
+            </button>
+            <div id="submitMessage" class="mt-4 text-center text-green-600 font-semibold hidden">Log Submitted Successfully!</div>
+        </div>
+    </div>
 
-    with col_back:
-        st.markdown("##") # Spacer
-        if st.button("⬅ Back to Home", key="back_from_student_select"):
-            navigate_to('landing')
-        
-def render_direct_log_form():
-    """Renders the incident log form directly after selection from the landing page."""
-    student = get_student_by_id(st.session_state.selected_student_id)
-    if student:
-        col_title, col_back = st.columns([4, 1])
-        with col_title:
-            # Title updates based on which step we are on
-            title_text = "Quick Incident Log (Step 1)" if st.session_state.temp_incident_data is None else "Quick Incident Log (Step 2)"
-            st.markdown(f"## {title_text}")
-        with col_back:
-            # If navigating back, clear the temporary direct log state
-            if st.button("⬅ Change Student", key="back_to_direct_select_form"):
-                st.session_state.temp_incident_data = None
-                st.session_state.abch_chronology = []
-                st.session_state.current_role = None # Clear temporary role context
-                navigate_to('landing')
-                
-        st.markdown("---")
-        
-        # We pass the role as 'ADM' as this path is initiated from the Quick Log.
-        # The actual logging staff role doesn't matter here, only the staff_id is used for the log.
-        render_incident_log_form(student)
-    else:
-        st.error("No student selected. Returning to home.")
-        navigate_to('landing')
+    <script>
+        // Global Constants
+        const API_KEY = ""; // Leave as-is
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`;
 
-def render_staff_area():
-    """Placeholder for staff-specific content like student profiles or alerts."""
-    st.title(f"My {st.session_state.current_role} Area")
-    st.markdown("---")
-    st.markdown("This area would typically show alerts, student profiles relevant to your role, and case management tasks.")
+        // --- Session Time Logic ---
+        function getSession(timeStr) {
+            if (!timeStr) return null;
+            
+            const [hourStr, minuteStr] = timeStr.split(':');
+            const hours = parseInt(hourStr);
+            const minutes = parseInt(minuteStr);
 
-    st.markdown("### My Students")
-    staff_students = [s for s in MOCK_STUDENTS if st.session_state.current_role in s['class']]
-    if staff_students:
-        for student in staff_students:
-            st.info(f"**{student['name']}** - Class: {student['class']} - Profile Status: {student['profile_status']}")
-    else:
-        st.warning("No students currently assigned to this role's area in mock data.")
-        
-    if st.button("⬅ Back to Home", key="back_from_staff_area"):
-        navigate_to('landing')
-        
-def render_data_dashboard():
-    """Placeholder for the data analysis dashboard."""
-    st.title("Data Analysis Dashboard")
-    st.markdown("---")
-    
-    if not st.session_state.incident_log:
-        st.warning("Log some incidents first to view the dashboard!")
-        if st.button("⬅ Back to Home", key="back_from_empty_dashboard"):
-            navigate_to('landing')
-        return
+            // Convert to total minutes from midnight for easy comparison
+            const totalMinutes = hours * 60 + minutes;
 
-    log_df = pd.DataFrame(st.session_state.incident_log)
-    
-    col_chart, col_metric = st.columns([3, 1])
-    
-    # 1. Total Incidents Metric
-    with col_metric:
-        st.metric("Total Incidents Logged", len(log_df))
-        avg_severity = log_df['severity'].mean() if 'severity' in log_df.columns else 0
-        st.metric("Average Severity", f"{avg_severity:.1f}/5")
-        
-    # 2. Behavior Frequency Chart
-    with col_chart:
-        behavior_counts = log_df['primary_behavior'].value_counts().reset_index()
-        behavior_counts.columns = ['Behavior', 'Count']
-        
-        fig = px.bar(
-            behavior_counts, 
-            x='Behavior', 
-            y='Count', 
-            title='Top Behaviors Logged',
-            template=PLOTLY_THEME,
-            color_discrete_sequence=[get_color_for_role(st.session_state.current_role)]
-        )
-        st.plotly_chart(fig, use_container_width=True)
-        
-    st.markdown("---")
+            // Define session boundaries in total minutes
+            const morningStart = 9 * 60;   // 9:00am
+            const morningEnd = 11 * 60;    // 11:00am
+            const middleEnd = 13 * 60;     // 1:00pm (13:00)
+            const afternoonEnd = 14 * 60 + 45; // 2:45pm (14:45)
 
-    # 3. Time of Day Analysis (Example)
-    st.markdown("### Incident Trend: Time of Day")
-    
-    # Mock time data from start_time object
-    if 'start_time' in log_df.columns and not log_df['start_time'].empty:
-        log_df['hour'] = log_df['start_time'].apply(lambda x: x.hour)
-        time_counts = log_df['hour'].value_counts().sort_index().reset_index()
-        time_counts.columns = ['Hour', 'Incidents']
+            if (totalMinutes >= morningStart && totalMinutes <= morningEnd) {
+                return 'Morning (9:00am - 11:00am)';
+            } else if (totalMinutes > morningEnd && totalMinutes <= middleEnd) {
+                return 'Middle (11:01am - 1:00pm)';
+            } else if (totalMinutes > middleEnd && totalMinutes <= afternoonEnd) {
+                return 'Afternoon (1:01pm - 2:45pm)';
+            } else {
+                return 'Out of Session Hours (Not Logged)';
+            }
+        }
+
+        function updateSession() {
+            const timeInput = document.getElementById('incidentTime').value;
+            const sessionDisplay = document.getElementById('sessionDisplay');
+            const session = getSession(timeInput);
+            
+            if (session && session !== 'Out of Session Hours (Not Logged)') {
+                sessionDisplay.innerHTML = `<span class="text-primary-blue">${session}</span>`;
+            } else if (session) {
+                sessionDisplay.innerHTML = `<span class="text-critical-red">${session}</span>`;
+            } else {
+                sessionDisplay.innerHTML = `<span class="text-gray-500">Enter time...</span>`;
+            }
+        }
         
-        fig_time = px.line(
-            time_counts,
-            x='Hour',
-            y='Incidents',
-            title='Incidents by Hour of Day',
-            template=PLOTLY_THEME,
-            markers=True
-        )
-        fig_time.update_traces(line=dict(color=get_color_for_role(st.session_state.current_role), width=3))
-        fig_time.update_layout(xaxis=dict(tickmode='linear'))
-        st.plotly_chart(fig_time, use_container_width=True)
+        // --- Severity Change Logic ---
+        function handleSeverityChange() {
+            const severity = parseInt(document.getElementById('severityLevel').value);
+            const dynamicOutput = document.getElementById('dynamicOutput');
 
-    st.markdown("---")
-    if st.button("⬅ Back to Home", key="back_from_dashboard"):
-        navigate_to('landing')
+            if (severity >= 3) {
+                // Critical Incident Form
+                dynamicOutput.innerHTML = generateCriticalIncidentForm();
+            } else if (severity > 0) {
+                // Automated Hypothesis
+                dynamicOutput.innerHTML = generateHypothesisLoading();
+                generateAutomatedHypothesis(severity);
+            } else {
+                dynamicOutput.innerHTML = '';
+            }
+        }
 
-# --- Main App Execution ---
-def main():
-    """The main function to drive the Streamlit application logic."""
-    
-    # Ensure all state variables are initialized
-    initialise_state()
-    
-    # Main routing logic
-    if st.session_state.current_page == 'landing':
-        render_landing_page()
-    elif st.session_state.current_page == 'select_student_for_direct_log':
-        render_select_student_for_direct_log()
-    elif st.session_state.current_page == 'direct_log_form':
-        render_direct_log_form()
-    elif st.session_state.current_page == 'abch_form':
-        # This path is taken after Step 1 of a direct log, 
-        # so render the form with the temporary data populated
-        student = get_student_by_id(st.session_state.selected_student_id)
-        if student:
-             col_title, col_back = st.columns([4, 1])
-             with col_title:
-                 st.markdown(f"## Quick Incident Log (Step 2)")
-             with col_back:
-                 if st.button("⬅ Start Over", key="start_over_from_abch_btn"):
-                     st.session_state.temp_incident_data = None
-                     st.session_state.abch_chronology = []
-                     navigate_to('landing')
-             st.markdown("---")
-             # Use the role stored during preliminary submission
-             render_incident_log_form(student) 
-        else:
-            st.error("Error retrieving student data for ABCH form.")
-            navigate_to('landing')
-    elif st.session_state.current_page == 'staff_area':
-        render_staff_area()
-    elif st.session_state.current_page == 'dashboard':
-        render_data_dashboard()
+        // --- Critical Incident Form (Severity 3 or 4) ---
+        function generateCriticalIncidentForm() {
+            return `
+                <div class="critical-form p-6 rounded-xl">
+                    <h3 class="text-2xl font-bold text-critical-red mb-4 border-b border-critical-red pb-2">
+                        🚨 CRITICAL INCIDENT TRIGGERED (Severity ${document.getElementById('severityLevel').value})
+                    </h3>
+                    <p class="text-gray-800 mb-4">
+                        A Severity 3 or 4 incident requires immediate, detailed reporting. You must complete the **ABCH Detailed Form** below to finalize this log.
+                    </p>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="abchSafetyRisk" class="block text-sm font-medium text-gray-700 mb-1">Immediate Safety and Risk Assessment</label>
+                            <textarea id="abchSafetyRisk" rows="2" class="w-full border border-critical-red rounded-lg p-2 focus:ring-critical-red focus:border-critical-red" placeholder="Describe all actions taken to ensure immediate safety (e.g., calling emergency staff, removal of other students)."></textarea>
+                        </div>
+                        <div>
+                            <label for="abchFollowUp" class="block text-sm font-medium text-gray-700 mb-1">Required Follow-up Actions/Notifications</label>
+                            <textarea id="abchFollowUp" rows="2" class="w-full border border-critical-red rounded-lg p-2 focus:ring-critical-red focus:border-critical-red" placeholder="Who was notified (Line Manager, Parent/Caregiver), and what immediate next steps are scheduled?"></textarea>
+                        </div>
+                        <p class="text-sm font-semibold text-critical-red">
+                            Note: This log entry will be flagged for mandatory review by Administration.
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
 
-if __name__ == '__main__':
-    main()
+        // --- Automated Hypothesis (Severity 1 or 2) ---
+        function generateHypothesisLoading() {
+            return `
+                <div class="hypothesis-box p-6 rounded-xl border-blue-500">
+                    <h3 class="text-xl font-bold text-blue-700 mb-2">
+                        💡 Automated Hypothesis (Severity ${document.getElementById('severityLevel').value})
+                    </h3>
+                    <p class="text-blue-600 animate-pulse">
+                        Analyzing data and generating preliminary Function of Behavior (Hypothesis)...
+                    </p>
+                </div>
+            `;
+        }
+
+        async function generateAutomatedHypothesis(severity) {
+            const antecedent = document.getElementById('antecedent').value || "None selected";
+            const behavior = document.getElementById('behaviorWhat').value || "Behavior not detailed";
+            const consequence = document.getElementById('consequence').value || "Consequence not detailed";
+            const support = document.getElementById('supportType').value || "1:1";
+            
+            if (antecedent === "None selected" || behavior === "Behavior not detailed") {
+                 document.getElementById('dynamicOutput').innerHTML = `
+                    <div class="hypothesis-box p-6 rounded-xl border-warning-orange">
+                        <h3 class="text-xl font-bold text-warning-orange mb-2">
+                            ⚠️ Automated Hypothesis
+                        </h3>
+                        <p class="text-gray-700">
+                            Please select an **Antecedent** and provide details for the **Behavior** and **Consequence** to generate a meaningful hypothesis.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            const systemPrompt = "You are a behavioral analyst assistant. Based on the A-B-C data provided, generate a concise, single-paragraph hypothesis (H) suggesting the likely *function* of the student's behavior (e.g., To gain attention, To escape a demand, To gain access to tangibles, To gain sensory input). Do not use placeholders, be direct.";
+            
+            const userQuery = `Analyze this ABC data for a Severity ${severity} incident in a ${support} setting: A (Antecedent): ${antecedent}. B (Behavior): ${behavior}. C (Consequence): ${consequence}. What is the hypothesis (H)?`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+            };
+
+            let hypothesisText = "Hypothesis generation failed. Check console for error.";
+            
+            // --- LLM API Call with Exponential Backoff ---
+            const maxRetries = 5;
+            let currentRetry = 0;
+            
+            while (currentRetry < maxRetries) {
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    hypothesisText = result.candidates?.[0]?.content?.parts?.[0]?.text || "No text generated.";
+                    break; // Exit loop on success
+                } catch (error) {
+                    console.error(`Attempt ${currentRetry + 1} failed:`, error);
+                    currentRetry++;
+                    if (currentRetry < maxRetries) {
+                        const delay = Math.pow(2, currentRetry) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+            }
+            
+            const dynamicOutput = document.getElementById('dynamicOutput');
+            dynamicOutput.innerHTML = `
+                <div class="hypothesis-box p-6 rounded-xl border-blue-500">
+                    <h3 class="text-xl font-bold text-blue-700 mb-2">
+                        💡 Automated Hypothesis (Severity ${severity})
+                    </h3>
+                    <div class="text-gray-800">
+                        <p class="mb-2 font-semibold">Preliminary Function of Behavior:</p>
+                        <p>${hypothesisText}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- Submission Logic ---
+        function submitLog() {
+            const severity = parseInt(document.getElementById('severityLevel').value);
+            const antecedent = document.getElementById('antecedent').value;
+            const behavior = document.getElementById('behaviorWhat').value;
+            const consequence = document.getElementById('consequence').value;
+            const support = document.getElementById('supportType').value;
+            const time = document.getElementById('incidentTime').value;
+            const date = document.getElementById('incidentDate').value;
+            const staff = document.getElementById('staffMember').value;
+            
+            if (!date || !time || !staff || !behavior || !antecedent || !consequence || severity === 0) {
+                showMessage("Please fill in all required fields and select a Severity Level.", 'critical-red');
+                return;
+            }
+
+            const session = getSession(time);
+            
+            let abchDetailed = {};
+            if (severity >= 3) {
+                abchDetailed = {
+                    safetyRisk: document.getElementById('abchSafetyRisk').value,
+                    followUp: document.getElementById('abchFollowUp').value,
+                    formRequired: 'ABCH Detailed - Critical Incident'
+                };
+            }
+            
+            const preliminaryLog = {
+                date: date,
+                time: time,
+                session: session,
+                staffMember: staff,
+                supportType: support,
+                antecedent: antecedent,
+                behavior: behavior,
+                consequence: consequence,
+                severity: severity,
+                ...abchDetailed,
+                // In a real app, you would send this object to Firestore here.
+            };
+
+            console.log("--- Preliminary Log Data Submitted ---");
+            console.log(preliminaryLog);
+
+            showMessage("Log Submitted Successfully! (Data logged to console)", 'safe-green');
+            
+            // Clear form (optional)
+            document.getElementById('incidentTime').value = '';
+            document.getElementById('severityLevel').value = '0';
+            document.getElementById('dynamicOutput').innerHTML = '';
+            document.getElementById('behaviorWhat').value = '';
+            document.getElementById('consequence').value = '';
+            updateSession(); 
+        }
+
+        function showMessage(message, colorClass) {
+            const msgBox = document.getElementById('submitMessage');
+            msgBox.textContent = message;
+            msgBox.className = `mt-4 text-center font-semibold text-${colorClass}`;
+            msgBox.classList.remove('hidden');
+            setTimeout(() => {
+                msgBox.classList.add('hidden');
+            }, 5000);
+        }
+
+        // Set today's date and update session display on load
+        window.onload = function() {
+            document.getElementById('incidentDate').valueAsDate = new Date();
+            updateSession();
+        };
+
+    </script>
+</body>
+</html>
