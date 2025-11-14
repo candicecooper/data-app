@@ -724,13 +724,16 @@ def render_critical_incident_abch_form():
         with notif_col3:
             st.checkbox("**Copy of Critical Incident in student file**", key="abch_file_copy")
         
-        # Staff Certification Section - ALWAYS SHOW (moved outside conditional)
+        # Staff Certification Section
         st.markdown("---")
         st.markdown("#### Staff Certification")
         
         reporting_staff_name = preliminary_data.get('reported_by_name', 'Staff Member')
         
         st.info(f"**Completing Staff Member:** {reporting_staff_name}")
+        
+        if not (manager_notified and parent_notified):
+            st.warning("⚠️ Please check both mandatory notifications above before certifying")
         
         st.markdown("""
         By checking the box below, I certify that:
@@ -739,23 +742,14 @@ def render_critical_incident_abch_form():
         - I have documented the incident according to school policy
         """)
         
-        # Only enable certification if notifications are checked
-        if manager_notified and parent_notified:
-            staff_certification = st.checkbox(
-                f"**I, {reporting_staff_name}, certify that all information is correct and complete**",
-                key="staff_certification"
-            )
-            
-            if staff_certification:
-                st.success("✓ Form certified by staff member")
-        else:
-            st.warning("⚠️ Please check both mandatory notifications above before certifying")
-            # Disabled checkbox when notifications not complete
-            st.checkbox(
-                f"**I, {reporting_staff_name}, certify that all information is correct and complete**",
-                key="staff_certification",
-                disabled=True
-            )
+        staff_certification = st.checkbox(
+            f"**I, {reporting_staff_name}, certify that all information is correct and complete**",
+            key="staff_certification",
+            disabled=not (manager_notified and parent_notified)
+        )
+        
+        if staff_certification:
+            st.success("✓ Form certified by staff member")
         
         st.markdown("---")
         
