@@ -718,9 +718,9 @@ def render_critical_incident_abch_form():
         notif_col1, notif_col2, notif_col3 = st.columns(3)
         
         with notif_col1:
-            manager_notified = st.checkbox("**Notified Line Manager of Critical Incident** (Required)", key="abch_manager_notify")
+            st.checkbox("**Notified Line Manager of Critical Incident** (Required)", key="abch_manager_notify")
         with notif_col2:
-            parent_notified = st.checkbox("**Notified Parent/Caregiver of Critical Incident** (Required)", key="abch_parent_notify")
+            st.checkbox("**Notified Parent/Caregiver of Critical Incident** (Required)", key="abch_parent_notify")
         with notif_col3:
             st.checkbox("**Copy of Critical Incident in student file**", key="abch_file_copy")
         
@@ -732,7 +732,11 @@ def render_critical_incident_abch_form():
         
         st.info(f"**Completing Staff Member:** {reporting_staff_name}")
         
-        if not (manager_notified and parent_notified):
+        # Check if notifications are complete
+        manager_check = st.session_state.get('abch_manager_notify', False)
+        parent_check = st.session_state.get('abch_parent_notify', False)
+        
+        if not (manager_check and parent_check):
             st.warning("⚠️ Please check both mandatory notifications above before certifying")
         
         st.markdown("""
@@ -742,13 +746,13 @@ def render_critical_incident_abch_form():
         - I have documented the incident according to school policy
         """)
         
-        staff_certification = st.checkbox(
+        # Certification checkbox
+        st.checkbox(
             f"**I, {reporting_staff_name}, certify that all information is correct and complete**",
-            key="staff_certification",
-            disabled=not (manager_notified and parent_notified)
+            key="staff_certification_check"
         )
         
-        if staff_certification:
+        if st.session_state.get('staff_certification_check', False):
             st.success("✓ Form certified by staff member")
         
         st.markdown("---")
