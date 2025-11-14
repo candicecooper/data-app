@@ -30,11 +30,10 @@ MOCK_STUDENTS = [
     {'id': 'stu_003', 'name': 'Liam B.', 'grade': '9', 'profile_status': 'Pending'},
 ]
 BEHAVIOR_LEVELS = ['1 - Low Intensity', '2 - Moderate', '3 - High Risk']
-# Simplified for the enhanced form demonstration
 BEHAVIORS_FBA = ['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)', 'Other - Specify'] 
 
 
-# NEW CONSTANTS FOR ENHANCED LOG
+# CONSTANTS FOR ENHANCED LOG
 ANTECEDENTS_NEW = [
     "Requested to transition activity",
     "Given instruction/demand (Academic)",
@@ -64,6 +63,28 @@ SUPPORT_TYPES = [
     "Large Group (Whole class/assembly)"
 ]
 
+# NEW LOCATION CONSTANTS
+LOCATIONS = [
+    "--- Select Location ---",
+    "JP Classroom",
+    "JP Spill Out",
+    "PY Classroom",
+    "PY Spill Out",
+    "SY Classroom",
+    "SY Spill Out",
+    "Student Kitchen",
+    "Admin",
+    "Gate",
+    "Library",
+    "Van/Kia",
+    "Swimming",
+    "Yard",
+    "Playground",
+    "Toilets",
+    "Excursion",
+    "Other"
+]
+
 
 # --- 2. GLOBAL HELPERS & CORE LOGIC FUNCTIONS ---
 
@@ -84,7 +105,6 @@ def get_active_staff(include_special=False) -> List[Dict[str, Any]]:
 
 def get_session_window(incident_time: time) -> str:
     """Calculates the Session window based on the incident time."""
-    # Define time boundaries
     T_MORNING_START = time(9, 0, 0)
     T_MORNING_END = time(11, 0, 0)      # 11:00:00
     T_MIDDLE_START = time(11, 0, 1)     # 11:00:01
@@ -125,7 +145,7 @@ def generate_hypothesis(antecedent: str, support_type: str) -> str:
     )
     return hypothesis
 
-# --- 3. FORM RENDERING (NEW) ---
+# --- 3. FORM RENDERING (UPDATED) ---
 
 def render_enhanced_log_form(student: Dict[str, str]):
     """Renders the comprehensive, single-step incident log form."""
@@ -136,7 +156,7 @@ def render_enhanced_log_form(student: Dict[str, str]):
     with st.form("enhanced_incident_log_form"):
         st.markdown("### 1. Incident Details")
         
-        # Date, Time, and Session
+        # Date, Time, and Location (NOW DROPDOWN)
         col_date, col_time, col_loc = st.columns(3)
         with col_date:
             incident_date = st.date_input("Date of Incident", datetime.now().date(), key="incident_date")
@@ -145,7 +165,12 @@ def render_enhanced_log_form(student: Dict[str, str]):
             default_time = datetime.now().time()
             incident_time = st.time_input("Time of Incident", default_time, key="incident_time")
         with col_loc:
-            location = st.text_input("Location (e.g., Classroom 7, Oval)", key="location_input")
+            # UPDATED: Location dropdown
+            location = st.selectbox(
+                "Location", 
+                options=LOCATIONS, 
+                key="location_input"
+            )
         
         # Calculate and display Session
         session_window = get_session_window(incident_time)
@@ -241,8 +266,9 @@ def render_enhanced_log_form(student: Dict[str, str]):
         submit_button = st.form_submit_button("Submit Incident Log")
         
         if submit_button:
-            if not location or reported_by['id'] is None or behavior_type == "--- Select Behavior ---":
-                 st.error("Please fill in Location, Staff Member, and Behavior Type before submitting.")
+            # UPDATED VALIDATION CHECK for dropdowns
+            if location == "--- Select Location ---" or reported_by['id'] is None or behavior_type == "--- Select Behavior ---":
+                 st.error("Please select a valid Location, Staff Member, and Behavior Type before submitting.")
             elif severity_level >= 3 and not (st.session_state.manager_notify and st.session_state.parent_notify):
                  st.error("For Critical Incidents (Level 3+), you must confirm Line Manager and Emergency Contact notification.")
             else:
@@ -253,7 +279,7 @@ def render_enhanced_log_form(student: Dict[str, str]):
                     "date": incident_date.strftime("%Y-%m-%d"),
                     "time": incident_time.strftime("%H:%M:%S"),
                     "session": session_window,
-                    "location": location,
+                    "location": location, # Saved as the selected value
                     "reported_by_id": reported_by['id'],
                     "behavior_type": behavior_type,
                     "antecedent": antecedent,
@@ -269,7 +295,7 @@ def render_enhanced_log_form(student: Dict[str, str]):
                 st.json(log_entry)
                 # navigate_to('landing') # Uncomment this to return to landing page after submission
 
-# --- 4. NAVIGATION AND PAGE STRUCTURE (Original Structure Preserved) ---
+# --- 4. NAVIGATION AND PAGE STRUCTURE ---
 
 def render_landing_page():
     """Renders the main selection page."""
@@ -330,11 +356,6 @@ def main():
         render_landing_page()
     elif st.session_state.current_page == 'direct_log_form':
         render_direct_log_form()
-    # Added placeholder for profile view logic, but not implemented in this focused version
-    # elif st.session_state.current_page == 'student_profile':
-    #     render_student_profile(get_student_by_id(st.session_state.selected_student_id))
-    # elif st.session_state.current_page == 'staff_area':
-    #     render_staff_area()
 
 if __name__ == '__main__':
     main()
