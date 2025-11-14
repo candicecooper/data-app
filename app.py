@@ -1111,11 +1111,423 @@ def render_critical_incident_abch_form():
         navigate_to('landing')
     st.info("Critical incident ABCH form rendered here")
 
+@handle_errors("Unable to load student analysis")
 def render_student_analysis():
-    st.title("Student Analysis")
-    if st.button("⬅ Back"):
-        navigate_to('landing')
-    st.info("Student analysis and data will be shown here")
+    """Renders comprehensive student analysis with data visualizations."""
+    
+    student_id = st.session_state.get('selected_student_id')
+    student = get_student_by_id(student_id)
+    
+    if not student:
+        st.error("Student not found")
+        if st.button("Return Home"):
+            navigate_to('landing')
+        return
+    
+    # Header
+    col_title, col_back = st.columns([4, 1])
+    with col_title:
+        st.title(f"📊 Analysis: {student['name']}")
+        st.caption(f"Grade {student['grade']} | {student['program']} Program | EDID: {student.get('edid', 'N/A')}")
+    with col_back:
+        if st.button("⬅ Back"):
+            navigate_to('program_students', program=student['program'])
+    
+    st.markdown("---")
+    
+    # Get all incidents for this student
+    student_incidents = [inc for inc in st.session_state.incidents if inc.get('student_id') == student_id]
+    
+    if not student_incidents:
+        st.info("No incident data available for this student yet.")
+        st.markdown("### Actions")
+        if st.button("📝 Log First Incident", type="primary"):
+            navigate_to('direct_log_form', student_id=student_id)
+        return
+    
+    # Summary Metrics
+    st.markdown("### 📈 Summary Statistics")
+    
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        st.metric("Total Incidents", len(student_incidents))
+    
+    with col2:
+        critical_count = len([inc for inc in student_incidents if inc.get('is_critical', False)])
+        st.metric("Critical Incidents", critical_count, delta=None if critical_count == 0 else f"{(critical_count/len(student_incidents)*100):.0f}%")
+    
+    with col3:
+        avg_severity = sum([inc.get('severity', 0) for inc in student_incidents]) / len(student_incidents)
+        st.metric("Avg Severity", f"{avg_severity:.1f}")
+    
+    with col4:
+        # Get date range
+        dates = [datetime.strptime(inc['date'], '%Y-%m-%d') for inc in student_incidents]
+        days_span = (max(dates) - min(dates)).days + 1 if len(dates) > 0 else 1
+        st.metric("Days Tracked", days_span)
+    
+    with col5:
+        incidents_per_week = (len(student_incidents) / days_span) * 7 if days_span > 0 else 0
+        st.metric("Incidents/Week", f"{incidents_per_week:.1f}")
+    
+    st.markdown("---")
+    
+    # Create tabs for different analysis views
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "📅 Timeline", 
+        "📊 Behavior Analysis", 
+        "🕒 Time Patterns", 
+        "📍 Location Analysis",
+        "📋 Incident Log"
+    ])
+    
+    # TAB 1: TIMELINE
+    with tab1:
+        st.markdown("### Incident Timeline")
+        
+        # Prepare data for timeline
+        timeline_data = []
+        for inc in student_incidents:
+            timeline_data.append({
+                'Date': inc['date'],
+                'Severity': inc['severity'],
+                'Behavior': inc['behavior_type'],
+                'Location': inc['location'],
+                'Critical': 'Critical' if inc.get('is_critical', False) else 'Standard'
+            })
+        
+        df_timeline = pd.DataFrame(timeline_data)
+        df_timeline['Date'] = pd.to_datetime(df_timeline['Date'])
+        df_timeline = df_timeline.sort_values('Date')
+        
+        # Incidents over time chart
+        daily_counts = df_timeline.groupby('Date').size().reset_index(name='Count')
+        
+        fig_timeline = px.line(
+            daily_counts, 
+            x='Date', 
+            y='Count',
+            title='Incidents Over Time',
+            markers=True,
+            template=PLOTLY_THEME
+        )
+        fig_timeline.update_traces(line_color='#667eea')
+        st.plotly_chart(fig_timeline, use_container_width=True)
+        
+        # Severity over time
+        fig_severity_time = px.scatter(
+            df_timeline,
+            x='Date',
+            y='Severity',
+            color='Critical',
+            size='Severity',
+            hover_data=['Behavior', 'Location'],
+            title='Severity Levels Over Time',
+            template=PLOTLY_THEME,
+            color_discrete_map={'Critical': '#ff4b4b', 'Standard': '#4b7bff'}
+        )
+        st.plotly_chart(fig_severity_time, use_container_width=True)
+    
+    # TAB 2: BEHAVIOR ANALYSIS
+    with tab2:
+        st.markdown("### Behavior Type Analysis")
+        
+        col_beh1, col_beh2 = st.columns(2)
+        
+        with col_beh1:
+            # Behavior frequency
+            behavior_counts = pd.DataFrame(student_incidents)['behavior_type'].value_counts().reset_index()
+            behavior_counts.columns = ['Behavior', 'Count']
+            
+            fig_behavior = px.bar(
+                behavior_counts,
+                x='Count',
+                y='Behavior',
+                orientation='h',
+                title='Most Common Behaviors',
+                template=PLOTLY_THEME,
+                color='Count',
+                color_continuous_scale='Purples'
+            )
+            st.plotly_chart(fig_behavior, use_container_width=True)
+        
+        with col_beh2:
+            # Behavior severity
+            behavior_severity = []
+            for inc in student_incidents:
+                behavior_severity.append({
+                    'Behavior': inc['behavior_type'],
+                    'Severity': inc['severity']
+                })
+            df_beh_sev = pd.DataFrame(behavior_severity)
+            avg_severity_by_behavior = df_beh_sev.groupby('Behavior')['Severity'].mean().reset_index()
+            avg_severity_by_behavior.columns = ['Behavior', 'Avg Severity']
+            
+            fig_beh_sev = px.bar(
+                avg_severity_by_behavior,
+                x='Avg Severity',
+                y='Behavior',
+                orientation='h',
+                title='Average Severity by Behavior',
+                template=PLOTLY_THEME,
+                color='Avg Severity',
+                color_continuous_scale='Reds'
+            )
+            st.plotly_chart(fig_beh_sev, use_container_width=True)
+        
+        st.markdown("---")
+        st.markdown("### Antecedent Analysis")
+        
+        # Antecedent frequency
+        antecedent_counts = pd.DataFrame(student_incidents)['antecedent'].value_counts().reset_index()
+        antecedent_counts.columns = ['Antecedent', 'Count']
+        
+        fig_antecedent = px.pie(
+            antecedent_counts,
+            values='Count',
+            names='Antecedent',
+            title='Common Antecedents (Triggers)',
+            template=PLOTLY_THEME
+        )
+        st.plotly_chart(fig_antecedent, use_container_width=True)
+        
+        # Intervention effectiveness
+        st.markdown("### Intervention Analysis")
+        intervention_counts = pd.DataFrame(student_incidents)['intervention'].value_counts().reset_index()
+        intervention_counts.columns = ['Intervention', 'Count']
+        
+        fig_intervention = px.bar(
+            intervention_counts,
+            x='Count',
+            y='Intervention',
+            orientation='h',
+            title='Most Used Interventions',
+            template=PLOTLY_THEME,
+            color='Count',
+            color_continuous_scale='Blues'
+        )
+        st.plotly_chart(fig_intervention, use_container_width=True)
+    
+    # TAB 3: TIME PATTERNS
+    with tab3:
+        st.markdown("### Time Pattern Analysis")
+        
+        col_time1, col_time2 = st.columns(2)
+        
+        with col_time1:
+            # Day of week analysis
+            day_counts = pd.DataFrame(student_incidents)['day'].value_counts().reset_index()
+            day_counts.columns = ['Day', 'Count']
+            
+            # Order days properly
+            day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+            day_counts['Day'] = pd.Categorical(day_counts['Day'], categories=day_order, ordered=True)
+            day_counts = day_counts.sort_values('Day')
+            
+            fig_day = px.bar(
+                day_counts,
+                x='Day',
+                y='Count',
+                title='Incidents by Day of Week',
+                template=PLOTLY_THEME,
+                color='Count',
+                color_continuous_scale='Oranges'
+            )
+            st.plotly_chart(fig_day, use_container_width=True)
+        
+        with col_time2:
+            # Session analysis
+            session_counts = pd.DataFrame(student_incidents)['session'].value_counts().reset_index()
+            session_counts.columns = ['Session', 'Count']
+            
+            fig_session = px.pie(
+                session_counts,
+                values='Count',
+                names='Session',
+                title='Incidents by Session',
+                template=PLOTLY_THEME,
+                hole=0.4
+            )
+            st.plotly_chart(fig_session, use_container_width=True)
+        
+        # Heatmap: Day vs Session
+        st.markdown("### Day & Session Heatmap")
+        
+        heatmap_data = []
+        for inc in student_incidents:
+            heatmap_data.append({
+                'Day': inc['day'],
+                'Session': inc['session']
+            })
+        
+        df_heatmap = pd.DataFrame(heatmap_data)
+        heatmap_pivot = df_heatmap.groupby(['Day', 'Session']).size().reset_index(name='Count')
+        heatmap_pivot_wide = heatmap_pivot.pivot(index='Day', columns='Session', values='Count').fillna(0)
+        
+        # Reorder days
+        day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        heatmap_pivot_wide = heatmap_pivot_wide.reindex([day for day in day_order if day in heatmap_pivot_wide.index])
+        
+        fig_heatmap = px.imshow(
+            heatmap_pivot_wide,
+            title='Incident Frequency: Day vs Session',
+            template=PLOTLY_THEME,
+            color_continuous_scale='YlOrRd',
+            labels=dict(x="Session", y="Day", color="Incidents")
+        )
+        st.plotly_chart(fig_heatmap, use_container_width=True)
+    
+    # TAB 4: LOCATION ANALYSIS
+    with tab4:
+        st.markdown("### Location Analysis")
+        
+        col_loc1, col_loc2 = st.columns(2)
+        
+        with col_loc1:
+            # Location frequency
+            location_counts = pd.DataFrame(student_incidents)['location'].value_counts().reset_index()
+            location_counts.columns = ['Location', 'Count']
+            
+            fig_location = px.bar(
+                location_counts,
+                x='Count',
+                y='Location',
+                orientation='h',
+                title='Incidents by Location',
+                template=PLOTLY_THEME,
+                color='Count',
+                color_continuous_scale='Greens'
+            )
+            st.plotly_chart(fig_location, use_container_width=True)
+        
+        with col_loc2:
+            # Support type analysis
+            support_counts = pd.DataFrame(student_incidents)['support_type'].value_counts().reset_index()
+            support_counts.columns = ['Support Type', 'Count']
+            
+            fig_support = px.pie(
+                support_counts,
+                values='Count',
+                names='Support Type',
+                title='Support Type Distribution',
+                template=PLOTLY_THEME
+            )
+            st.plotly_chart(fig_support, use_container_width=True)
+        
+        # Location vs Severity
+        st.markdown("### Location Risk Analysis")
+        
+        location_severity = []
+        for inc in student_incidents:
+            location_severity.append({
+                'Location': inc['location'],
+                'Severity': inc['severity']
+            })
+        
+        df_loc_sev = pd.DataFrame(location_severity)
+        avg_sev_by_loc = df_loc_sev.groupby('Location')['Severity'].mean().reset_index()
+        avg_sev_by_loc.columns = ['Location', 'Avg Severity']
+        avg_sev_by_loc = avg_sev_by_loc.sort_values('Avg Severity', ascending=False)
+        
+        fig_loc_sev = px.bar(
+            avg_sev_by_loc,
+            x='Avg Severity',
+            y='Location',
+            orientation='h',
+            title='Average Severity by Location (High Risk Areas)',
+            template=PLOTLY_THEME,
+            color='Avg Severity',
+            color_continuous_scale='Reds'
+        )
+        st.plotly_chart(fig_loc_sev, use_container_width=True)
+    
+    # TAB 5: INCIDENT LOG
+    with tab5:
+        st.markdown("### Complete Incident Log")
+        
+        # Filter options
+        col_filter1, col_filter2, col_filter3 = st.columns(3)
+        
+        with col_filter1:
+            severity_filter = st.multiselect(
+                "Filter by Severity",
+                options=[1, 2, 3, 4, 5],
+                default=[1, 2, 3, 4, 5],
+                key="severity_filter"
+            )
+        
+        with col_filter2:
+            behavior_types = list(set([inc['behavior_type'] for inc in student_incidents]))
+            behavior_filter = st.multiselect(
+                "Filter by Behavior",
+                options=behavior_types,
+                default=behavior_types,
+                key="behavior_filter"
+            )
+        
+        with col_filter3:
+            show_critical_only = st.checkbox("Show Critical Only", key="critical_filter")
+        
+        # Apply filters
+        filtered_incidents = student_incidents
+        
+        if severity_filter:
+            filtered_incidents = [inc for inc in filtered_incidents if inc['severity'] in severity_filter]
+        
+        if behavior_filter:
+            filtered_incidents = [inc for inc in filtered_incidents if inc['behavior_type'] in behavior_filter]
+        
+        if show_critical_only:
+            filtered_incidents = [inc for inc in filtered_incidents if inc.get('is_critical', False)]
+        
+        st.markdown(f"**Showing {len(filtered_incidents)} of {len(student_incidents)} incidents**")
+        
+        # Display incidents
+        for inc in sorted(filtered_incidents, key=lambda x: x['date'], reverse=True):
+            severity_color = '🔴' if inc['severity'] >= 4 else '🟡' if inc['severity'] == 3 else '🟢'
+            critical_badge = ' 🚨 **CRITICAL**' if inc.get('is_critical', False) else ''
+            
+            with st.expander(f"{severity_color} {inc['date']} - {inc['behavior_type']}{critical_badge}"):
+                col_detail1, col_detail2 = st.columns(2)
+                
+                with col_detail1:
+                    st.markdown(f"**Date:** {inc['date']}")
+                    st.markdown(f"**Time:** {inc['time']}")
+                    st.markdown(f"**Day:** {inc['day']}")
+                    st.markdown(f"**Session:** {inc['session']}")
+                    st.markdown(f"**Severity:** {inc['severity']}/5")
+                
+                with col_detail2:
+                    st.markdown(f"**Location:** {inc['location']}")
+                    st.markdown(f"**Reported By:** {inc.get('reported_by_name', 'N/A')}")
+                    st.markdown(f"**Support Type:** {inc['support_type']}")
+                    st.markdown(f"**Behavior:** {inc['behavior_type']}")
+                
+                st.markdown("---")
+                st.markdown(f"**Antecedent:** {inc['antecedent']}")
+                st.markdown(f"**Intervention:** {inc['intervention']}")
+                
+                if inc.get('description'):
+                    st.markdown(f"**Notes:** {inc['description']}")
+    
+    # Action buttons at bottom
+    st.markdown("---")
+    st.markdown("### Actions")
+    
+    col_act1, col_act2, col_act3 = st.columns(3)
+    
+    with col_act1:
+        if st.button("📝 Log New Incident", type="primary", use_container_width=True):
+            navigate_to('direct_log_form', student_id=student_id)
+    
+    with col_act2:
+        if st.button("📊 Export Data", use_container_width=True):
+            st.info("Export functionality - to be implemented")
+    
+    with col_act3:
+        if st.button("↩️ Back to Program", use_container_width=True):
+            navigate_to('program_students', program=student['program'])
 
 # --- MAIN ---
 
