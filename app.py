@@ -231,6 +231,62 @@ def generate_hypothesis_from_context(context: str, behavior: str) -> str:
         logger.error(f"Error generating hypothesis: {e}")
         return "Unable to determine function"
 
+def send_line_manager_notification(incident_data: dict, student: dict):
+    """
+    Simulates sending email notification to Line Manager.
+    In production, this would integrate with an email service (e.g., SendGrid, AWS SES).
+    """
+    try:
+        # Get line manager email (in production, fetch from database/config)
+        line_manager_email = "linemanager@school.edu.au"  # Replace with actual email
+        staff_name = incident_data.get('staff_certified_by', 'Staff Member')
+        student_name = student.get('name', 'Student')
+        incident_date = incident_data.get('date', 'Unknown Date')
+        incident_id = incident_data.get('id', 'N/A')
+        
+        # Log the email notification (in production, send actual email)
+        logger.info(f"EMAIL NOTIFICATION SENT TO LINE MANAGER:")
+        logger.info(f"To: {line_manager_email}")
+        logger.info(f"Subject: CRITICAL INCIDENT REPORT - {student_name} - {incident_date}")
+        logger.info(f"Incident ID: {incident_id}")
+        logger.info(f"Reported by: {staff_name}")
+        
+        # Email body content (template)
+        email_body = f"""
+        CRITICAL INCIDENT REPORT - ACTION REQUIRED
+        
+        A Critical Incident Report has been submitted and requires your review and approval.
+        
+        Student: {student_name}
+        Date of Incident: {incident_date}
+        Reported By: {staff_name}
+        Incident ID: {incident_id}
+        Submission Time: {incident_data.get('staff_certification_timestamp', 'N/A')}
+        
+        REQUIRED ACTIONS:
+        1. Review the attached Critical Incident Report
+        2. Amend any details if necessary
+        3. Complete the Administration Only section (Safety Plan, Other Outcomes)
+        4. Sign off with your name in the Manager Signature field
+        5. Confirm final approval
+        
+        Please log into the Behaviour Support System to review and approve this report.
+        
+        This is an automated notification. Please do not reply to this email.
+        """
+        
+        logger.info(f"Email Body: {email_body}")
+        
+        # In production, integrate with email service:
+        # import smtplib / use SendGrid / AWS SES / etc.
+        # send_email(to=line_manager_email, subject=..., body=email_body, attachment=incident_data)
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error sending line manager notification: {e}", exc_info=True)
+        return False
+
 def generate_hypothesis(antecedent: str, support_type: str) -> str:
     """Generates a preliminary hypothesis for low-severity incidents."""
     try:
@@ -704,11 +760,36 @@ def render_critical_incident_abch_form():
         notif_col1, notif_col2, notif_col3 = st.columns(3)
         
         with notif_col1:
-            st.checkbox("**Notified Line Manager of Critical Incident** (Required)", key="abch_manager_notify")
+            manager_notified = st.checkbox("**Notified Line Manager of Critical Incident** (Required)", key="abch_manager_notify")
         with notif_col2:
-            st.checkbox("**Notified Parent/Caregiver of Critical Incident** (Required)", key="abch_parent_notify")
+            parent_notified = st.checkbox("**Notified Parent/Caregiver of Critical Incident** (Required)", key="abch_parent_notify")
         with notif_col3:
             st.checkbox("**Copy of Critical Incident in student file**", key="abch_file_copy")
+        
+        # Staff Certification Section (only shows when both notifications checked)
+        if manager_notified and parent_notified:
+            st.markdown("---")
+            st.markdown("#### Staff Certification")
+            
+            # Get the reporting staff name from preliminary data
+            reporting_staff_name = preliminary_data.get('reported_by_name', 'Staff Member')
+            
+            st.info(f"**Completing Staff Member:** {reporting_staff_name}")
+            
+            st.markdown("""
+            By checking the box below, I certify that:
+            - All information provided in this Critical Incident Report is accurate to the best of my knowledge
+            - All mandatory notifications have been completed
+            - I have documented the incident according to school policy
+            """)
+            
+            staff_certification = st.checkbox(
+                f"**I, {reporting_staff_name}, certify that all information is correct and complete**",
+                key="staff_certification"
+            )
+            
+            if staff_certification:
+                st.success("✓ Form certified by staff member")
         
         st.markdown("---")
         
@@ -735,7 +816,18 @@ def render_critical_incident_abch_form():
                 navigate_to('landing')
                 
         with col_submit:
-            if st.form_submit_button("Finalize Critical Incident Report (ABCH)", type="primary"):
+            # Only enable finalize button if staff has certified
+            can_finalize = (
+                st.session_state.get('abch_manager_notify', False) and 
+                st.session_state.get('abch_parent_notify', False) and
+                st.session_state.get('staff_certification', False)
+            )
+            
+            if st.form_submit_button(
+                "Finalize Critical Incident Report (ABCH)", 
+                type="primary",
+                disabled=not can_finalize
+            ):
                 try:
                     # Validate ABCH form - now checking first behavior chain
                     validate_abch_form(
@@ -813,6 +905,9 @@ def render_critical_incident_abch_form():
                         "other": st.session_state.get('internal_other', '')
                     }
                     
+                    # Add staff certification and submission timestamp
+                    submission_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    
                     final_log_entry.update({
                         "is_critical": True,
                         "behavior_chains": behavior_chains,
@@ -822,13 +917,20 @@ def render_critical_incident_abch_form():
                         "outcome_manager_notified": st.session_state.abch_manager_notify,
                         "outcome_parent_notified": st.session_state.abch_parent_notify,
                         "outcome_file_copy": st.session_state.get('abch_file_copy', False),
+                        "staff_certified_by": preliminary_data.get('reported_by_name', ''),
+                        "staff_certification_timestamp": submission_timestamp,
                         "admin_line_manager_sig": st.session_state.get('admin_line_manager_sig', ''),
                         "admin_manager_sig": st.session_state.get('admin_manager_sig', ''),
                         "admin_safety_plan": st.session_state.get('admin_safety_plan', ''),
-                        "admin_other_outcomes": st.session_state.get('admin_other_outcomes', '')
+                        "admin_other_outcomes": st.session_state.get('admin_other_outcomes', ''),
+                        "status": "Pending Line Manager Review"
                     })
                     
-                    st.success(f"Critical Incident Report for {student['name']} FINALIZED and Saved!")
+                    # Simulate email notification to Line Manager
+                    send_line_manager_notification(final_log_entry, student)
+                    
+                    st.success(f"✅ Critical Incident Report for {student['name']} FINALIZED and Saved!")
+                    st.info("📧 Email notification sent to Line Manager for review and approval")
                     st.balloons()
                     st.json(final_log_entry)
                     
@@ -841,6 +943,9 @@ def render_critical_incident_abch_form():
                 except Exception as e:
                     logger.error(f"Error finalizing ABCH report: {e}", exc_info=True)
                     st.error("An unexpected error occurred while saving the report. Please try again.")
+            
+            if not can_finalize:
+                st.warning("⚠️ Please complete mandatory notifications and staff certification to finalize")
 
 # --- 4. NAVIGATION AND PAGE STRUCTURE ---
 
