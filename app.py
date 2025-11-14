@@ -790,7 +790,121 @@ def render_critical_incident_abch_form():
                 type="primary",
                 disabled=not can_finalize
             ):
-                try:
+                else:
+                    try:
+                        validate_abch_form(
+                            st.session_state.get('abch_context_0', ''),
+                            st.session_state.get('abch_location_0', ''),
+                            st.session_state.get('abch_behavior_0', ''),
+                            st.session_state.get('abch_consequence_0', ''),
+                            st.session_state.get('abch_manager_notify', False),
+                            st.session_state.get('abch_parent_notify', False)
+                        )
+                        
+                        final_log_entry = preliminary_data.copy()
+                        
+                        behavior_chains = []
+                        for chain_idx in range(st.session_state.get('behavior_chain_count', 1)):
+                            chain_data = {
+                                "location": st.session_state.get(f'abch_location_{chain_idx}', ''),
+                                "context": st.session_state.get(f'abch_context_{chain_idx}', ''),
+                                "time": str(st.session_state.get(f'abch_time_{chain_idx}', '')),
+                                "behavior": st.session_state.get(f'abch_behavior_{chain_idx}', ''),
+                                "consequence": st.session_state.get(f'abch_consequence_{chain_idx}', ''),
+                                "hypothesis": st.session_state.get(f'abch_hypothesis_{chain_idx}', '')
+                            }
+                            behavior_chains.append(chain_data)
+                        
+                        timestamped_outcomes = []
+                        outcome_options_short = [
+                            "Send Home",
+                            "Student Leaving supervised areas",
+                            "Sexualised behaviour",
+                            "Incident – student to student",
+                            "Complaint by co-located school",
+                            "Property damage",
+                            "Stealing",
+                            "Toileting issue",
+                            "ED155: Staff Injury",
+                            "ED155: Student injury"
+                        ]
+                        for idx, outcome in enumerate(outcome_options_short):
+                            if st.session_state.get(f'outcome_check_{idx}', False):
+                                time_val = st.session_state.get(f'outcome_time_{idx}')
+                                timestamped_outcomes.append({
+                                    "time": str(time_val) if time_val else '',
+                                    "outcome": outcome
+                                })
+                        
+                        emergency_services = {
+                            "sapol": {
+                                "drug_possession": st.session_state.get('sapol_drug', False),
+                                "assault": st.session_state.get('sapol_assault', False),
+                                "absconding": st.session_state.get('sapol_absconding', False),
+                                "removal": st.session_state.get('sapol_removal', False),
+                                "call_out": st.session_state.get('sapol_callout', False),
+                                "stealing": st.session_state.get('sapol_stealing', False),
+                                "vandalism": st.session_state.get('sapol_vandalism', False),
+                                "report_number": st.session_state.get('sapol_report_number', '')
+                            },
+                            "ambulance": {
+                                "call_out": st.session_state.get('ambulance_callout', False),
+                                "hospital": st.session_state.get('ambulance_hospital', False)
+                            }
+                        }
+                        
+                        internal_management = {
+                            "restorative_session": st.session_state.get('internal_restorative', False),
+                            "community_service": st.session_state.get('internal_community', False),
+                            "reentry": st.session_state.get('internal_reentry', False),
+                            "reentry_details": st.session_state.get('internal_reentry_details', ''),
+                            "case_review": st.session_state.get('internal_case_review', False),
+                            "makeup_time": st.session_state.get('internal_makeup', False),
+                            "other": st.session_state.get('internal_other', '')
+                        }
+                        
+                        submission_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        
+                        final_log_entry.update({
+                            "is_critical": True,
+                            "behavior_chains": behavior_chains,
+                            "timestamped_outcomes": timestamped_outcomes,
+                            "emergency_services": emergency_services,
+                            "internal_management": internal_management,
+                            "outcome_manager_notified": st.session_state.abch_manager_notify,
+                            "outcome_parent_notified": st.session_state.abch_parent_notify,
+                            "outcome_file_copy": st.session_state.get('abch_file_copy', False),
+                            "staff_certified_by": preliminary_data.get('reported_by_name', ''),
+                            "staff_certification_timestamp": submission_timestamp,
+                            "admin_line_manager_sig": st.session_state.get('admin_line_manager_sig', ''),
+                            "admin_manager_sig": st.session_state.get('admin_manager_sig', ''),
+                            "admin_safety_plan": st.session_state.get('admin_safety_plan', ''),
+                            "admin_other_outcomes": st.session_state.get('admin_other_outcomes', ''),
+                            "status": "Pending Line Manager Review"
+                        })
+                        
+                        email_sent = send_line_manager_notification(final_log_entry, student)
+                        
+                        st.success(f"✅ Critical Incident Report for {student['name']} LOGGED SUCCESSFULLY!")
+                        
+                        if email_sent:
+                            st.info("📧 Email notification sent to Line Manager (candice.cooper330@schools.sa.edu.au) for review and approval")
+                        else:
+                            st.warning("⚠️ Report logged but email notification failed. Please notify Line Manager manually.")
+                        
+                        st.balloons()
+                        
+                        with st.expander("View Complete Report Data"):
+                            st.json(final_log_entry)
+                        
+                        st.session_state.preliminary_abch_data = None
+                        st.session_state.behavior_chain_count = 1
+                        
+                    except ValidationError as e:
+                        st.error(e.user_message)
+                    except Exception as e:
+                        logger.error(f"Error finalizing ABCH report: {e}", exc_info=True)
+                        st.error("An unexpected error occurred while saving the report. Please try again.")
                     validate_abch_form(
                         st.session_state.get('abch_context_0', ''),
                         st.session_state.get('abch_location_0', ''),
