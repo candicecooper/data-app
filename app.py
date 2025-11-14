@@ -117,7 +117,7 @@ INTERVENTIONS = [
     "Offered a break/Choice of task",
     "Used planned ignoring of minor behavior",
     "Staff de-escalation script/Verbal coaching",
-    "Applied physical intervention",
+    "Removed other students from area for safety",
     "Called for staff support/Backup"
 ]
 
@@ -1598,7 +1598,7 @@ def render_student_analysis():
                 - **Risk Behavior/Crisis Level:** Priority on safety
                 - Follow **Crisis Management Plan**
                 - Ensure team support is available
-                - Use CPI-trained physical intervention only if necessary
+                - Remove others from the area if needed to ensure safety
                 - Post-crisis therapeutic rapport rebuilding essential
                 """)
             
