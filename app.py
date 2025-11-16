@@ -904,63 +904,168 @@ def validate_abch_form(context, location, behavior_desc, consequence, manager_no
 def render_landing_page():
     """Renders sleek landing page."""
     
+    # Spectacular animated header
     st.markdown("""
     <style>
-    .main-title {
+    @keyframes gradient-shift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-20px); }
+    }
+    
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+    
+    .hero-section {
         text-align: center;
-        font-size: 3rem;
-        font-weight: 700;
+        padding: 3rem 2rem;
+        margin-bottom: 3rem;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px);
+        border-radius: 30px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 
+            0 25px 50px -12px rgba(0, 0, 0, 0.25),
+            inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+    }
+    
+    .hero-icon {
+        font-size: 5rem;
         margin-bottom: 1rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        animation: float 3s ease-in-out infinite;
+        display: inline-block;
+        filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+    }
+    
+    .hero-title {
+        font-family: 'Poppins', sans-serif;
+        font-size: 4rem;
+        font-weight: 900;
+        background: linear-gradient(135deg, #ffffff 0%, #a78bfa 50%, #ec4899 100%);
+        background-size: 200% 200%;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 1rem;
+        animation: gradient-shift 5s ease infinite;
+        letter-spacing: -0.03em;
+        line-height: 1.2;
+        text-shadow: 0 0 40px rgba(167, 139, 250, 0.5);
     }
-    .subtitle {
-        text-align: center;
-        font-size: 1.2rem;
-        color: #888;
-        margin-bottom: 3rem;
+    
+    .hero-subtitle {
+        font-family: 'Inter', sans-serif;
+        font-size: 1.5rem;
+        color: rgba(255, 255, 255, 0.95);
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        letter-spacing: 0.02em;
+    }
+    
+    .hero-tagline {
+        font-family: 'Inter', sans-serif;
+        font-size: 1.1rem;
+        color: rgba(255, 255, 255, 0.8);
+        font-weight: 400;
+        max-width: 700px;
+        margin: 0 auto;
+        line-height: 1.6;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+    
+    .feature-badge {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 0.5rem 1.5rem;
+        border-radius: 50px;
+        margin: 0.5rem;
+        font-size: 0.9rem;
+        color: white;
+        font-weight: 600;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .feature-badge:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    }
+    
+    .divider-line {
+        height: 2px;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+        margin: 3rem 0;
+        border-radius: 2px;
     }
     </style>
+    
+    <div class="hero-section">
+        <div class="hero-icon">📊✨</div>
+        <h1 class="hero-title">Behaviour Support<br/>& Data Analysis</h1>
+        <p class="hero-subtitle">Transform Student Outcomes with Evidence-Based Insights</p>
+        <p class="hero-tagline">Comprehensive incident tracking, powerful analytics, and AI-driven recommendations aligned with CPI, Trauma-Informed Practice, BSEM, and the Australian Curriculum</p>
+        <div style="margin-top: 2rem;">
+            <span class="feature-badge">📈 Real-time Analytics</span>
+            <span class="feature-badge">🎯 Evidence-Based</span>
+            <span class="feature-badge">🔒 Secure Database</span>
+            <span class="feature-badge">📱 Cloud-Based</span>
+        </div>
+    </div>
     """, unsafe_allow_html=True)
     
-    st.markdown('<h1 class="main-title">Behaviour Support & Data Analysis</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">Select a program to view students or access quick actions</p>', unsafe_allow_html=True)
+    st.markdown('<div class="divider-line"></div>', unsafe_allow_html=True)
     
-    st.markdown("---")
-    st.markdown("### 📚 Select Program")
+    st.markdown("### 📚 Select Your Program")
+    st.caption("Choose a program to view students, log incidents, and access analytics")
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.markdown("#### Junior Primary")
+        st.markdown("#### 🎨 Junior Primary")
+        st.caption("Reception - Year 2")
         if st.button("Enter JP Program", key="jp_btn", use_container_width=True, type="primary"):
             navigate_to('program_students', program='JP')
     
     with col2:
-        st.markdown("#### Primary Years")
+        st.markdown("#### 📖 Primary Years")
+        st.caption("Year 3 - Year 6")
         if st.button("Enter PY Program", key="py_btn", use_container_width=True, type="primary"):
             navigate_to('program_students', program='PY')
     
     with col3:
-        st.markdown("#### Senior Years")
+        st.markdown("#### 🎓 Senior Years")
+        st.caption("Year 7 - Year 12")
         if st.button("Enter SY Program", key="sy_btn", use_container_width=True, type="primary"):
             navigate_to('program_students', program='SY')
     
-    st.markdown("---")
+    st.markdown('<div class="divider-line"></div>', unsafe_allow_html=True)
     st.markdown("### ⚡ Quick Actions")
+    st.caption("Fast access to common tasks")
     
     col_quick1, col_quick2 = st.columns(2)
     
     with col_quick1:
         st.markdown("#### 📝 Quick Incident Log")
+        st.caption("Select a student and immediately log a new incident")
         all_active_students = [s for s in st.session_state.students_list if not s.get('archived', False)]
         student_options = [{'id': None, 'name': '--- Select Student ---'}] + all_active_students
         selected_student = st.selectbox(
             "Select Student",
             options=student_options,
             format_func=lambda x: x['name'],
-            key="quick_log_student"
+            key="quick_log_student",
+            label_visibility="collapsed"
         )
         
         if selected_student and selected_student['id']:
@@ -969,7 +1074,8 @@ def render_landing_page():
     
     with col_quick2:
         st.markdown("#### 🔐 Admin Portal")
-        st.markdown("System administration and reports")
+        st.caption("Manage staff, students, and system settings")
+        st.markdown("<br>", unsafe_allow_html=True)  # Spacing
         if st.button("Access Admin Portal", key="admin_btn", use_container_width=True, type="primary"):
             navigate_to('admin_portal')
 
