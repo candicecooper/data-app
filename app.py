@@ -146,6 +146,7 @@ p, label, span, div {
 /* ========== CARDS & CONTAINERS ========== */
 div[data-testid="stVerticalBlock"] > div[style*="border"] {
     background: rgba(255, 255, 255, 0.98) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
     backdrop-filter: blur(20px) !important;
     border-radius: 24px !important;
     box-shadow: 
@@ -261,6 +262,7 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
 .stTabs [data-baseweb="tab-list"] {
     gap: 12px;
     background: rgba(255, 255, 255, 0.95);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     padding: 1rem;
     border-radius: 20px;
@@ -1285,7 +1287,8 @@ def render_landing_page():
         text-align: center;
         padding: 3rem 2rem;
         margin-bottom: 3rem;
-        background: rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.15);
+        -webkit-backdrop-filter: blur(20px);
         backdrop-filter: blur(20px);
         border-radius: 30px;
         border: 2px solid rgba(255, 255, 255, 0.3);
@@ -1342,6 +1345,7 @@ def render_landing_page():
     .feature-badge {
         display: inline-block;
         background: rgba(255, 255, 255, 0.2);
+        -webkit-backdrop-filter: blur(10px);
         backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.3);
         padding: 0.5rem 1.5rem;
