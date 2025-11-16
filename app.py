@@ -72,6 +72,190 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Apply Professional Blue Theme
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+
+.main {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+h1, h2, h3 {
+    font-family: 'Poppins', sans-serif;
+    color: #1e3a8a;
+    font-weight: 600;
+}
+
+h1 {
+    font-size: 2.5rem;
+    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1.5rem;
+}
+
+div[data-testid="stVerticalBlock"] > div[style*="border"] {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    padding: 1.5rem;
+    border: none !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+div[data-testid="stVerticalBlock"] > div[style*="border"]:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.stButton > button {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    border-radius: 12px;
+    padding: 0.75rem 2rem;
+    transition: all 0.3s ease;
+    border: none;
+    text-transform: none;
+}
+
+.stButton > button[kind="primary"] {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+}
+
+.stButton > button[kind="primary"]:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4);
+    transform: translateY(-2px);
+}
+
+.stButton > button[kind="secondary"] {
+    background: white;
+    color: #3b82f6;
+    border: 2px solid #3b82f6;
+}
+
+.stButton > button[kind="secondary"]:hover {
+    background: #eff6ff;
+    border-color: #2563eb;
+}
+
+div[data-testid="stMetric"] {
+    background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border-left: 4px solid #3b82f6;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+div[data-testid="stMetric"] label {
+    color: #64748b;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+    color: #1e40af;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+    background: white;
+    padding: 0.5rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.stTabs [data-baseweb="tab"] {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    color: #64748b;
+    background: transparent;
+}
+
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white !important;
+}
+
+.stTextInput input, .stSelectbox select, .stTextArea textarea, .stDateInput input, .stTimeInput input {
+    border-radius: 8px;
+    border: 2px solid #e2e8f0;
+    font-family: 'Inter', sans-serif;
+    transition: border-color 0.2s ease;
+}
+
+.stTextInput input:focus, .stSelectbox select:focus, .stTextArea textarea:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.streamlit-expanderHeader {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    color: #1e40af;
+    background: #f0f9ff;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.dataframe {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.dataframe thead tr {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+}
+
+.stSuccess {
+    background: #d1fae5;
+    color: #065f46;
+    border-left: 4px solid #10b981;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    padding: 1rem;
+}
+
+.stError {
+    background: #fee2e2;
+    color: #991b1b;
+    border-left: 4px solid #ef4444;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    padding: 1rem;
+}
+
+.stWarning {
+    background: #fef3c7;
+    color: #92400e;
+    border-left: 4px solid #f59e0b;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    padding: 1rem;
+}
+
+.stInfo {
+    background: #dbeafe;
+    color: #1e40af;
+    border-left: 4px solid #3b82f6;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    padding: 1rem;
+}
+</style>
+""", unsafe_allow_html=True)
+
 PLOTLY_THEME = 'plotly_dark'
 
 MOCK_STAFF = [
