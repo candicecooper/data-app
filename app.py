@@ -9,6 +9,17 @@ from typing import List, Dict, Any, Optional
 import logging
 from functools import wraps
 import traceback
+from supabase import create_client, Client
+
+# --- SUPABASE CONFIGURATION ---
+SUPABASE_URL = "https://szhebjnxxiwomgediufp.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6aGViam54eGl3b21nZWRpdWZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1MjgxMjMsImV4cCI6MjA3NzEwNDEyM30.AFGZkidWXf07VDcGXRId-rFg5SdAEwmq7EiHM-Zuu5o"
+
+# Initialize Supabase client
+@st.cache_resource
+def get_supabase_client() -> Client:
+    """Returns a cached Supabase client instance."""
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # --- ERROR HANDLING SETUP ---
 
@@ -151,97 +162,78 @@ LOCATIONS = [
 
 VALID_PAGES = ['landing', 'program_students', 'direct_log_form', 'critical_incident_abch', 'student_analysis', 'admin_portal']
 
-# --- MOCK DATA GENERATION ---
+# --- DATA LOADING FUNCTIONS (SUPABASE) ---
 
-def generate_mock_incidents():
-    """Generates mock incident data for testing."""
-    incidents = []
-    
-    for i in range(15):
-        incident_date = (datetime.now() - timedelta(days=random.randint(1, 45))).strftime('%Y-%m-%d')
-        incident_time = datetime.now().replace(hour=random.randint(8, 14), minute=random.choice([0, 15, 30, 45]), second=0).time()
+def load_students_from_db() -> List[Dict[str, Any]]:
+    """Load all students from Supabase."""
+    try:
+        supabase = get_supabase_client()
+        response = supabase.table('students').select('*').execute()
+        return response.data if response.data else []
+    except Exception as e:
+        logger.error(f"Error loading students: {e}")
+        return []
+
+def load_staff_from_db() -> List[Dict[str, Any]]:
+    """Load all staff from Supabase."""
+    try:
+        supabase = get_supabase_client()
+        response = supabase.table('staff').select('*').execute()
+        return response.data if response.data else []
+    except Exception as e:
+        logger.error(f"Error loading staff: {e}")
+        return []
+
+def load_incidents_from_db() -> List[Dict[str, Any]]:
+    """Load all incidents from Supabase."""
+    try:
+        supabase = get_supabase_client()
+        response = supabase.table('incidents').select('*').execute()
         
-        if time(9, 0) <= incident_time <= time(11, 0):
-            session = 'Morning (9:00am - 11:00am)'
-        elif time(11, 0, 1) <= incident_time <= time(13, 0):
-            session = 'Middle (11:01am - 1:00pm)'
-        elif time(13, 0, 1) <= incident_time <= time(14, 45):
-            session = 'Afternoon (1:01pm - 2:45pm)'
-        else:
-            session = 'Outside School Hours (N/A)'
+        # Normalize field names for backward compatibility
+        incidents = []
+        if response.data:
+            for inc in response.data:
+                # Create a copy with both old and new field names
+                normalized = inc.copy()
+                normalized['date'] = inc.get('incident_date', inc.get('date', ''))
+                normalized['time'] = inc.get('incident_time', inc.get('time', ''))
+                normalized['day'] = inc.get('day_of_week', inc.get('day', ''))
+                incidents.append(normalized)
         
-        is_critical = random.choice([True, True, False])
-        severity = random.choice([4, 5]) if is_critical else random.choice([1, 2, 3])
+        return incidents
+    except Exception as e:
+        logger.error(f"Error loading incidents: {e}")
+        return []
+
+def load_system_settings() -> Dict[str, Any]:
+    """Load system settings from Supabase."""
+    try:
+        supabase = get_supabase_client()
+        response = supabase.table('system_settings').select('*').execute()
         
-        incident = {
-            'id': str(uuid.uuid4()),
-            'student_id': 'stu_001',
-            'date': incident_date,
-            'time': incident_time.strftime('%H:%M:%S'),
-            'day': datetime.strptime(incident_date, '%Y-%m-%d').strftime('%A'),
-            'session': session,
-            'location': random.choice(['JP Classroom', 'Yard', 'Gate', 'Playground', 'JP Spill Out']),
-            'reported_by_name': 'Emily Jones',
-            'reported_by_id': 's1',
-            'reported_by_role': 'JP',
-            'behavior_type': random.choice(['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)']),
-            'antecedent': random.choice(ANTECEDENTS_NEW),
-            'intervention': random.choice(INTERVENTIONS),
-            'support_type': random.choice(SUPPORT_TYPES),
-            'severity': severity,
-            'description': f"Incident {i+1}",
-            'is_critical': is_critical,
-        }
-        incidents.append(incident)
-    
-    for i in range(5):
-        incident_date = (datetime.now() - timedelta(days=random.randint(1, 30))).strftime('%Y-%m-%d')
-        incident_time = datetime.now().replace(hour=random.randint(8, 14), minute=random.choice([0, 15, 30, 45]), second=0).time()
+        settings = {}
+        if response.data:
+            for setting in response.data:
+                settings[setting['setting_key']] = setting['setting_value']
         
-        if time(9, 0) <= incident_time <= time(11, 0):
-            session = 'Morning (9:00am - 11:00am)'
-        elif time(11, 0, 1) <= incident_time <= time(13, 0):
-            session = 'Middle (11:01am - 1:00pm)'
-        elif time(13, 0, 1) <= incident_time <= time(14, 45):
-            session = 'Afternoon (1:01pm - 2:45pm)'
-        else:
-            session = 'Outside School Hours (N/A)'
-        
-        incident = {
-            'id': str(uuid.uuid4()),
-            'student_id': 'stu_002',
-            'date': incident_date,
-            'time': incident_time.strftime('%H:%M:%S'),
-            'day': datetime.strptime(incident_date, '%Y-%m-%d').strftime('%A'),
-            'session': session,
-            'location': random.choice(['PY Classroom', 'Library', 'Yard']),
-            'reported_by_name': 'Daniel Lee',
-            'reported_by_id': 's2',
-            'reported_by_role': 'PY',
-            'behavior_type': random.choice(['Verbal Refusal', 'Out of Seat', 'Non-Compliance']),
-            'antecedent': random.choice(ANTECEDENTS_NEW),
-            'intervention': random.choice(INTERVENTIONS),
-            'support_type': random.choice(SUPPORT_TYPES),
-            'severity': random.choice([1, 2, 3]),
-            'description': f"Incident {i+1}",
-            'is_critical': False,
-        }
-        incidents.append(incident)
-    
-    return incidents
+        return settings
+    except Exception as e:
+        logger.error(f"Error loading settings: {e}")
+        return {}
 
 # --- SESSION STATE INITIALIZATION ---
 
 def initialize_session_state():
-    """Initialize all session state variables"""
-    if 'incidents' not in st.session_state:
-        st.session_state.incidents = generate_mock_incidents()
-    
-    if 'staff_list' not in st.session_state:
-        st.session_state.staff_list = MOCK_STAFF.copy()
-    
-    if 'students_list' not in st.session_state:
-        st.session_state.students_list = MOCK_STUDENTS.copy()
+    """Initialize all session state variables from Supabase"""
+    if 'data_loaded' not in st.session_state:
+        with st.spinner("Loading data from database..."):
+            # Load from Supabase
+            st.session_state.students_list = load_students_from_db()
+            st.session_state.staff_list = load_staff_from_db()
+            st.session_state.incidents = load_incidents_from_db()
+            st.session_state.system_settings = load_system_settings()
+            st.session_state.data_loaded = True
     
     if 'current_page' not in st.session_state:
         st.session_state.current_page = 'landing'
@@ -309,7 +301,7 @@ def get_session_window(incident_time: time) -> str:
         return "Unknown Session"
 
 def add_staff_member(name: str, role: str) -> bool:
-    """Adds a new staff member."""
+    """Adds a new staff member to Supabase."""
     try:
         if not name or not name.strip():
             raise ValidationError("Name cannot be empty", "Please enter a staff name")
@@ -317,23 +309,29 @@ def add_staff_member(name: str, role: str) -> bool:
         if not role or role == "--- Select Role ---":
             raise ValidationError("Role must be selected", "Please select a role")
         
-        # Check for duplicate names
+        # Check for duplicate names in current session
         existing = [s for s in st.session_state.staff_list if s['name'].lower() == name.strip().lower() and not s.get('archived', False)]
         if existing:
             raise ValidationError("Duplicate staff name", "A staff member with this name already exists")
         
         new_staff = {
-            'id': f"s_{uuid.uuid4().hex[:8]}",
             'name': name.strip(),
             'role': role,
             'active': True,
-            'archived': False,
-            'created_date': datetime.now().strftime('%Y-%m-%d')
+            'archived': False
         }
         
-        st.session_state.staff_list.append(new_staff)
-        logger.info(f"Added staff member: {name} ({role})")
-        return True
+        # Insert into Supabase
+        supabase = get_supabase_client()
+        response = supabase.table('staff').insert(new_staff).execute()
+        
+        if response.data:
+            # Update session state
+            st.session_state.staff_list.append(response.data[0])
+            logger.info(f"Added staff member: {name} ({role})")
+            return True
+        else:
+            raise AppError("Database insert failed", "Could not add staff member")
         
     except ValidationError:
         raise
@@ -342,42 +340,65 @@ def add_staff_member(name: str, role: str) -> bool:
         raise AppError("Failed to add staff member", "Could not add staff member. Please try again.")
 
 def archive_staff_member(staff_id: str) -> bool:
-    """Archives a staff member."""
+    """Archives a staff member in Supabase."""
     try:
         staff = get_staff_by_id(staff_id)
         if not staff:
             raise ValidationError("Staff member not found", "Cannot archive: staff member not found")
         
-        staff['archived'] = True
-        staff['active'] = False
-        staff['archived_date'] = datetime.now().strftime('%Y-%m-%d')
+        # Update in Supabase
+        supabase = get_supabase_client()
+        response = supabase.table('staff').update({
+            'archived': True,
+            'active': False,
+            'archived_date': datetime.now().isoformat()
+        }).eq('id', staff_id).execute()
         
-        logger.info(f"Archived staff member: {staff['name']}")
-        return True
+        if response.data:
+            # Update session state
+            staff['archived'] = True
+            staff['active'] = False
+            staff['archived_date'] = datetime.now().isoformat()
+            
+            logger.info(f"Archived staff member: {staff['name']}")
+            return True
+        else:
+            raise AppError("Database update failed", "Could not archive staff member")
         
     except Exception as e:
         logger.error(f"Error archiving staff: {e}")
         raise AppError("Failed to archive staff member", "Could not archive staff member. Please try again.")
 
 def unarchive_staff_member(staff_id: str) -> bool:
-    """Unarchives a staff member."""
+    """Unarchives a staff member in Supabase."""
     try:
         staff = get_staff_by_id(staff_id)
         if not staff:
             raise ValidationError("Staff member not found", "Cannot unarchive: staff member not found")
         
-        staff['archived'] = False
-        staff['active'] = True
+        # Update in Supabase
+        supabase = get_supabase_client()
+        response = supabase.table('staff').update({
+            'archived': False,
+            'active': True
+        }).eq('id', staff_id).execute()
         
-        logger.info(f"Unarchived staff member: {staff['name']}")
-        return True
+        if response.data:
+            # Update session state
+            staff['archived'] = False
+            staff['active'] = True
+            
+            logger.info(f"Unarchived staff member: {staff['name']}")
+            return True
+        else:
+            raise AppError("Database update failed", "Could not unarchive staff member")
         
     except Exception as e:
         logger.error(f"Error unarchiving staff: {e}")
         raise AppError("Failed to unarchive staff member", "Could not unarchive staff member. Please try again.")
 
 def add_student(name: str, dob: datetime.date, program: str, grade: str, edid: str) -> bool:
-    """Adds a new student."""
+    """Adds a new student to Supabase."""
     try:
         if not name or not name.strip():
             raise ValidationError("Name cannot be empty", "Please enter a student name")
@@ -394,7 +415,7 @@ def add_student(name: str, dob: datetime.date, program: str, grade: str, edid: s
         if not edid or not edid.strip():
             raise ValidationError("EDID is required", "Please enter EDID")
         
-        # Check for duplicate EDID
+        # Check for duplicate EDID in current session
         existing_edid = [s for s in st.session_state.students_list if s.get('edid', '').upper() == edid.strip().upper() and not s.get('archived', False)]
         if existing_edid:
             raise ValidationError("Duplicate EDID", f"A student with EDID {edid} already exists")
@@ -404,20 +425,26 @@ def add_student(name: str, dob: datetime.date, program: str, grade: str, edid: s
             raise ValidationError("Invalid date of birth", "Date of birth cannot be in the future")
         
         new_student = {
-            'id': f"stu_{uuid.uuid4().hex[:8]}",
             'name': name.strip(),
             'dob': dob.strftime('%Y-%m-%d'),
             'program': program,
             'grade': grade,
             'edid': edid.strip().upper(),
             'profile_status': 'Draft',
-            'archived': False,
-            'created_date': datetime.now().strftime('%Y-%m-%d')
+            'archived': False
         }
         
-        st.session_state.students_list.append(new_student)
-        logger.info(f"Added student: {name} (EDID: {edid}, Program: {program})")
-        return True
+        # Insert into Supabase
+        supabase = get_supabase_client()
+        response = supabase.table('students').insert(new_student).execute()
+        
+        if response.data:
+            # Update session state
+            st.session_state.students_list.append(response.data[0])
+            logger.info(f"Added student: {name} (EDID: {edid}, Program: {program})")
+            return True
+        else:
+            raise AppError("Database insert failed", "Could not add student")
         
     except ValidationError:
         raise
@@ -921,6 +948,13 @@ def generate_student_report(student: Dict[str, Any], incidents: List[Dict[str, A
     try:
         import subprocess
         
+        # Check if Node.js is available
+        try:
+            subprocess.run(['node', '--version'], capture_output=True, check=True)
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            logger.warning("Node.js not available - cannot generate reports")
+            return None
+        
         # Create temporary directory for charts
         chart_dir = "/home/claude/report_charts"
         subprocess.run(['mkdir', '-p', chart_dir], check=True)
@@ -1322,15 +1356,14 @@ def render_direct_log_form():
                 session = get_session_window(incident_time)
                 
                 new_incident = {
-                    'id': str(uuid.uuid4()),
                     'student_id': student_id,
-                    'date': incident_date.strftime('%Y-%m-%d'),
-                    'time': incident_time.strftime('%H:%M:%S'),
-                    'day': incident_date.strftime('%A'),
+                    'incident_date': incident_date.strftime('%Y-%m-%d'),
+                    'incident_time': incident_time.strftime('%H:%M:%S'),
+                    'day_of_week': incident_date.strftime('%A'),
                     'session': session,
                     'location': location,
                     'reported_by_name': reported_by['name'],
-                    'reported_by_id': reported_by['id'],
+                    'reported_by_id': reported_by['id'] if not reported_by.get('is_special', False) else None,
                     'reported_by_role': reported_by['role'],
                     'is_special_staff': reported_by.get('is_special', False),
                     'behavior_type': behavior_type,
@@ -1339,16 +1372,29 @@ def render_direct_log_form():
                     'support_type': support_type,
                     'severity': severity_level,
                     'description': description,
-                    'is_critical': severity_level >= 4,
-                    'created_at': datetime.now().isoformat()
+                    'is_critical': severity_level >= 4
                 }
                 
-                st.session_state.incidents.append(new_incident)
+                # Save to Supabase
+                supabase = get_supabase_client()
+                response = supabase.table('incidents').insert(new_incident).execute()
                 
-                st.success("✅ Incident report submitted successfully!")
-                
-                if severity_level >= 4:
-                    st.warning("⚠️ This is a critical incident (Severity 4-5). Please complete a Critical Incident ABCH form.")
+                if response.data:
+                    # Update session state with the returned record (includes DB-generated ID)
+                    saved_incident = response.data[0]
+                    # Convert DB field names back to app field names for backward compatibility
+                    saved_incident['date'] = saved_incident['incident_date']
+                    saved_incident['time'] = saved_incident['incident_time']
+                    saved_incident['day'] = saved_incident['day_of_week']
+                    st.session_state.incidents.append(saved_incident)
+                    
+                    st.success("✅ Incident report submitted successfully!")
+                    
+                    if severity_level >= 4:
+                        st.warning("⚠️ This is a critical incident (Severity 4-5). Please complete a Critical Incident ABCH form.")
+                else:
+                    st.error("Failed to save incident to database")
+                    return
                 
                 # Option to add another or return
                 col_another, col_return = st.columns(2)
@@ -2248,9 +2294,19 @@ def render_student_analysis():
                                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                                 use_container_width=True
                             )
+                    else:
+                        st.info("📋 Report generation is not available in this environment.")
+                        st.markdown("""
+                        **To generate reports locally:**
+                        1. Install Node.js from nodejs.org
+                        2. Run: `npm install -g docx`
+                        3. Run the app locally with `streamlit run behaviour_support_app.py`
+                        
+                        **Alternative:** You can export your data as CSV for now.
+                        """)
                 except Exception as e:
                     logger.error(f"Error generating report: {e}")
-                    st.error("Failed to generate report. Please try again.")
+                    st.error("Report generation unavailable in this environment. Please use local installation for reports.")
     
     with col_act3:
         if st.button("↩️ Back to Program", use_container_width=True):
