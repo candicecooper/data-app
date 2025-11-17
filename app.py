@@ -137,7 +137,7 @@ p, label, span, div {
     line-height: 1.6;
 }
 
-/* Make captions more visible */
+/* Make captions more visible on dark background */
 .caption, [data-testid="stCaptionContainer"] {
     color: #d1d5db !important;
     font-size: 0.9rem !important;
@@ -156,6 +156,34 @@ div[data-testid="stVerticalBlock"] > div[style*="border"] {
     padding: 2rem !important;
     border: 1px solid rgba(255, 255, 255, 0.5) !important;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Make text INSIDE white cards dark and readable */
+div[data-testid="stVerticalBlock"] > div[style*="border"] p,
+div[data-testid="stVerticalBlock"] > div[style*="border"] label,
+div[data-testid="stVerticalBlock"] > div[style*="border"] span,
+div[data-testid="stVerticalBlock"] > div[style*="border"] div,
+div[data-testid="stVerticalBlock"] > div[style*="border"] h2,
+div[data-testid="stVerticalBlock"] > div[style*="border"] h3,
+div[data-testid="stVerticalBlock"] > div[style*="border"] h4,
+div[data-testid="stVerticalBlock"] > div[style*="border"] * {
+    color: #1f2937 !important;
+}
+
+div[data-testid="stVerticalBlock"] > div[style*="border"] .caption,
+div[data-testid="stVerticalBlock"] > div[style*="border"] [data-testid="stCaptionContainer"] {
+    color: #4b5563 !important;
+}
+
+/* Ensure form elements inside containers are visible */
+div[data-testid="stVerticalBlock"] > div[style*="border"] .stTextInput label,
+div[data-testid="stVerticalBlock"] > div[style*="border"] .stSelectbox label,
+div[data-testid="stVerticalBlock"] > div[style*="border"] .stTextArea label,
+div[data-testid="stVerticalBlock"] > div[style*="border"] .stDateInput label,
+div[data-testid="stVerticalBlock"] > div[style*="border"] .stTimeInput label,
+div[data-testid="stVerticalBlock"] > div[style*="border"] .stNumberInput label,
+div[data-testid="stVerticalBlock"] > div[style*="border"] .stSlider label {
+    color: #1f2937 !important;
 }
 
 div[data-testid="stVerticalBlock"] > div[style*="border"]:hover {
@@ -315,10 +343,43 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
     outline: none !important;
 }
 
-/* Input labels */
-.stTextInput label, .stSelectbox label, .stTextArea label, .stDateInput label, .stTimeInput label {
+/* Input labels - light on dark background */
+.stTextInput label, .stSelectbox label, .stTextArea label, .stDateInput label, .stTimeInput label, .stNumberInput label {
     color: #f3f4f6 !important;
     font-weight: 600 !important;
+}
+
+/* But dark text when inside white cards/forms */
+div[data-testid="stVerticalBlock"] > div[style*="border"] .stTextInput label,
+div[data-testid="stVerticalBlock"] > div[style*="border"] .stSelectbox label,
+div[data-testid="stVerticalBlock"] > div[style*="border"] .stTextArea label,
+div[data-testid="stVerticalBlock"] > div[style*="border"] .stDateInput label,
+div[data-testid="stVerticalBlock"] > div[style*="border"] .stTimeInput label,
+div[data-testid="stVerticalBlock"] > div[style*="border"] .stNumberInput label,
+[data-testid="stForm"] .stTextInput label,
+[data-testid="stForm"] .stSelectbox label,
+[data-testid="stForm"] .stTextArea label,
+[data-testid="stForm"] .stDateInput label,
+[data-testid="stForm"] .stTimeInput label,
+[data-testid="stForm"] .stNumberInput label {
+    color: #1f2937 !important;
+}
+
+/* Make ALL content inside forms dark and readable */
+[data-testid="stForm"],
+[data-testid="stForm"] * {
+    color: #1f2937 !important;
+}
+
+[data-testid="stForm"] h2,
+[data-testid="stForm"] h3,
+[data-testid="stForm"] h4 {
+    color: #111827 !important;
+}
+
+[data-testid="stForm"] .caption,
+[data-testid="stForm"] [data-testid="stCaptionContainer"] {
+    color: #4b5563 !important;
 }
 
 /* ========== EXPANDERS ========== */
@@ -338,6 +399,32 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
     background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
     border-color: #60a5fa !important;
     transform: translateX(4px) !important;
+}
+
+/* Make sure expander content is readable */
+.streamlit-expanderContent {
+    background: rgba(255, 255, 255, 0.95) !important;
+    padding: 1rem !important;
+    border-radius: 0 0 12px 12px !important;
+}
+
+.streamlit-expanderContent p,
+.streamlit-expanderContent label,
+.streamlit-expanderContent span,
+.streamlit-expanderContent div,
+.streamlit-expanderContent h2,
+.streamlit-expanderContent h3,
+.streamlit-expanderContent h4,
+.streamlit-expanderContent * {
+    color: #1f2937 !important;
+}
+
+/* Make text inside expanders dark */
+.streamlit-expanderContent p,
+.streamlit-expanderContent label,
+.streamlit-expanderContent span,
+.streamlit-expanderContent div {
+    color: #1f2937 !important;
 }
 
 /* ========== TABLES ========== */
@@ -364,6 +451,7 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
 .dataframe tbody td {
     color: #1f2937 !important;
     padding: 1rem !important;
+    background: white !important;
 }
 
 .dataframe tbody tr {
@@ -487,6 +575,43 @@ section[data-testid="stSidebar"] * {
 .stButton > button[kind="primary"]:hover::after {
     margin-left: 12px;
 }
+
+/* ========== COMPREHENSIVE FIX FOR WHITE BACKGROUNDS ========== */
+/* Any element with a white or light background should have dark text */
+[style*="background: white"],
+[style*="background: #fff"],
+[style*="background: rgb(255, 255, 255)"],
+[style*="background-color: white"],
+[style*="background-color: #fff"],
+[style*="background-color: rgb(255, 255, 255)"] {
+    color: #1f2937 !important;
+}
+
+[style*="background: white"] *,
+[style*="background: #fff"] *,
+[style*="background: rgb(255, 255, 255)"] *,
+[style*="background-color: white"] *,
+[style*="background-color: #fff"] *,
+[style*="background-color: rgb(255, 255, 255)"] * {
+    color: #1f2937 !important;
+}
+
+/* Streamlit's default containers */
+.element-container {
+    color: #f3f4f6 !important;
+}
+
+/* Make markdown inside white areas dark */
+.stMarkdown {
+    color: inherit !important;
+}
+
+/* Specific override for columns and containers */
+.row-widget,
+.stColumn {
+    color: #f3f4f6 !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
