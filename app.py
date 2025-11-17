@@ -110,7 +110,7 @@ h2 {
     font-family: 'Poppins', sans-serif;
     font-size: 2rem !important;
     font-weight: 700 !important;
-    color: #111827 !important;
+    color: #ffffff !important;
     margin-top: 2rem !important;
     margin-bottom: 1rem !important;
 }
@@ -119,7 +119,7 @@ h3 {
     font-family: 'Poppins', sans-serif;
     font-size: 1.5rem !important;
     font-weight: 600 !important;
-    color: #1f2937 !important;
+    color: #f3f4f6 !important;
     margin-bottom: 1rem !important;
 }
 
@@ -127,19 +127,19 @@ h4 {
     font-family: 'Poppins', sans-serif;
     font-size: 1.25rem !important;
     font-weight: 600 !important;
-    color: #111827 !important;
+    color: #e5e7eb !important;
 }
 
 p, label, span, div {
     font-family: 'Inter', sans-serif;
-    color: #1f2937 !important;
+    color: #f3f4f6 !important;
     font-size: 1rem;
     line-height: 1.6;
 }
 
 /* Make captions more visible */
 .caption, [data-testid="stCaptionContainer"] {
-    color: #4b5563 !important;
+    color: #d1d5db !important;
     font-size: 0.9rem !important;
 }
 
@@ -244,7 +244,7 @@ div[data-testid="stMetric"]:hover {
 }
 
 div[data-testid="stMetric"] label {
-    color: #475569 !important;
+    color: #1f2937 !important;
     font-size: 0.875rem !important;
     font-weight: 600 !important;
     text-transform: uppercase !important;
@@ -274,7 +274,7 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
     font-weight: 600;
     border-radius: 12px;
     padding: 1rem 2rem;
-    color: #475569 !important;
+    color: #1f2937 !important;
     background: transparent;
     transition: all 0.3s ease;
 }
@@ -317,7 +317,7 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
 
 /* Input labels */
 .stTextInput label, .stSelectbox label, .stTextArea label, .stDateInput label, .stTimeInput label {
-    color: #1f2937 !important;
+    color: #f3f4f6 !important;
     font-weight: 600 !important;
 }
 
