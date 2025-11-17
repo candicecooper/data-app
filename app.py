@@ -110,7 +110,7 @@ h2 {
     font-family: 'Poppins', sans-serif;
     font-size: 2rem !important;
     font-weight: 700 !important;
-    color: #ffffff !important;
+    color: #111827 !important;
     margin-top: 2rem !important;
     margin-bottom: 1rem !important;
 }
@@ -119,7 +119,7 @@ h3 {
     font-family: 'Poppins', sans-serif;
     font-size: 1.5rem !important;
     font-weight: 600 !important;
-    color: #f3f4f6 !important;
+    color: #1f2937 !important;
     margin-bottom: 1rem !important;
 }
 
@@ -127,19 +127,19 @@ h4 {
     font-family: 'Poppins', sans-serif;
     font-size: 1.25rem !important;
     font-weight: 600 !important;
-    color: #e5e7eb !important;
+    color: #111827 !important;
 }
 
 p, label, span, div {
     font-family: 'Inter', sans-serif;
-    color: #f3f4f6 !important;
+    color: #1f2937 !important;
     font-size: 1rem;
     line-height: 1.6;
 }
 
 /* Make captions more visible */
 .caption, [data-testid="stCaptionContainer"] {
-    color: #d1d5db !important;
+    color: #4b5563 !important;
     font-size: 0.9rem !important;
 }
 
@@ -244,7 +244,7 @@ div[data-testid="stMetric"]:hover {
 }
 
 div[data-testid="stMetric"] label {
-    color: #1f2937 !important;
+    color: #475569 !important;
     font-size: 0.875rem !important;
     font-weight: 600 !important;
     text-transform: uppercase !important;
@@ -274,7 +274,7 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
     font-weight: 600;
     border-radius: 12px;
     padding: 1rem 2rem;
-    color: #1f2937 !important;
+    color: #475569 !important;
     background: transparent;
     transition: all 0.3s ease;
 }
@@ -317,7 +317,7 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
 
 /* Input labels */
 .stTextInput label, .stSelectbox label, .stTextArea label, .stDateInput label, .stTimeInput label {
-    color: #f3f4f6 !important;
+    color: #1f2937 !important;
     font-weight: 600 !important;
 }
 
@@ -465,6 +465,338 @@ section[data-testid="stSidebar"] * {
 
 ::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+}
+
+/* ========== ANIMATIONS ========== */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.main > div {
+    animation: fadeIn 0.6s ease-out;
+}
+
+/* ========== SPECIAL EFFECTS ========== */
+.stButton > button[kind="primary"]::after {
+    content: '→';
+    margin-left: 8px;
+    transition: margin-left 0.3s ease;
+}
+
+.stButton > button[kind="primary"]:hover::after {
+    margin-left: 12px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+/* ========== CARDS & CONTAINERS ========== */
+div[data-testid="stVerticalBlock"] > div[style*="border"] {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(20px) !important;
+    border-radius: 24px !important;
+    box-shadow: 
+        0 20px 25px -5px rgba(0, 0, 0, 0.1),
+        0 10px 10px -5px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+    padding: 2rem !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+div[data-testid="stVerticalBlock"] > div[style*="border"]:hover {
+    transform: translateY(-8px) scale(1.02) !important;
+    box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ========== BUTTONS ========== */
+.stButton > button {
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    border-radius: 16px !important;
+    padding: 1rem 2.5rem !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border: none !important;
+    text-transform: none !important;
+    letter-spacing: 0.02em !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+.stButton > button::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: -100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent) !important;
+    transition: left 0.5s !important;
+}
+
+.stButton > button:hover::before {
+    left: 100% !important;
+}
+
+.stButton > button[kind="primary"] {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    box-shadow: 
+        0 10px 25px -5px rgba(102, 126, 234, 0.5),
+        0 4px 6px -2px rgba(102, 126, 234, 0.3) !important;
+}
+
+.stButton > button[kind="primary"]:hover {
+    background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%) !important;
+    box-shadow: 
+        0 20px 35px -5px rgba(102, 126, 234, 0.6),
+        0 8px 12px -2px rgba(102, 126, 234, 0.4) !important;
+    transform: translateY(-3px) !important;
+}
+
+.stButton > button[kind="secondary"] {
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: #667eea !important;
+    border: 3px solid #667eea !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.stButton > button[kind="secondary"]:hover {
+    background: rgba(255, 255, 255, 1) !important;
+    border-color: #5568d3 !important;
+    box-shadow: 0 10px 15px -3px rgba(102, 126, 234, 0.3) !important;
+    transform: translateY(-2px) !important;
+}
+
+/* ========== METRICS ========== */
+div[data-testid="stMetric"] {
+    background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%) !important;
+    padding: 2rem !important;
+    border-radius: 20px !important;
+    border-left: 6px solid #667eea !important;
+    box-shadow: 
+        0 10px 15px -3px rgba(0, 0, 0, 0.1),
+        0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.3s ease !important;
+}
+
+div[data-testid="stMetric"]:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 20px 25px -5px rgba(102, 126, 234, 0.3) !important;
+}
+
+div[data-testid="stMetric"] label {
+    color: #64748b !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+    color: #667eea !important;
+    font-size: 3rem !important;
+    font-weight: 800 !important;
+    text-shadow: 0 2px 4px rgba(102, 126, 234, 0.2) !important;
+}
+
+/* ========== TABS ========== */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    padding: 1rem;
+    border-radius: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.stTabs [data-baseweb="tab"] {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    border-radius: 12px;
+    padding: 1rem 2rem;
+    color: #64748b;
+    background: transparent;
+    transition: all 0.3s ease;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+}
+
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* ========== INPUT FIELDS ========== */
+.stTextInput input, 
+.stSelectbox select, 
+.stTextArea textarea,
+.stDateInput input,
+.stTimeInput input,
+.stNumberInput input {
+    border-radius: 12px !important;
+    border: 2px solid #e2e8f0 !important;
+    font-family: 'Inter', sans-serif !important;
+    transition: all 0.3s ease !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 1rem !important;
+    background: white !important;
+}
+
+.stTextInput input:focus, 
+.stSelectbox select:focus, 
+.stTextArea textarea:focus {
+    border-color: #667eea !important;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1) !important;
+    outline: none !important;
+}
+
+/* ========== EXPANDERS ========== */
+.streamlit-expanderHeader {
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 1.1rem !important;
+    color: #1e40af !important;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
+    border-radius: 12px !important;
+    padding: 1.25rem !important;
+    border: 2px solid #bfdbfe !important;
+    transition: all 0.3s ease !important;
+}
+
+.streamlit-expanderHeader:hover {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+    border-color: #93c5fd !important;
+    transform: translateX(4px) !important;
+}
+
+/* ========== TABLES ========== */
+.dataframe {
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+    border: none !important;
+}
+
+.dataframe thead tr {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.dataframe thead th {
+    color: white !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+    padding: 1.25rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+.dataframe tbody tr {
+    transition: all 0.2s ease !important;
+}
+
+.dataframe tbody tr:hover {
+    background: rgba(102, 126, 234, 0.05) !important;
+    transform: scale(1.01) !important;
+}
+
+/* ========== ALERTS ========== */
+.stSuccess {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important;
+    color: #065f46 !important;
+    border-left: 6px solid #10b981 !important;
+    border-radius: 12px !important;
+    padding: 1.5rem !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 500 !important;
+    box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2) !important;
+}
+
+.stError {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important;
+    color: #991b1b !important;
+    border-left: 6px solid #ef4444 !important;
+    border-radius: 12px !important;
+    padding: 1.5rem !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 500 !important;
+    box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2) !important;
+}
+
+.stWarning {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+    color: #92400e !important;
+    border-left: 6px solid #f59e0b !important;
+    border-radius: 12px !important;
+    padding: 1.5rem !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 500 !important;
+    box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.2) !important;
+}
+
+.stInfo {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+    color: #1e40af !important;
+    border-left: 6px solid #667eea !important;
+    border-radius: 12px !important;
+    padding: 1.5rem !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 500 !important;
+    box-shadow: 0 4px 6px -1px rgba(102, 126, 234, 0.2) !important;
+}
+
+/* ========== SLIDER ========== */
+.stSlider > div > div > div {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+/* ========== PROGRESS BAR ========== */
+.stProgress > div > div > div {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+/* ========== SPINNER ========== */
+.stSpinner > div {
+    border-top-color: #667eea !important;
+}
+
+/* ========== SIDEBAR ========== */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 100%) !important;
+    backdrop-filter: blur(20px) !important;
+}
+
+section[data-testid="stSidebar"] * {
+    color: white !important;
+}
+
+/* ========== SCROLLBAR ========== */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%);
 }
 
 /* ========== ANIMATIONS ========== */
@@ -1547,11 +1879,189 @@ def generate_student_report(student: Dict[str, Any], incidents: List[Dict[str, A
         
         behavior_pct = (top_behavior_count/len(incidents)*100) if len(incidents) > 0 else 0
         
-        # Note: Full docx generation code omitted for brevity
-        # Would require Node.js with docx library installed
+        # Create Node.js script for document generation (continued in next part due to length)
+        script_content = """const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, ImageRun, 
+        AlignmentType, HeadingLevel, BorderStyle, WidthType, ShadingType, LevelFormat } = require('docx');
+const fs = require('fs');
+
+const doc = new Document({
+  styles: {
+    default: { document: { run: { font: "Arial", size: 22 } } },
+    paragraphStyles: [
+      { id: "Title", name: "Title", basedOn: "Normal",
+        run: { size: 56, bold: true, color: "2C3E50", font: "Arial" },
+        paragraph: { spacing: { before: 240, after: 240 }, alignment: AlignmentType.CENTER } },
+      { id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true,
+        run: { size: 32, bold: true, color: "34495E", font: "Arial" },
+        paragraph: { spacing: { before: 360, after: 180 }, outlineLevel: 0 } },
+      { id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal", quickFormat: true,
+        run: { size: 28, bold: true, color: "5D6D7E", font: "Arial" },
+        paragraph: { spacing: { before: 240, after: 120 }, outlineLevel: 1 } },
+      { id: "Heading3", name: "Heading 3", basedOn: "Normal", next: "Normal", quickFormat: true,
+        run: { size: 24, bold: true, color: "7B8794", font: "Arial" },
+        paragraph: { spacing: { before: 180, after: 100 }, outlineLevel: 2 } }
+    ]
+  },
+  numbering: {
+    config: [{
+      reference: "bullet-list",
+      levels: [{ level: 0, format: LevelFormat.BULLET, text: "•", alignment: AlignmentType.LEFT,
+        style: { paragraph: { indent: { left: 720, hanging: 360 } } } }]
+    }]
+  },
+  sections: [{
+    properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
+    children: [
+      new Paragraph({ heading: HeadingLevel.TITLE, children: [new TextRun("Student Behavior Analysis Report")] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 },
+        children: [new TextRun({ text: "%STUDENT_NAME%", size: 32, bold: true, color: "2C3E50" })] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 360 },
+        children: [new TextRun({ text: "Grade %GRADE% | %PROGRAM% Program", size: 24, color: "7B8794" })] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 },
+        children: [new TextRun({ text: "Report Generated: %DATE%", size: 20, color: "95A5A6" })] }),
+      new Paragraph({ pageBreakBefore: true, heading: HeadingLevel.HEADING_1, children: [new TextRun("Executive Summary")] }),
+      new Paragraph({ spacing: { after: 120 },
+        children: [new TextRun("This report analyzes behavioral incidents and provides evidence-based recommendations.")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Key Statistics")] }),
+      new Table({ columnWidths: [3120, 3120, 3120], margins: { top: 100, bottom: 100, left: 180, right: 180 },
+        rows: [
+          new TableRow({ children: [
+            new TableCell({ width: { size: 3120, type: WidthType.DXA }, shading: { fill: "D5E8F0", type: ShadingType.CLEAR },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Total Incidents", bold: true })] })] }),
+            new TableCell({ width: { size: 3120, type: WidthType.DXA }, shading: { fill: "D5E8F0", type: ShadingType.CLEAR },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Critical Incidents", bold: true })] })] }),
+            new TableCell({ width: { size: 3120, type: WidthType.DXA }, shading: { fill: "D5E8F0", type: ShadingType.CLEAR },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Average Severity", bold: true })] })] })
+          ]}),
+          new TableRow({ children: [
+            new TableCell({ width: { size: 3120, type: WidthType.DXA },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "%TOTAL_INCIDENTS%", size: 28, bold: true, color: "2C3E50" })] })] }),
+            new TableCell({ width: { size: 3120, type: WidthType.DXA },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "%CRITICAL_COUNT% (%CRITICAL_RATE%)", size: 28, bold: true, color: "E74C3C" })] })] }),
+            new TableCell({ width: { size: 3120, type: WidthType.DXA },
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "%AVG_SEVERITY%/5", size: 28, bold: true, color: "F39C12" })] })] })
+          ]})
+        ]
+      }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Key Patterns")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 },
+        children: [new TextRun({ text: "Primary Behavior: ", bold: true }), new TextRun("%TOP_BEHAVIOR% (%BEHAVIOR_COUNT% incidents, %BEHAVIOR_PCT%)")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 },
+        children: [new TextRun({ text: "Most Common Trigger: ", bold: true }), new TextRun("%TOP_ANTECEDENT%")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 },
+        children: [new TextRun({ text: "Highest Risk Time: ", bold: true }), new TextRun("%TOP_DAY%, %TOP_SESSION%")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 240 },
+        children: [new TextRun({ text: "Highest Risk Location: ", bold: true }), new TextRun("%TOP_LOCATION%")] }),
+      new Paragraph({ pageBreakBefore: true, heading: HeadingLevel.HEADING_1, children: [new TextRun("Data Visualizations")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Incident Timeline")] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 },
+        children: [new ImageRun({ type: "png", data: fs.readFileSync("%CHART_TIMELINE%"),
+          transformation: { width: 600, height: 300 }, altText: { title: "Timeline", description: "Timeline", name: "Timeline" } })] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Behavior Frequency")] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 },
+        children: [new ImageRun({ type: "png", data: fs.readFileSync("%CHART_BEHAVIORS%"),
+          transformation: { width: 600, height: 300 }, altText: { title: "Behaviors", description: "Behaviors", name: "Behaviors" } })] }),
+      new Paragraph({ pageBreakBefore: true, heading: HeadingLevel.HEADING_2, children: [new TextRun("Incidents by Day")] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 },
+        children: [new ImageRun({ type: "png", data: fs.readFileSync("%CHART_DAYS%"),
+          transformation: { width: 600, height: 300 }, altText: { title: "Days", description: "Days", name: "Days" } })] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Top Locations")] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 360 },
+        children: [new ImageRun({ type: "png", data: fs.readFileSync("%CHART_LOCATIONS%"),
+          transformation: { width: 600, height: 300 }, altText: { title: "Locations", description: "Locations", name: "Locations" } })] }),
+      new Paragraph({ pageBreakBefore: true, heading: HeadingLevel.HEADING_1, children: [new TextRun("Evidence-Based Recommendations")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("CPI Framework")] }),
+      new Paragraph({ spacing: { after: 120 }, children: [new TextRun("Based on CPI's Nonviolent Crisis Intervention model:")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Use empathic listening and validate feelings")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Provide choices to restore control")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Set clear limits using SETM approach")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 240 }, children: [new TextRun("Maintain safe distance and use paraverbal communication")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Trauma-Informed Practice")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Safety: ", bold: true }), new TextRun("Review %TOP_LOCATION% for triggers")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Trustworthiness: ", bold: true }), new TextRun("Explain interventions in advance")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Peer Support: ", bold: true }), new TextRun("Facilitate positive relationships")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 240 }, children: [new TextRun({ text: "Empowerment: ", bold: true }), new TextRun("Offer structured choices")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Berry Street Education Model")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Body: ", bold: true }), new TextRun("Movement breaks, sensory tools, breathing")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Relationship: ", bold: true }), new TextRun("2x10 strategy, repair & reconnect")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Stamina: ", bold: true }), new TextRun("Task chunking, progress charts")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Engagement: ", bold: true }), new TextRun("Student interests, voice & agency")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 240 }, children: [new TextRun({ text: "Character: ", bold: true }), new TextRun("SEL lessons, restorative practices")] }),
+      new Paragraph({ pageBreakBefore: true, heading: HeadingLevel.HEADING_2, children: [new TextRun("SMART Training")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Square breathing (4-4-4-4)")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Mindfulness at transitions")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 240 }, children: [new TextRun("5-4-3-2-1 grounding technique")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Australian Curriculum Integration")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Self-Awareness: ", bold: true }), new TextRun("Emotional vocabulary, identify strengths")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun({ text: "Self-Management: ", bold: true }), new TextRun("Impulse control, behavioral goals")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 360 }, children: [new TextRun({ text: "Social Management: ", bold: true }), new TextRun("Assertive communication, conflict resolution")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun("Action Plan")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun("Immediate (1-2 Weeks)")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Review %TOP_LOCATION% for triggers")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Daily 2-minute connections")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 240 }, children: [new TextRun("Introduce 3 regulation strategies")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun("Short-Term (1 Month)")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Apply CPI strategies for %TOP_BEHAVIOR%")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("BSEM Body & Relationship focus")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 240 }, children: [new TextRun("Weekly data review")] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun("Long-Term (Term/Semester)")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("Full Trauma-Informed environment")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, children: [new TextRun("BSEM across all 5 domains")] }),
+      new Paragraph({ numbering: { reference: "bullet-list", level: 0 }, spacing: { after: 360 }, children: [new TextRun("Gradual fading of support")] }),
+      new Paragraph({ pageBreakBefore: true, alignment: AlignmentType.CENTER, spacing: { before: 240 },
+        children: [new TextRun({ text: "End of Report", italics: true, color: "95A5A6" })] }),
+      new Paragraph({ alignment: AlignmentType.CENTER,
+        children: [new TextRun({ text: "Generated by Behaviour Support & Data Analysis Tool", size: 18, color: "95A5A6" })] })
+    ]
+  }]
+});
+
+Packer.toBuffer(doc).then(buffer => {
+  fs.writeFileSync('%OUTPUT_PATH%', buffer);
+  console.log('Report generated');
+});
+"""
         
-        logger.info("Report generation attempted but requires Node.js/docx setup")
-        return None
+        # Replace placeholders
+        replacements = {
+            '%STUDENT_NAME%': student['name'],
+            '%GRADE%': student['grade'],
+            '%PROGRAM%': student['program'],
+            '%DATE%': datetime.now().strftime('%B %d, %Y'),
+            '%TOTAL_INCIDENTS%': str(len(incidents)),
+            '%CRITICAL_COUNT%': str(critical_count),
+            '%CRITICAL_RATE%': f"{critical_rate:.1f}%",
+            '%AVG_SEVERITY%': f"{avg_severity:.1f}",
+            '%TOP_BEHAVIOR%': top_behavior,
+            '%BEHAVIOR_COUNT%': str(top_behavior_count),
+            '%BEHAVIOR_PCT%': f"{behavior_pct:.1f}%",
+            '%TOP_ANTECEDENT%': top_antecedent,
+            '%TOP_DAY%': top_day,
+            '%TOP_SESSION%': top_session,
+            '%TOP_LOCATION%': top_location,
+            '%CHART_TIMELINE%': chart_files['timeline'],
+            '%CHART_BEHAVIORS%': chart_files['behaviors'],
+            '%CHART_DAYS%': chart_files['days'],
+            '%CHART_LOCATIONS%': chart_files['locations'],
+            '%OUTPUT_PATH%': f"/mnt/user-data/outputs/{student['name'].replace(' ', '_')}_Analysis_Report.docx"
+        }
+        
+        for placeholder, value in replacements.items():
+            script_content = script_content.replace(placeholder, value)
+        
+        # Write and execute
+        script_path = f"{chart_dir}/generate_report.js"
+        with open(script_path, 'w') as f:
+            f.write(script_content)
+        
+        result = subprocess.run(['node', script_path], capture_output=True, text=True, check=True)
+        
+        output_path = f"/mnt/user-data/outputs/{student['name'].replace(' ', '_')}_Analysis_Report.docx"
+        
+        # Clean up
+        subprocess.run(['rm', '-rf', chart_dir], check=False)
+        
+        return output_path
         
     except Exception as e:
         logger.error(f"Error generating report: {e}", exc_info=True)
@@ -1826,7 +2336,839 @@ def render_student_analysis():
     
     st.markdown("---")
     
-    st.info("📊 Full analysis features with charts and recommendations available in complete app")
+    # Create tabs for different analysis views
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "📅 Timeline", 
+        "📊 Behavior Analysis", 
+        "🕒 Time Patterns", 
+        "📍 Location Analysis",
+        "📋 Incident Log",
+        "🎯 Analysis & Recommendations"
+    ])
+    
+    # TAB 1: TIMELINE
+    with tab1:
+        st.markdown("### Incident Timeline")
+        
+        # Prepare data for timeline
+        timeline_data = []
+        for inc in student_incidents:
+            timeline_data.append({
+                'Date': inc['date'],
+                'Severity': inc['severity'],
+                'Behavior': inc['behavior_type'],
+                'Location': inc['location'],
+                'Critical': 'Critical' if inc.get('is_critical', False) else 'Standard'
+            })
+        
+        df_timeline = pd.DataFrame(timeline_data)
+        df_timeline['Date'] = pd.to_datetime(df_timeline['Date'])
+        df_timeline = df_timeline.sort_values('Date')
+        
+        # Incidents over time chart
+        daily_counts = df_timeline.groupby('Date').size().reset_index(name='Count')
+        
+        fig_timeline = px.line(
+            daily_counts, 
+            x='Date', 
+            y='Count',
+            title='Incidents Over Time',
+            markers=True,
+            template=PLOTLY_THEME
+        )
+        fig_timeline.update_traces(line_color='#667eea')
+        st.plotly_chart(fig_timeline, use_container_width=True)
+        
+        # Severity over time
+        fig_severity_time = px.scatter(
+            df_timeline,
+            x='Date',
+            y='Severity',
+            color='Critical',
+            size='Severity',
+            hover_data=['Behavior', 'Location'],
+            title='Severity Levels Over Time',
+            template=PLOTLY_THEME,
+            color_discrete_map={'Critical': '#ff4b4b', 'Standard': '#4b7bff'}
+        )
+        st.plotly_chart(fig_severity_time, use_container_width=True)
+    
+    # TAB 2: BEHAVIOR ANALYSIS
+    with tab2:
+        st.markdown("### Behavior Type Analysis")
+        
+        col_beh1, col_beh2 = st.columns(2)
+        
+        with col_beh1:
+            # Behavior frequency
+            behavior_counts = pd.DataFrame(student_incidents)['behavior_type'].value_counts().reset_index()
+            behavior_counts.columns = ['Behavior', 'Count']
+            
+            fig_behavior = px.bar(
+                behavior_counts,
+                x='Count',
+                y='Behavior',
+                orientation='h',
+                title='Most Common Behaviors',
+                template=PLOTLY_THEME,
+                color='Count',
+                color_continuous_scale='Purples'
+            )
+            st.plotly_chart(fig_behavior, use_container_width=True)
+        
+        with col_beh2:
+            # Behavior severity
+            behavior_severity = []
+            for inc in student_incidents:
+                behavior_severity.append({
+                    'Behavior': inc['behavior_type'],
+                    'Severity': inc['severity']
+                })
+            df_beh_sev = pd.DataFrame(behavior_severity)
+            avg_severity_by_behavior = df_beh_sev.groupby('Behavior')['Severity'].mean().reset_index()
+            avg_severity_by_behavior.columns = ['Behavior', 'Avg Severity']
+            
+            fig_beh_sev = px.bar(
+                avg_severity_by_behavior,
+                x='Avg Severity',
+                y='Behavior',
+                orientation='h',
+                title='Average Severity by Behavior',
+                template=PLOTLY_THEME,
+                color='Avg Severity',
+                color_continuous_scale='Reds'
+            )
+            st.plotly_chart(fig_beh_sev, use_container_width=True)
+        
+        st.markdown("---")
+        st.markdown("### Antecedent Analysis")
+        
+        # Antecedent frequency
+        antecedent_counts = pd.DataFrame(student_incidents)['antecedent'].value_counts().reset_index()
+        antecedent_counts.columns = ['Antecedent', 'Count']
+        
+        fig_antecedent = px.pie(
+            antecedent_counts,
+            values='Count',
+            names='Antecedent',
+            title='Common Antecedents (Triggers)',
+            template=PLOTLY_THEME
+        )
+        st.plotly_chart(fig_antecedent, use_container_width=True)
+        
+        # Intervention effectiveness
+        st.markdown("### Intervention Analysis")
+        intervention_counts = pd.DataFrame(student_incidents)['intervention'].value_counts().reset_index()
+        intervention_counts.columns = ['Intervention', 'Count']
+        
+        fig_intervention = px.bar(
+            intervention_counts,
+            x='Count',
+            y='Intervention',
+            orientation='h',
+            title='Most Used Interventions',
+            template=PLOTLY_THEME,
+            color='Count',
+            color_continuous_scale='Blues'
+        )
+        st.plotly_chart(fig_intervention, use_container_width=True)
+    
+    # TAB 3: TIME PATTERNS
+    with tab3:
+        st.markdown("### Time Pattern Analysis")
+        
+        col_time1, col_time2 = st.columns(2)
+        
+        with col_time1:
+            # Day of week analysis
+            day_counts = pd.DataFrame(student_incidents)['day'].value_counts().reset_index()
+            day_counts.columns = ['Day', 'Count']
+            
+            # Order days properly
+            day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+            day_counts['Day'] = pd.Categorical(day_counts['Day'], categories=day_order, ordered=True)
+            day_counts = day_counts.sort_values('Day')
+            
+            fig_day = px.bar(
+                day_counts,
+                x='Day',
+                y='Count',
+                title='Incidents by Day of Week',
+                template=PLOTLY_THEME,
+                color='Count',
+                color_continuous_scale='Oranges'
+            )
+            st.plotly_chart(fig_day, use_container_width=True)
+        
+        with col_time2:
+            # Session analysis
+            session_counts = pd.DataFrame(student_incidents)['session'].value_counts().reset_index()
+            session_counts.columns = ['Session', 'Count']
+            
+            fig_session = px.pie(
+                session_counts,
+                values='Count',
+                names='Session',
+                title='Incidents by Session',
+                template=PLOTLY_THEME,
+                hole=0.4
+            )
+            st.plotly_chart(fig_session, use_container_width=True)
+        
+        # Heatmap: Day vs Session
+        st.markdown("### Day & Session Heatmap")
+        
+        heatmap_data = []
+        for inc in student_incidents:
+            heatmap_data.append({
+                'Day': inc['day'],
+                'Session': inc['session']
+            })
+        
+        df_heatmap = pd.DataFrame(heatmap_data)
+        heatmap_pivot = df_heatmap.groupby(['Day', 'Session']).size().reset_index(name='Count')
+        heatmap_pivot_wide = heatmap_pivot.pivot(index='Day', columns='Session', values='Count').fillna(0)
+        
+        # Reorder days
+        day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        heatmap_pivot_wide = heatmap_pivot_wide.reindex([day for day in day_order if day in heatmap_pivot_wide.index])
+        
+        fig_heatmap = px.imshow(
+            heatmap_pivot_wide,
+            title='Incident Frequency: Day vs Session',
+            template=PLOTLY_THEME,
+            color_continuous_scale='YlOrRd',
+            labels=dict(x="Session", y="Day", color="Incidents")
+        )
+        st.plotly_chart(fig_heatmap, use_container_width=True)
+    
+    # TAB 4: LOCATION ANALYSIS
+    with tab4:
+        st.markdown("### Location Analysis")
+        
+        col_loc1, col_loc2 = st.columns(2)
+        
+        with col_loc1:
+            # Location frequency
+            location_counts = pd.DataFrame(student_incidents)['location'].value_counts().reset_index()
+            location_counts.columns = ['Location', 'Count']
+            
+            fig_location = px.bar(
+                location_counts,
+                x='Count',
+                y='Location',
+                orientation='h',
+                title='Incidents by Location',
+                template=PLOTLY_THEME,
+                color='Count',
+                color_continuous_scale='Greens'
+            )
+            st.plotly_chart(fig_location, use_container_width=True)
+        
+        with col_loc2:
+            # Support type analysis
+            support_counts = pd.DataFrame(student_incidents)['support_type'].value_counts().reset_index()
+            support_counts.columns = ['Support Type', 'Count']
+            
+            fig_support = px.pie(
+                support_counts,
+                values='Count',
+                names='Support Type',
+                title='Support Type Distribution',
+                template=PLOTLY_THEME
+            )
+            st.plotly_chart(fig_support, use_container_width=True)
+        
+        # Location vs Severity
+        st.markdown("### Location Risk Analysis")
+        
+        location_severity = []
+        for inc in student_incidents:
+            location_severity.append({
+                'Location': inc['location'],
+                'Severity': inc['severity']
+            })
+        
+        df_loc_sev = pd.DataFrame(location_severity)
+        avg_sev_by_loc = df_loc_sev.groupby('Location')['Severity'].mean().reset_index()
+        avg_sev_by_loc.columns = ['Location', 'Avg Severity']
+        avg_sev_by_loc = avg_sev_by_loc.sort_values('Avg Severity', ascending=False)
+        
+        fig_loc_sev = px.bar(
+            avg_sev_by_loc,
+            x='Avg Severity',
+            y='Location',
+            orientation='h',
+            title='Average Severity by Location (High Risk Areas)',
+            template=PLOTLY_THEME,
+            color='Avg Severity',
+            color_continuous_scale='Reds'
+        )
+        st.plotly_chart(fig_loc_sev, use_container_width=True)
+    
+    # TAB 5: INCIDENT LOG
+    with tab5:
+        st.markdown("### Complete Incident Log")
+        
+        # Filter options
+        col_filter1, col_filter2, col_filter3 = st.columns(3)
+        
+        with col_filter1:
+            severity_filter = st.multiselect(
+                "Filter by Severity",
+                options=[1, 2, 3, 4, 5],
+                default=[1, 2, 3, 4, 5],
+                key="severity_filter"
+            )
+        
+        with col_filter2:
+            behavior_types = list(set([inc['behavior_type'] for inc in student_incidents]))
+            behavior_filter = st.multiselect(
+                "Filter by Behavior",
+                options=behavior_types,
+                default=behavior_types,
+                key="behavior_filter"
+            )
+        
+        with col_filter3:
+            show_critical_only = st.checkbox("Show Critical Only", key="critical_filter")
+        
+        # Apply filters
+        filtered_incidents = student_incidents
+        
+        if severity_filter:
+            filtered_incidents = [inc for inc in filtered_incidents if inc['severity'] in severity_filter]
+        
+        if behavior_filter:
+            filtered_incidents = [inc for inc in filtered_incidents if inc['behavior_type'] in behavior_filter]
+        
+        if show_critical_only:
+            filtered_incidents = [inc for inc in filtered_incidents if inc.get('is_critical', False)]
+        
+        st.markdown(f"**Showing {len(filtered_incidents)} of {len(student_incidents)} incidents**")
+        
+        # Display incidents
+        for inc in sorted(filtered_incidents, key=lambda x: x['date'], reverse=True):
+            severity_color = '🔴' if inc['severity'] >= 4 else '🟡' if inc['severity'] == 3 else '🟢'
+            critical_badge = ' 🚨 **CRITICAL**' if inc.get('is_critical', False) else ''
+            
+            with st.expander(f"{severity_color} {inc['date']} - {inc['behavior_type']}{critical_badge}"):
+                col_detail1, col_detail2 = st.columns(2)
+                
+                with col_detail1:
+                    st.markdown(f"**Date:** {inc['date']}")
+                    st.markdown(f"**Time:** {inc['time']}")
+                    st.markdown(f"**Day:** {inc['day']}")
+                    st.markdown(f"**Session:** {inc['session']}")
+                    st.markdown(f"**Severity:** {inc['severity']}/5")
+                
+                with col_detail2:
+                    st.markdown(f"**Location:** {inc['location']}")
+                    st.markdown(f"**Reported By:** {inc.get('reported_by_name', 'N/A')}")
+                    st.markdown(f"**Support Type:** {inc['support_type']}")
+                    st.markdown(f"**Behavior:** {inc['behavior_type']}")
+                
+                st.markdown("---")
+                st.markdown(f"**Antecedent:** {inc['antecedent']}")
+                st.markdown(f"**Intervention:** {inc['intervention']}")
+                
+                if inc.get('description'):
+                    st.markdown(f"**Notes:** {inc['description']}")
+    
+    # TAB 6: ANALYSIS & RECOMMENDATIONS
+    with tab6:
+        st.markdown("### 🎯 Data-Driven Analysis & Recommendations")
+        st.caption("Evidence-based recommendations informed by CPI, Trauma-Informed Practice, SMART Training, Berry Street Education Model & Australian Curriculum")
+        
+        # Generate insights
+        behavior_counts = pd.DataFrame(student_incidents)['behavior_type'].value_counts()
+        top_behavior = behavior_counts.index[0] if len(behavior_counts) > 0 else "N/A"
+        top_behavior_count = behavior_counts.iloc[0] if len(behavior_counts) > 0 else 0
+        
+        antecedent_counts = pd.DataFrame(student_incidents)['antecedent'].value_counts()
+        top_antecedent = antecedent_counts.index[0] if len(antecedent_counts) > 0 else "N/A"
+        
+        location_counts = pd.DataFrame(student_incidents)['location'].value_counts()
+        top_location = location_counts.index[0] if len(location_counts) > 0 else "N/A"
+        
+        day_counts = pd.DataFrame(student_incidents)['day'].value_counts()
+        top_day = day_counts.index[0] if len(day_counts) > 0 else "N/A"
+        
+        session_counts = pd.DataFrame(student_incidents)['session'].value_counts()
+        top_session = session_counts.index[0] if len(session_counts) > 0 else "N/A"
+        
+        critical_count = len([inc for inc in student_incidents if inc.get('is_critical', False)])
+        critical_rate = (critical_count / len(student_incidents) * 100) if len(student_incidents) > 0 else 0
+        
+        # Key Patterns Identified
+        st.markdown("### 📌 Key Patterns Identified")
+        
+        with st.container(border=True):
+            col_pat1, col_pat2 = st.columns(2)
+            
+            with col_pat1:
+                st.markdown("**Primary Behavior Concern:**")
+                st.markdown(f"- **{top_behavior}** ({top_behavior_count} incidents, {(top_behavior_count/len(student_incidents)*100):.1f}%)")
+                
+                st.markdown("**Most Common Trigger:**")
+                st.markdown(f"- {top_antecedent}")
+                
+                st.markdown("**Highest Risk Time:**")
+                st.markdown(f"- {top_day}, {top_session}")
+            
+            with col_pat2:
+                st.markdown("**Highest Risk Location:**")
+                st.markdown(f"- {top_location}")
+                
+                st.markdown("**Critical Incident Rate:**")
+                if critical_rate > 40:
+                    st.markdown(f"- 🔴 **High:** {critical_rate:.1f}% (Immediate intervention needed)")
+                elif critical_rate > 20:
+                    st.markdown(f"- 🟡 **Moderate:** {critical_rate:.1f}% (Enhanced support recommended)")
+                else:
+                    st.markdown(f"- 🟢 **Low:** {critical_rate:.1f}% (Preventative strategies in place)")
+        
+        st.markdown("---")
+        
+        # Evidence-Based Recommendations
+        st.markdown("### 💡 Evidence-Based Recommendations")
+        
+        # CPI Recommendations
+        with st.expander("🛡️ **Crisis Prevention Institute (CPI) Framework**", expanded=True):
+            st.markdown("""
+            **Based on CPI's Nonviolent Crisis Intervention® model:**
+            
+            **1. Crisis Development Model Response:**
+            """)
+            
+            if avg_severity < 2.5:
+                st.success("""
+                - **Anxiety Level:** Focus on supportive approaches
+                - Use **empathic listening** and validate feelings
+                - Provide choices to restore sense of control
+                - Maintain calm, non-threatening body language
+                """)
+            elif avg_severity < 3.5:
+                st.warning("""
+                - **Defensive Level:** Implement de-escalation strategies
+                - Set clear, simple limits using CPI's SETM (Set limit, Explain reason, offer choices, Time to decide)
+                - Maintain safe distance (1.5-3 arm lengths)
+                - Use **paraverbal communication** (tone, pace, volume)
+                - Avoid power struggles
+                """)
+            else:
+                st.error("""
+                - **Risk Behavior/Crisis Level:** Priority on safety
+                - Follow **Crisis Management Plan**
+                - Ensure team support is available
+                - Remove others from the area if needed to ensure safety
+                - Post-crisis therapeutic rapport rebuilding essential
+                """)
+            
+            st.markdown(f"""
+            **2. Pattern-Specific CPI Strategies for "{top_behavior}":**
+            """)
+            
+            if "Verbal Refusal" in top_behavior or "Non-Compliance" in top_behavior:
+                st.markdown("""
+                - **Directive vs. Choice:** Replace demands with structured choices
+                - "You need to complete this work" → "Would you like to start with question 1 or 3?"
+                - Use **proxemics** (personal space zones) - approach from side, not head-on
+                - Apply **Wait Time** - allow 5-10 seconds for processing
+                """)
+            elif "Elopement" in top_behavior or "Attempt to Leave" in top_behavior:
+                st.markdown("""
+                - **Prevention:** Implement environmental modifications (clear sightlines, secured perimeters)
+                - **Early Warning Signs:** Document precursor behaviors (pacing, looking at exits)
+                - **Rational Detachment:** Staff remain calm, use invitational language
+                - Develop **Safety Plan** with clear roles for team members
+                """)
+            elif "Aggression" in top_behavior or "Property Destruction" in top_behavior:
+                st.markdown("""
+                - **Staff Safety First:** Maintain safe distance, position near exits
+                - **Environmental Assessment:** Remove potential weapons/projectiles
+                - **Team Response:** Two-person minimum for high-risk situations
+                - **Verbal De-escalation:** Use low, calm tone; simple phrases; avoid questions
+                - **Postvention:** Therapeutic rapport re-building within 24 hours
+                """)
+            else:
+                st.markdown("""
+                - Apply **Integrated Experience** - meet student's needs holistically
+                - Focus on **Care, Welfare, Safety, and Security™** principles
+                - Document and analyze behavior patterns for prevention
+                """)
+        
+        # Trauma-Informed Practice
+        with st.expander("🧠 **Trauma-Informed Practice (TIP)**", expanded=True):
+            st.markdown("""
+            **Applying the 6 Key Principles of TIP:**
+            
+            **1. Safety (Physical & Psychological):**
+            """)
+            st.info(f"""
+            - **Environmental Safety:** Review {top_location} for sensory triggers
+            - Create predictable routines, especially during {top_session}
+            - Establish visual schedules and clear expectations
+            - Provide a designated 'safe space' for regulation
+            """)
+            
+            st.markdown("""
+            **2. Trustworthiness & Transparency:**
+            """)
+            st.info("""
+            - Explain all interventions and consequences in advance
+            - Follow through consistently on promises
+            - Avoid surprises or sudden changes in routine
+            - Use "we" language to build collaborative relationship
+            """)
+            
+            st.markdown("""
+            **3. Peer Support & Connection:**
+            """)
+            st.info("""
+            - Facilitate positive peer relationships in structured activities
+            - Consider peer mentoring program
+            - Use restorative practices after incidents
+            - Build sense of belonging in school community
+            """)
+            
+            st.markdown(f"""
+            **4. Collaboration & Mutuality:**
+            - Develop **Student Voice Plan** - involve student in behavior goal setting
+            - Given pattern shows triggers around "{top_antecedent}", collaborate on coping strategies
+            - Regular check-ins: "What's working? What's not?"
+            - Share power appropriately through meaningful choices
+            """)
+            
+            st.markdown("""
+            **5. Empowerment & Choice:**
+            """)
+            st.info("""
+            - Offer structured choices throughout the day
+            - Teach and practice self-advocacy skills
+            - Recognize and celebrate small successes
+            - Build on student's strengths and interests
+            """)
+            
+            st.markdown("""
+            **6. Cultural, Historical & Gender Responsiveness:**
+            """)
+            st.info("""
+            - Consider cultural background in intervention selection
+            - Acknowledge historical trauma if relevant
+            - Respect identity and individual needs
+            - Engage family in culturally responsive ways
+            """)
+        
+        # Berry Street Education Model (BSEM)
+        with st.expander("🌱 **Berry Street Education Model (BSEM)**", expanded=True):
+            st.markdown("""
+            **Implementing BSEM's 5 Domains:**
+            
+            **Domain 1: Body** *(Regulate the body to access learning)*
+            """)
+            st.success(f"""
+            - **Movement Breaks:** Given incidents peak at {top_session}, schedule regular movement breaks
+            - **Sensory Tools:** Provide fidgets, wobble cushions, weighted items
+            - **Breathing Techniques:** Teach "Breathe, Relax, Feel, Watch, Listen"
+            - **Physical Activity:** Start day with 10-15 min movement
+            - **Regulation Stations:** Create designated areas with regulation tools
+            """)
+            
+            st.markdown("""
+            **Domain 2: Relationship** *(Build positive relationships)*
+            """)
+            st.success("""
+            - **Morning Welcome:** Personalized greeting to start each day
+            - **2x10 Strategy:** 2 minutes per day for 10 days discussing student's interests
+            - **Repair & Reconnect:** After incidents, prioritize relationship repair
+            - **Key Adult Connection:** Ensure consistent, trusted adult available
+            - **Relationship Mapping:** Identify safe, supportive adults in student's life
+            """)
+            
+            st.markdown(f"""
+            **Domain 3: Stamina** *(Build persistence and work capacity)*
+            - **Task Chunking:** Given {top_behavior}, break tasks into 5-10 minute segments
+            - **Success Tracking:** Visual progress charts
+            - **Growth Mindset:** Reframe failures as learning opportunities
+            - **Incremental Goals:** Set achievable daily targets
+            - **Celebrate Effort:** Acknowledge persistence over outcomes
+            """)
+            
+            st.markdown("""
+            **Domain 4: Engagement** *(Foster intrinsic motivation)*
+            """)
+            st.success("""
+            - **Student Interests:** Embed preferred topics into learning
+            - **Real-World Connections:** Link curriculum to student's life
+            - **Positive Priming:** Start sessions with success activities
+            - **Flow Experiences:** Balance challenge with skill level
+            - **Voice & Agency:** Student input on learning activities
+            """)
+            
+            st.markdown("""
+            **Domain 5: Character** *(Develop ethical thinking & agency)*
+            """)
+            st.success("""
+            - **Values Education:** Teach and model BSEM values (respect, courage, trust, etc.)
+            - **Social-Emotional Learning:** Explicit SEL lessons 3x weekly
+            - **Restorative Practices:** Focus on harm repair, not punishment
+            - **Leadership Opportunities:** Give student responsibility roles
+            - **Community Contribution:** Connect to wider school community
+            """)
+        
+        # SMART Training
+        with st.expander("🎓 **SMART (Stress Management and Resilience Training)**", expanded=True):
+            st.markdown("""
+            **SMART Program Integration:**
+            
+            **1. Self-Regulation Skills:**
+            """)
+            st.info("""
+            - **Square Breathing:** Teach 4-4-4-4 breathing pattern
+            - **Mindful Moments:** 2-3 minute mindfulness at transitions
+            - **Body Scan:** Help identify early warning signs of stress
+            - **Grounding Techniques:** 5-4-3-2-1 sensory exercise
+            - **Progressive Muscle Relaxation:** For high-stress periods
+            """)
+            
+            st.markdown(f"""
+            **2. Cognitive Strategies:**
+            - **Thought Stopping:** Interrupt negative thought patterns
+            - **Positive Self-Talk:** Co-develop affirming phrases
+            - **Reframing:** Practice seeing situations differently
+            - **Problem-Solving Steps:** Teach structured approach to challenges
+            - **Emotional Literacy:** Build vocabulary for feelings (given pattern with {top_antecedent})
+            """)
+            
+            st.markdown("""
+            **3. Building Resilience:**
+            """)
+            st.info("""
+            - **Strengths Focus:** Weekly identification of personal strengths
+            - **Gratitude Practice:** Daily "3 good things" reflection
+            - **Social Support:** Identify and strengthen support network
+            - **Hope & Optimism:** Set and visualize achievable goals
+            - **Stress Awareness:** Create personalized "stress thermometer"
+            """)
+            
+            st.markdown(f"""
+            **4. Environmental Management:**
+            - **Trigger Awareness:** Document and plan for {top_antecedent}
+            - **Predictability:** Consistent routines, especially {top_day}s
+            - **Warning Systems:** Develop escalation/de-escalation plans
+            - **Coping Card:** Portable reminder of strategies
+            - **Support Signal:** Non-verbal way to request help
+            """)
+        
+        # Australian Curriculum Integration
+        with st.expander("📚 **Australian Curriculum Integration**", expanded=True):
+            st.markdown("""
+            **Personal & Social Capability (General Capability):**
+            
+            **Self-Awareness:**
+            """)
+            st.success(f"""
+            - **Identify Emotions:** Explicitly teach emotional vocabulary
+            - **Recognize Strengths:** Student identifies their own strengths weekly
+            - **Understand Impacts:** Reflect on how behavior affects others
+            - **Development Focus:** Age-appropriate for Grade {student['grade']}
+            """)
+            
+            st.markdown("""
+            **Self-Management:**
+            """)
+            st.success("""
+            - **Express Emotions Appropriately:** Teach communication skills
+            - **Develop Self-Discipline:** Practice impulse control strategies
+            - **Set Goals:** Weekly achievable behavioral goals
+            - **Work Independently:** Build stamina with scaffolded independence
+            - **Become Resilient:** Frame setbacks as learning opportunities
+            """)
+            
+            st.markdown("""
+            **Social Awareness:**
+            """)
+            st.success("""
+            - **Appreciate Diversity:** Value differences in others
+            - **Understand Relationships:** Teach healthy relationship skills
+            - **Contribute to Groups:** Structured collaborative activities
+            - **Perspective-Taking:** "How might others feel?" discussions
+            """)
+            
+            st.markdown("""
+            **Social Management:**
+            """)
+            st.success("""
+            - **Communicate Effectively:** Practice assertive (not aggressive) communication
+            - **Work Collaboratively:** Structured partner/group work
+            - **Make Decisions:** Teach decision-making framework
+            - **Negotiate & Resolve Conflict:** Restorative circles after incidents
+            - **Develop Leadership:** Assign meaningful leadership roles
+            """)
+            
+            st.markdown("""
+            **Cross-Curriculum Priority Links:**
+            """)
+            st.info("""
+            - **Aboriginal & Torres Strait Islander Histories/Cultures:** If relevant, incorporate cultural connections
+            - **Asia & Australia's Engagement:** Cultural awareness activities
+            - **Sustainability:** Build connection to environment/community
+            """)
+            
+            st.markdown(f"""
+            **Health & Physical Education (HPE) Links:**
+            - **Movement & Physical Activity:** Daily structured movement (addressing {top_session} patterns)
+            - **Personal, Social & Community Health:**
+              - Emotional regulation skills
+              - Help-seeking behaviors
+              - Positive relationships
+              - Mental health awareness
+            - **Communicating & Interacting:** Social skills practice
+            """)
+        
+        st.markdown("---")
+        
+        # Recommended Action Plan
+        st.markdown("### 📋 Recommended Action Plan")
+        
+        with st.container(border=True):
+            st.markdown("#### Immediate Actions (Next 1-2 Weeks):")
+            st.markdown(f"""
+            1. **Environmental Modification:** Review {top_location} for triggers and implement changes
+            2. **Relationship Building:** Initiate daily 2-minute connection conversations
+            3. **Regulation Tools:** Introduce 3 self-regulation strategies aligned with SMART training
+            4. **Visual Supports:** Create visual schedule and expectations chart
+            5. **Team Meeting:** Brief key staff on patterns and consistent response strategies
+            """)
+            
+            st.markdown(f"""
+            #### Short-Term Goals (1 Month):
+            1. **CPI Strategy Implementation:** Apply de-escalation techniques for "{top_behavior}"
+            2. **BSEM Domain Focus:** Prioritize "Body" and "Relationship" domains
+            3. **Functional Behavior Assessment (FBA):** Consider formal FBA given {len(student_incidents)} incidents
+            4. **Positive Behavior Support Plan:** Develop/refine PBS plan with student input
+            5. **Data Review:** Weekly check of incident trends to monitor effectiveness
+            6. **Family Engagement:** Share progress and strategies with family
+            """)
+            
+            st.markdown("""
+            #### Long-Term Goals (Term/Semester):
+            1. **Skill Development:** Explicitly teach Australian Curriculum Personal & Social Capabilities
+            2. **Trauma-Informed Environment:** Full implementation of TIP across all settings
+            3. **Berry Street Domains:** Progressive implementation across all 5 domains
+            4. **Peer Relationships:** Facilitate positive peer connections and social skills
+            5. **Independence Building:** Gradual fading of support as skills develop
+            6. **Transition Planning:** Prepare for next grade level with continuity of supports
+            """)
+        
+        st.markdown("---")
+        
+        # Success Indicators
+        st.markdown("### ✅ Success Indicators to Monitor")
+        
+        col_suc1, col_suc2 = st.columns(2)
+        
+        with col_suc1:
+            st.markdown("**Leading Indicators (Early Signs):**")
+            st.markdown("""
+            - ⬆️ Increased use of regulation strategies
+            - ⬆️ Requesting breaks before escalation
+            - ⬆️ Positive peer interactions
+            - ⬆️ Time on task/engagement
+            - ⬇️ Frequency of antecedent exposure
+            """)
+        
+        with col_suc2:
+            st.markdown("**Lagging Indicators (Outcome Measures):**")
+            st.markdown("""
+            - ⬇️ Total incident frequency
+            - ⬇️ Incident severity levels
+            - ⬇️ Critical incidents
+            - ⬆️ Academic achievement
+            - ⬆️ School attendance/connection
+            """)
+        
+        st.markdown("---")
+        
+        # Resources
+        with st.expander("📖 **Additional Resources & References**"):
+            st.markdown("""
+            **Crisis Prevention Institute (CPI):**
+            - Nonviolent Crisis Intervention® Training Manual
+            - CPI's Crisis Development Model℠
+            - www.crisisprevention.com
+            
+            **Trauma-Informed Practice:**
+            - SAMHSA's Six Key Principles of Trauma-Informed Approach
+            - "Helping Traumatized Children Learn" (Cole et al.)
+            - Australian Childhood Foundation trauma resources
+            
+            **Berry Street Education Model:**
+            - Berry Street Education Model Handbook
+            - Domain-specific teaching strategies
+            - www.berrystreet.org.au/bsem
+            
+            **SMART Training:**
+            - Stress Management and Resilience Training for Educators
+            - Mindfulness-based stress reduction resources
+            - Penn Resilience Program materials
+            
+            **Australian Curriculum:**
+            - Personal and Social Capability learning continuum
+            - Health and Physical Education curriculum documents
+            - www.australiancurriculum.edu.au
+            
+            **Additional Evidence-Based Resources:**
+            - Positive Behaviour for Learning (PBL) Australia
+            - Zones of Regulation®
+            - The Incredible Years® programs
+            - Social Thinking® methodology
+            - Collaborative & Proactive Solutions (CPS/Think:Kids)
+            """)
+    
+    # Action buttons at bottom
+    st.markdown("---")
+    st.markdown("### Actions")
+    
+    col_act1, col_act2, col_act3 = st.columns(3)
+    
+    with col_act1:
+        if st.button("📝 Log New Incident", type="primary", use_container_width=True):
+            navigate_to('direct_log_form', student_id=student_id)
+    
+    with col_act2:
+        if st.button("📊 Generate Report", use_container_width=True, type="secondary"):
+            with st.spinner("Generating comprehensive report..."):
+                try:
+                    report_path = generate_student_report(student, student_incidents)
+                    if report_path:
+                        st.success("✅ Report generated successfully!")
+                        with open(report_path, 'rb') as f:
+                            st.download_button(
+                                label="📥 Download Report",
+                                data=f,
+                                file_name=f"{student['name'].replace(' ', '_')}_Analysis_Report.docx",
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                use_container_width=True
+                            )
+                    else:
+                        st.info("📋 Report generation is not available in this environment.")
+                        st.markdown("""
+                        **To generate reports locally:**
+                        1. Install Node.js from nodejs.org
+                        2. Run: `npm install -g docx`
+                        3. Run the app locally with `streamlit run behaviour_support_app.py`
+                        
+                        **Alternative:** You can export your data as CSV for now.
+                        """)
+                except Exception as e:
+                    logger.error(f"Error generating report: {e}")
+                    st.error("Report generation unavailable in this environment. Please use local installation for reports.")
+    
+    with col_act3:
+        if st.button("↩️ Back to Program", use_container_width=True):
+            navigate_to('program_students', program=student['program'])
 
 # --- MAIN ---
 
