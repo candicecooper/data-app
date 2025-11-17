@@ -78,7 +78,8 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap');
 
-/* ========== GLOBAL STYLES ========== */
+/* ========== SIMPLE CLEAN THEME ========== */
+/* Main background - keep dark blue gradient */
 .main {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%);
@@ -86,576 +87,161 @@ st.markdown("""
     padding: 2rem;
 }
 
-.block-container {
-    padding-top: 3rem;
-    padding-bottom: 3rem;
-    max-width: 1400px;
+/* All text WHITE by default (for dark background) */
+body, p, span, div, label, h1, h2, h3, h4, h5, h6 {
+    color: #ffffff !important;
 }
 
-/* ========== TYPOGRAPHY ========== */
+/* Headers - make them bright and visible */
 h1 {
     font-family: 'Poppins', sans-serif;
-    font-size: 3.5rem !important;
+    font-size: 3rem !important;
     font-weight: 800 !important;
-    background: linear-gradient(135deg, #ffffff 0%, #fbbf24 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 2rem !important;
-    text-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    letter-spacing: -0.02em;
-}
-
-h2 {
-    font-family: 'Poppins', sans-serif;
-    font-size: 2rem !important;
-    font-weight: 700 !important;
     color: #ffffff !important;
-    margin-top: 2rem !important;
-    margin-bottom: 1rem !important;
+    text-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
-h3 {
+h2, h3, h4 {
     font-family: 'Poppins', sans-serif;
-    font-size: 1.5rem !important;
-    font-weight: 600 !important;
-    color: #f3f4f6 !important;
-    margin-bottom: 1rem !important;
+    color: #ffffff !important;
 }
 
-h4 {
-    font-family: 'Poppins', sans-serif;
-    font-size: 1.25rem !important;
-    font-weight: 600 !important;
-    color: #e5e7eb !important;
-}
-
-p, label, span, div {
-    font-family: 'Inter', sans-serif;
-    color: #f3f4f6 !important;
-    font-size: 1rem;
-    line-height: 1.6;
-}
-
-/* Make captions more visible on dark background */
-.caption, [data-testid="stCaptionContainer"] {
-    color: #d1d5db !important;
-    font-size: 0.9rem !important;
-}
-
-/* ========== CARDS & CONTAINERS ========== */
-div[data-testid="stVerticalBlock"] > div[style*="border"] {
-    background: rgba(255, 255, 255, 0.98) !important;
-    -webkit-backdrop-filter: blur(20px) !important;
-    backdrop-filter: blur(20px) !important;
-    border-radius: 24px !important;
-    box-shadow: 
-        0 20px 25px -5px rgba(0, 0, 0, 0.2),
-        0 10px 10px -5px rgba(0, 0, 0, 0.1),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
-    padding: 2rem !important;
-    border: 1px solid rgba(255, 255, 255, 0.5) !important;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-/* Make text INSIDE white cards dark and readable */
-div[data-testid="stVerticalBlock"] > div[style*="border"] p,
-div[data-testid="stVerticalBlock"] > div[style*="border"] label,
-div[data-testid="stVerticalBlock"] > div[style*="border"] span,
-div[data-testid="stVerticalBlock"] > div[style*="border"] div,
-div[data-testid="stVerticalBlock"] > div[style*="border"] h2,
-div[data-testid="stVerticalBlock"] > div[style*="border"] h3,
-div[data-testid="stVerticalBlock"] > div[style*="border"] h4,
-div[data-testid="stVerticalBlock"] > div[style*="border"] * {
+/* Input fields - WHITE background with DARK text */
+input, select, textarea, .stTextInput input, .stSelectbox select, .stTextArea textarea,
+.stDateInput input, .stTimeInput input, .stNumberInput input {
+    background-color: #ffffff !important;
     color: #1f2937 !important;
+    border: 2px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    padding: 0.5rem !important;
+    font-size: 1rem !important;
 }
 
-div[data-testid="stVerticalBlock"] > div[style*="border"] .caption,
-div[data-testid="stVerticalBlock"] > div[style*="border"] [data-testid="stCaptionContainer"] {
-    color: #4b5563 !important;
+/* Input labels - WHITE on dark background */
+.stTextInput label, .stSelectbox label, .stTextArea label, 
+.stDateInput label, .stTimeInput label, .stNumberInput label {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
 }
 
-/* Ensure form elements inside containers are visible */
-div[data-testid="stVerticalBlock"] > div[style*="border"] .stTextInput label,
-div[data-testid="stVerticalBlock"] > div[style*="border"] .stSelectbox label,
-div[data-testid="stVerticalBlock"] > div[style*="border"] .stTextArea label,
-div[data-testid="stVerticalBlock"] > div[style*="border"] .stDateInput label,
-div[data-testid="stVerticalBlock"] > div[style*="border"] .stTimeInput label,
-div[data-testid="stVerticalBlock"] > div[style*="border"] .stNumberInput label,
-div[data-testid="stVerticalBlock"] > div[style*="border"] .stSlider label {
-    color: #1f2937 !important;
-}
-
-div[data-testid="stVerticalBlock"] > div[style*="border"]:hover {
-    transform: translateY(-8px) scale(1.02) !important;
-    box-shadow: 
-        0 25px 50px -12px rgba(0, 0, 0, 0.3),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.2) !important;
-    border-color: rgba(255, 255, 255, 0.7) !important;
-}
-
-/* ========== BUTTONS ========== */
+/* Buttons - make them visible */
 .stButton > button {
     font-family: 'Inter', sans-serif !important;
     font-weight: 600 !important;
     font-size: 1rem !important;
-    border-radius: 16px !important;
-    padding: 1rem 2.5rem !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    border: none !important;
-    text-transform: none !important;
-    letter-spacing: 0.02em !important;
-    position: relative !important;
-    overflow: hidden !important;
-}
-
-.stButton > button::before {
-    content: '' !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: -100% !important;
-    width: 100% !important;
-    height: 100% !important;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent) !important;
-    transition: left 0.5s !important;
-}
-
-.stButton > button:hover::before {
-    left: 100% !important;
-}
-
-.stButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
+    border-radius: 12px !important;
+    padding: 0.75rem 2rem !important;
     color: white !important;
-    box-shadow: 
-        0 10px 25px -5px rgba(59, 130, 246, 0.5),
-        0 4px 6px -2px rgba(59, 130, 246, 0.3) !important;
+    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
+    border: none !important;
 }
 
-.stButton > button[kind="primary"]:hover {
+.stButton > button:hover {
     background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%) !important;
-    box-shadow: 
-        0 20px 35px -5px rgba(59, 130, 246, 0.6),
-        0 8px 12px -2px rgba(59, 130, 246, 0.4) !important;
-    transform: translateY(-3px) !important;
-}
-
-.stButton > button[kind="secondary"] {
-    background: rgba(255, 255, 255, 0.95) !important;
-    color: #3b82f6 !important;
-    border: 3px solid #3b82f6 !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
-}
-
-.stButton > button[kind="secondary"]:hover {
-    background: rgba(255, 255, 255, 1) !important;
-    border-color: #2563eb !important;
-    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3) !important;
     transform: translateY(-2px) !important;
 }
 
-/* ========== METRICS ========== */
+/* Metrics */
 div[data-testid="stMetric"] {
-    background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%) !important;
-    padding: 2rem !important;
-    border-radius: 20px !important;
-    border-left: 6px solid #3b82f6 !important;
-    box-shadow: 
-        0 10px 15px -3px rgba(0, 0, 0, 0.1),
-        0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
-    transition: all 0.3s ease !important;
-}
-
-div[data-testid="stMetric"]:hover {
-    transform: scale(1.05) !important;
-    box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.3) !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    padding: 1.5rem !important;
+    border-radius: 12px !important;
 }
 
 div[data-testid="stMetric"] label {
-    color: #1f2937 !important;
-    font-size: 0.875rem !important;
-    font-weight: 600 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.05em !important;
+    color: #475569 !important;
 }
 
-div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     color: #1e40af !important;
-    font-size: 3rem !important;
-    font-weight: 800 !important;
-    text-shadow: 0 2px 4px rgba(59, 130, 246, 0.2) !important;
 }
 
-/* ========== TABS ========== */
+/* Tabs */
 .stTabs [data-baseweb="tab-list"] {
-    gap: 12px;
-    background: rgba(255, 255, 255, 0.95);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-    padding: 1rem;
-    border-radius: 20px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.9);
+    padding: 0.5rem;
+    border-radius: 12px;
 }
 
 .stTabs [data-baseweb="tab"] {
-    font-family: 'Inter', sans-serif;
-    font-weight: 600;
-    border-radius: 12px;
-    padding: 1rem 2rem;
     color: #1f2937 !important;
-    background: transparent;
-    transition: all 0.3s ease;
-}
-
-.stTabs [data-baseweb="tab"]:hover {
-    background: rgba(59, 130, 246, 0.1);
-    color: #3b82f6 !important;
+    font-weight: 600;
 }
 
 .stTabs [aria-selected="true"] {
     background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
     color: white !important;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
-/* ========== INPUT FIELDS ========== */
-.stTextInput input, 
-.stSelectbox select, 
-.stTextArea textarea,
-.stDateInput input,
-.stTimeInput input,
-.stNumberInput input {
-    border-radius: 12px !important;
-    border: 2px solid #cbd5e1 !important;
-    font-family: 'Inter', sans-serif !important;
-    transition: all 0.3s ease !important;
-    padding: 0.75rem 1rem !important;
-    font-size: 1rem !important;
-    background: white !important;
-    color: #1f2937 !important;
-}
-
-.stTextInput input:focus, 
-.stSelectbox select:focus, 
-.stTextArea textarea:focus {
-    border-color: #3b82f6 !important;
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1) !important;
-    outline: none !important;
-}
-
-/* Input labels - light on dark background */
-.stTextInput label, .stSelectbox label, .stTextArea label, .stDateInput label, .stTimeInput label, .stNumberInput label {
-    color: #f3f4f6 !important;
-    font-weight: 600 !important;
-}
-
-/* But dark text when inside white cards/forms */
-div[data-testid="stVerticalBlock"] > div[style*="border"] .stTextInput label,
-div[data-testid="stVerticalBlock"] > div[style*="border"] .stSelectbox label,
-div[data-testid="stVerticalBlock"] > div[style*="border"] .stTextArea label,
-div[data-testid="stVerticalBlock"] > div[style*="border"] .stDateInput label,
-div[data-testid="stVerticalBlock"] > div[style*="border"] .stTimeInput label,
-div[data-testid="stVerticalBlock"] > div[style*="border"] .stNumberInput label,
-[data-testid="stForm"] .stTextInput label,
-[data-testid="stForm"] .stSelectbox label,
-[data-testid="stForm"] .stTextArea label,
-[data-testid="stForm"] .stDateInput label,
-[data-testid="stForm"] .stTimeInput label,
-[data-testid="stForm"] .stNumberInput label {
-    color: #1f2937 !important;
-}
-
-/* Make ALL content inside forms dark and readable */
-[data-testid="stForm"],
-[data-testid="stForm"] * {
-    color: #1f2937 !important;
-}
-
-[data-testid="stForm"] h2,
-[data-testid="stForm"] h3,
-[data-testid="stForm"] h4 {
-    color: #111827 !important;
-}
-
-[data-testid="stForm"] .caption,
-[data-testid="stForm"] [data-testid="stCaptionContainer"] {
-    color: #4b5563 !important;
-}
-
-/* ========== EXPANDERS ========== */
-.streamlit-expanderHeader {
-    font-family: 'Inter', sans-serif !important;
-    font-weight: 700 !important;
-    font-size: 1.1rem !important;
-    color: #1e40af !important;
-    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important;
-    border-radius: 12px !important;
-    padding: 1.25rem !important;
-    border: 2px solid #93c5fd !important;
-    transition: all 0.3s ease !important;
-}
-
-.streamlit-expanderHeader:hover {
-    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
-    border-color: #60a5fa !important;
-    transform: translateX(4px) !important;
-}
-
-/* Make sure expander content is readable */
-.streamlit-expanderContent {
+/* Containers with borders - WHITE background */
+div[data-testid="stVerticalBlock"] > div[style*="border"] {
     background: rgba(255, 255, 255, 0.95) !important;
-    padding: 1rem !important;
-    border-radius: 0 0 12px 12px !important;
-}
-
-.streamlit-expanderContent p,
-.streamlit-expanderContent label,
-.streamlit-expanderContent span,
-.streamlit-expanderContent div,
-.streamlit-expanderContent h2,
-.streamlit-expanderContent h3,
-.streamlit-expanderContent h4,
-.streamlit-expanderContent * {
-    color: #1f2937 !important;
-}
-
-/* Make text inside expanders dark */
-.streamlit-expanderContent p,
-.streamlit-expanderContent label,
-.streamlit-expanderContent span,
-.streamlit-expanderContent div {
-    color: #1f2937 !important;
-}
-
-/* ========== TABLES ========== */
-.dataframe {
     border-radius: 16px !important;
-    overflow: hidden !important;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
-    border: none !important;
+    padding: 2rem !important;
 }
 
-.dataframe thead tr {
-    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
-}
-
-.dataframe thead th {
-    color: white !important;
-    font-weight: 700 !important;
-    font-size: 0.95rem !important;
-    padding: 1.25rem !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.05em !important;
-}
-
-.dataframe tbody td {
+/* Text INSIDE white containers should be DARK */
+div[data-testid="stVerticalBlock"] > div[style*="border"] *,
+div[data-testid="stVerticalBlock"] > div[style*="border"] label,
+div[data-testid="stVerticalBlock"] > div[style*="border"] p,
+div[data-testid="stVerticalBlock"] > div[style*="border"] span,
+div[data-testid="stVerticalBlock"] > div[style*="border"] div,
+div[data-testid="stVerticalBlock"] > div[style*="border"] h2,
+div[data-testid="stVerticalBlock"] > div[style*="border"] h3,
+div[data-testid="stVerticalBlock"] > div[style*="border"] h4 {
     color: #1f2937 !important;
+}
+
+/* Expanders */
+.streamlit-expanderHeader {
+    color: #1e40af !important;
+    background: #dbeafe !important;
+    border-radius: 8px !important;
     padding: 1rem !important;
-    background: white !important;
 }
 
-.dataframe tbody tr {
-    transition: all 0.2s ease !important;
-    background: white !important;
-}
-
-.dataframe tbody tr:hover {
-    background: rgba(59, 130, 246, 0.05) !important;
-    transform: scale(1.01) !important;
-}
-
-/* ========== ALERTS ========== */
+/* Success/Error/Warning messages */
 .stSuccess {
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important;
+    background: #d1fae5 !important;
     color: #065f46 !important;
-    border-left: 6px solid #10b981 !important;
-    border-radius: 12px !important;
-    padding: 1.5rem !important;
-    font-family: 'Inter', sans-serif !important;
-    font-weight: 500 !important;
-    box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2) !important;
+    padding: 1rem !important;
+    border-radius: 8px !important;
 }
 
 .stError {
-    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important;
+    background: #fee2e2 !important;
     color: #991b1b !important;
-    border-left: 6px solid #ef4444 !important;
-    border-radius: 12px !important;
-    padding: 1.5rem !important;
-    font-family: 'Inter', sans-serif !important;
-    font-weight: 500 !important;
-    box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2) !important;
+    padding: 1rem !important;
+    border-radius: 8px !important;
 }
 
 .stWarning {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+    background: #fef3c7 !important;
     color: #92400e !important;
-    border-left: 6px solid #f59e0b !important;
-    border-radius: 12px !important;
-    padding: 1.5rem !important;
-    font-family: 'Inter', sans-serif !important;
-    font-weight: 500 !important;
-    box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.2) !important;
+    padding: 1rem !important;
+    border-radius: 8px !important;
 }
 
-.stInfo {
-    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
-    color: #1e40af !important;
-    border-left: 6px solid #3b82f6 !important;
-    border-radius: 12px !important;
-    padding: 1.5rem !important;
-    font-family: 'Inter', sans-serif !important;
-    font-weight: 500 !important;
-    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2) !important;
+/* Make sure selectbox dropdown is visible */
+[data-baseweb="select"] {
+    background-color: white !important;
 }
 
-/* ========== SLIDER ========== */
-.stSlider > div > div > div {
-    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
-}
-
-/* ========== PROGRESS BAR ========== */
-.stProgress > div > div > div {
-    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
-}
-
-/* ========== SPINNER ========== */
-.stSpinner > div {
-    border-top-color: #3b82f6 !important;
-}
-
-/* ========== SIDEBAR ========== */
-section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 100%) !important;
-    backdrop-filter: blur(20px) !important;
-}
-
-section[data-testid="stSidebar"] * {
-    color: white !important;
-}
-
-/* ========== SCROLLBAR ========== */
-::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
-}
-
-::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-    border-radius: 10px;
-    border: 2px solid rgba(255, 255, 255, 0.1);
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-}
-
-/* ========== ANIMATIONS ========== */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.main > div {
-    animation: fadeIn 0.6s ease-out;
-}
-
-/* ========== SPECIAL EFFECTS ========== */
-.stButton > button[kind="primary"]::after {
-    content: '→';
-    margin-left: 8px;
-    transition: margin-left 0.3s ease;
-}
-
-.stButton > button[kind="primary"]:hover::after {
-    margin-left: 12px;
-}
-
-/* ========== COMPREHENSIVE FIX FOR WHITE BACKGROUNDS ========== */
-/* Any element with a white or light background should have dark text */
-[style*="background: white"],
-[style*="background: #fff"],
-[style*="background: rgb(255, 255, 255)"],
-[style*="background-color: white"],
-[style*="background-color: #fff"],
-[style*="background-color: rgb(255, 255, 255)"],
-div[style*="background: rgba(255, 255, 255"],
-div[class*="stContainer"] {
+[data-baseweb="select"] * {
     color: #1f2937 !important;
 }
 
-[style*="background: white"] *,
-[style*="background: #fff"] *,
-[style*="background: rgb(255, 255, 255)"] *,
-[style*="background-color: white"] *,
-[style*="background-color: #fff"] *,
-[style*="background-color: rgb(255, 255, 255)"] *,
-div[style*="background: rgba(255, 255, 255"] *,
-div[class*="stContainer"] * {
-    color: #1f2937 !important;
-}
-
-/* Streamlit's default containers */
-.element-container {
-    color: #f3f4f6 !important;
-}
-
-/* Make markdown inside white areas dark */
-.stMarkdown {
-    color: inherit !important;
-}
-
-/* Specific override for columns and containers */
-.row-widget,
-.stColumn {
-    color: #f3f4f6 !important;
-}
-
-/* Force ALL st.container(border=True) to have dark text */
-[data-testid="stVerticalBlock"] [data-testid="stVerticalBlock"],
-[data-testid="column"] > div,
-.stContainer,
-.css-container {
-    color: #1f2937 !important;
-}
-
-[data-testid="stVerticalBlock"] [data-testid="stVerticalBlock"] *,
-[data-testid="column"] > div *,
-.stContainer *,
-.css-container * {
-    color: #1f2937 !important;
-}
-
-/* Make sure button text inside containers is visible */
-div[style*="border"] .stButton > button[kind="secondary"] {
-    color: #3b82f6 !important;
-}
-
-/* Ensure metric values are visible */
-[data-testid="stMetric"] [data-testid="stMetricLabel"],
-[data-testid="stMetric"] [data-testid="stMetricValue"] {
-    color: #1e40af !important;
-}
-
-/* Tab content should be dark */
-.stTabs [data-baseweb="tab-panel"] {
-    color: #1f2937 !important;
-}
-
-.stTabs [data-baseweb="tab-panel"] * {
-    color: #1f2937 !important;
+/* Placeholder text */
+::placeholder {
+    color: #9ca3af !important;
+    opacity: 0.6 !important;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
 PLOTLY_THEME = 'plotly_dark'
-
 MOCK_STAFF = [
     {'id': 's1', 'name': 'Emily Jones', 'role': 'JP', 'active': True, 'archived': False},
     {'id': 's2', 'name': 'Daniel Lee', 'role': 'PY', 'active': True, 'archived': False},
