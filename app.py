@@ -583,7 +583,9 @@ section[data-testid="stSidebar"] * {
 [style*="background: rgb(255, 255, 255)"],
 [style*="background-color: white"],
 [style*="background-color: #fff"],
-[style*="background-color: rgb(255, 255, 255)"] {
+[style*="background-color: rgb(255, 255, 255)"],
+div[style*="background: rgba(255, 255, 255"],
+div[class*="stContainer"] {
     color: #1f2937 !important;
 }
 
@@ -592,7 +594,9 @@ section[data-testid="stSidebar"] * {
 [style*="background: rgb(255, 255, 255)"] *,
 [style*="background-color: white"] *,
 [style*="background-color: #fff"] *,
-[style*="background-color: rgb(255, 255, 255)"] * {
+[style*="background-color: rgb(255, 255, 255)"] *,
+div[style*="background: rgba(255, 255, 255"] *,
+div[class*="stContainer"] * {
     color: #1f2937 !important;
 }
 
@@ -610,6 +614,41 @@ section[data-testid="stSidebar"] * {
 .row-widget,
 .stColumn {
     color: #f3f4f6 !important;
+}
+
+/* Force ALL st.container(border=True) to have dark text */
+[data-testid="stVerticalBlock"] [data-testid="stVerticalBlock"],
+[data-testid="column"] > div,
+.stContainer,
+.css-container {
+    color: #1f2937 !important;
+}
+
+[data-testid="stVerticalBlock"] [data-testid="stVerticalBlock"] *,
+[data-testid="column"] > div *,
+.stContainer *,
+.css-container * {
+    color: #1f2937 !important;
+}
+
+/* Make sure button text inside containers is visible */
+div[style*="border"] .stButton > button[kind="secondary"] {
+    color: #3b82f6 !important;
+}
+
+/* Ensure metric values are visible */
+[data-testid="stMetric"] [data-testid="stMetricLabel"],
+[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    color: #1e40af !important;
+}
+
+/* Tab content should be dark */
+.stTabs [data-baseweb="tab-panel"] {
+    color: #1f2937 !important;
+}
+
+.stTabs [data-baseweb="tab-panel"] * {
+    color: #1f2937 !important;
 }
 
 </style>
@@ -650,8 +689,8 @@ GRADE_OPTIONS = {
     'SY': ['Y7', 'Y8', 'Y9', 'Y10', 'Y11', 'Y12']
 }
 
-BEHAVIOR_LEVELS = ['1 - Low Intensity', '2 - Moderate', '3 - High Risk']
-BEHAVIORS_FBA = ['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)', 'Other - Specify'] 
+behaviour_LEVELS = ['1 - Low Intensity', '2 - Moderate', '3 - High Risk']
+behaviourS_FBA = ['Verbal Refusal', 'Elopement', 'Property Destruction', 'Aggression (Peer)', 'Other - Specify'] 
 
 ANTECEDENTS_NEW = [
     "Requested to transition activity",
@@ -669,7 +708,7 @@ INTERVENTIONS = [
     "Proximity control/Non-verbal cue",
     "Redirection to a preferred activity",
     "Offered a break/Choice of task",
-    "Used planned ignoring of minor behavior",
+    "Used planned ignoring of minor behaviour",
     "Staff de-escalation script/Verbal coaching",
     "Removed other students from area for safety",
     "Called for staff support/Backup"
@@ -703,7 +742,7 @@ LOCATIONS = [
     "Other"
 ]
 
-VALID_PAGES = ['landing', 'program_students', 'direct_log_form', 'critical_incident_abch', 'student_analysis', 'admin_portal']
+VALID_PAGES = ['login', 'landing', 'program_students', 'direct_log_form', 'critical_incident_abch', 'student_analysis', 'admin_portal']
 
 # --- DATA LOADING FUNCTIONS (SUPABASE) ---
 
@@ -779,7 +818,13 @@ def initialize_session_state():
             st.session_state.data_loaded = True
     
     if 'current_page' not in st.session_state:
-        st.session_state.current_page = 'landing'
+        st.session_state.current_page = 'login'
+    
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+    
+    if 'current_user' not in st.session_state:
+        st.session_state.current_user = None
 
 # --- 2. GLOBAL HELPERS & CORE LOGIC FUNCTIONS ---
 
@@ -843,22 +888,36 @@ def get_session_window(incident_time: time) -> str:
     except Exception as e:
         return "Unknown Session"
 
-def add_staff_member(name: str, role: str) -> bool:
+def add_staff_member(first_name: str, last_name: str, email: str, role: str) -> bool:
     """Adds a new staff member to Supabase."""
     try:
-        if not name or not name.strip():
-            raise ValidationError("Name cannot be empty", "Please enter a staff name")
+        if not first_name or not first_name.strip():
+            raise ValidationError("First name cannot be empty", "Please enter a first name")
+        
+        if not last_name or not last_name.strip():
+            raise ValidationError("Last name cannot be empty", "Please enter a last name")
+        
+        if not email or not email.strip():
+            raise ValidationError("Email cannot be empty", "Please enter an email address")
+        
+        if '@' not in email:
+            raise ValidationError("Invalid email", "Please enter a valid email address")
         
         if not role or role == "--- Select Role ---":
             raise ValidationError("Role must be selected", "Please select a role")
         
-        # Check for duplicate names in current session
-        existing = [s for s in st.session_state.staff_list if s['name'].lower() == name.strip().lower() and not s.get('archived', False)]
-        if existing:
-            raise ValidationError("Duplicate staff name", "A staff member with this name already exists")
+        full_name = f"{first_name.strip()} {last_name.strip()}"
+        
+        # Check for duplicate email in current session
+        existing_email = [s for s in st.session_state.staff_list if s.get('email', '').lower() == email.strip().lower() and not s.get('archived', False)]
+        if existing_email:
+            raise ValidationError("Duplicate email", "A staff member with this email already exists")
         
         new_staff = {
-            'name': name.strip(),
+            'first_name': first_name.strip(),
+            'last_name': last_name.strip(),
+            'name': full_name,
+            'email': email.strip().lower(),
             'role': role,
             'active': True,
             'archived': False
@@ -871,7 +930,7 @@ def add_staff_member(name: str, role: str) -> bool:
         if response.data:
             # Update session state
             st.session_state.staff_list.append(response.data[0])
-            logger.info(f"Added staff member: {name} ({role})")
+            logger.info(f"Added staff member: {full_name} ({email}, {role})")
             return True
         else:
             raise AppError("Database insert failed", "Could not add staff member")
@@ -940,11 +999,14 @@ def unarchive_staff_member(staff_id: str) -> bool:
         logger.error(f"Error unarchiving staff: {e}")
         raise AppError("Failed to unarchive staff member", "Could not unarchive staff member. Please try again.")
 
-def add_student(name: str, dob: datetime.date, program: str, grade: str, edid: str) -> bool:
+def add_student(first_name: str, last_name: str, dob: datetime.date, program: str, grade: str, edid: str) -> bool:
     """Adds a new student to Supabase."""
     try:
-        if not name or not name.strip():
-            raise ValidationError("Name cannot be empty", "Please enter a student name")
+        if not first_name or not first_name.strip():
+            raise ValidationError("First name cannot be empty", "Please enter a first name")
+        
+        if not last_name or not last_name.strip():
+            raise ValidationError("Last name cannot be empty", "Please enter a last name")
         
         if not program or program == "--- Select Program ---":
             raise ValidationError("Program must be selected", "Please select a program")
@@ -958,6 +1020,8 @@ def add_student(name: str, dob: datetime.date, program: str, grade: str, edid: s
         if not edid or not edid.strip():
             raise ValidationError("EDID is required", "Please enter EDID")
         
+        full_name = f"{first_name.strip()} {last_name.strip()}"
+        
         # Check for duplicate EDID in current session
         existing_edid = [s for s in st.session_state.students_list if s.get('edid', '').upper() == edid.strip().upper() and not s.get('archived', False)]
         if existing_edid:
@@ -968,7 +1032,9 @@ def add_student(name: str, dob: datetime.date, program: str, grade: str, edid: s
             raise ValidationError("Invalid date of birth", "Date of birth cannot be in the future")
         
         new_student = {
-            'name': name.strip(),
+            'first_name': first_name.strip(),
+            'last_name': last_name.strip(),
+            'name': full_name,
             'dob': dob.strftime('%Y-%m-%d'),
             'program': program,
             'grade': grade,
@@ -984,7 +1050,7 @@ def add_student(name: str, dob: datetime.date, program: str, grade: str, edid: s
         if response.data:
             # Update session state
             st.session_state.students_list.append(response.data[0])
-            logger.info(f"Added student: {name} (EDID: {edid}, Program: {program})")
+            logger.info(f"Added student: {full_name} (EDID: {edid}, Program: {program})")
             return True
         else:
             raise AppError("Database insert failed", "Could not add student")
@@ -1009,9 +1075,27 @@ def get_students_by_program(program: str, include_archived: bool = False) -> Lis
         logger.error(f"Error retrieving students by program: {e}")
         return []
 
+# --- AUTHENTICATION FUNCTIONS ---
+
+def verify_login(email: str) -> Optional[Dict[str, Any]]:
+    """Verifies if email exists in staff database."""
+    try:
+        if not email or not email.strip():
+            return None
+        
+        email = email.strip().lower()
+        
+        # Check in staff list
+        staff_member = next((s for s in st.session_state.staff_list if s.get('email', '').lower() == email and not s.get('archived', False)), None)
+        
+        return staff_member
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        return None
+
 # --- VALIDATION FUNCTIONS ---
 
-def validate_incident_form(location, reported_by, behavior_type, severity_level, incident_date, incident_time):
+def validate_incident_form(location, reported_by, behaviour_type, severity_level, incident_date, incident_time):
     """Validates incident form."""
     errors = []
     
@@ -1019,8 +1103,8 @@ def validate_incident_form(location, reported_by, behavior_type, severity_level,
         errors.append("Please select a valid Location")
     if not isinstance(reported_by, dict) or reported_by.get('id') is None:
         errors.append("Please select a Staff Member")
-    if behavior_type == "--- Select Behavior ---":
-        errors.append("Please select a Behavior Type")
+    if behaviour_type == "--- Select behaviour ---":
+        errors.append("Please select a behaviour Type")
     if not (1 <= severity_level <= 5):
         errors.append("Severity level must be between 1 and 5")
     if not incident_date:
@@ -1031,7 +1115,7 @@ def validate_incident_form(location, reported_by, behavior_type, severity_level,
     if errors:
         raise ValidationError("Form validation failed", "Please correct: " + ", ".join(errors))
 
-def validate_abch_form(context, location, behavior_desc, consequence, manager_notify, parent_notify):
+def validate_abch_form(context, location, behaviour_desc, consequence, manager_notify, parent_notify):
     """Validates ABCH form."""
     errors = []
     
@@ -1039,8 +1123,8 @@ def validate_abch_form(context, location, behavior_desc, consequence, manager_no
         errors.append("Location is required")
     if not context or context.strip() == "":
         errors.append("Context is required")
-    if not behavior_desc or behavior_desc.strip() == "":
-        errors.append("Behavior description is required")
+    if not behaviour_desc or behaviour_desc.strip() == "":
+        errors.append("behaviour description is required")
     if not consequence or consequence.strip() == "":
         errors.append("Consequences are required")
     if not manager_notify:
@@ -1051,11 +1135,73 @@ def validate_abch_form(context, location, behavior_desc, consequence, manager_no
     if errors:
         raise ValidationError("ABCH validation failed", "Please correct: " + ", ".join(errors))
 
+# --- LOGIN PAGE ---
+
+@handle_errors("Unable to load login page")
+def render_login_page():
+    """Renders the login page with email authentication."""
+    
+    st.markdown("""
+    <div class="hero-section">
+        <div class="hero-icon">🔐</div>
+        <h1 class="hero-title">Behaviour Support<br/>& Data Analysis</h1>
+        <p class="hero-subtitle">Staff Login</p>
+        <p class="hero-tagline">Please enter your registered staff email address to access the system</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        with st.container(border=True):
+            st.markdown("### 🔑 Login")
+            
+            email = st.text_input(
+                "Email Address",
+                placeholder="your.email@example.com",
+                key="login_email"
+            )
+            
+            if st.button("🚀 Login", type="primary", use_container_width=True):
+                if email:
+                    staff_member = verify_login(email)
+                    if staff_member:
+                        st.session_state.logged_in = True
+                        st.session_state.current_user = staff_member
+                        st.session_state.current_page = 'landing'
+                        st.success(f"✅ Welcome back, {staff_member['name']}!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Email not found. Please contact an administrator to register.")
+                else:
+                    st.warning("⚠️ Please enter your email address")
+            
+            st.markdown("---")
+            st.caption("💡 **Note:** Only registered staff members can access this system. Contact your administrator if you need access.")
+
 # --- LANDING PAGE ---
 
 @handle_errors("Unable to load landing page")
 def render_landing_page():
     """Renders sleek landing page."""
+    
+    # User info and logout button at top
+    col_user, col_logout = st.columns([4, 1])
+    with col_user:
+        current_user = st.session_state.get('current_user', {})
+        st.markdown(f"### 👋 Welcome, {current_user.get('name', 'User')}!")
+        st.caption(f"Role: {current_user.get('role', 'N/A')} | {current_user.get('email', 'N/A')}")
+    with col_logout:
+        st.markdown("##")
+        if st.button("🚪 Logout", use_container_width=True):
+            st.session_state.logged_in = False
+            st.session_state.current_user = None
+            st.session_state.current_page = 'login'
+            st.rerun()
+    
+    st.markdown("---")
     
     # Spectacular animated header
     st.markdown("""
@@ -1347,24 +1493,30 @@ def render_staff_management():
     with staff_tab1:
         st.markdown("### Add New Staff Member")
         
-        col_add1, col_add2, col_add3 = st.columns([2, 2, 1])
+        col_add1, col_add2, col_add3, col_add4 = st.columns([2, 2, 3, 2])
         
         with col_add1:
-            new_staff_name = st.text_input("Staff Name", key="new_staff_name", placeholder="Enter full name")
+            new_staff_first_name = st.text_input("First Name", key="new_staff_first_name", placeholder="First name")
         
         with col_add2:
+            new_staff_last_name = st.text_input("Last Name", key="new_staff_last_name", placeholder="Last name")
+        
+        with col_add3:
+            new_staff_email = st.text_input("Email", key="new_staff_email", placeholder="email@example.com")
+        
+        with col_add4:
             new_staff_role = st.selectbox(
                 "Role",
                 options=["--- Select Role ---"] + STAFF_ROLES,
                 key="new_staff_role"
             )
         
-        with col_add3:
-            st.markdown("##")  # Spacing
+        col_add_btn = st.columns([4, 1])
+        with col_add_btn[1]:
             if st.button("➕ Add Staff", type="primary", use_container_width=True):
                 try:
-                    if add_staff_member(new_staff_name, new_staff_role):
-                        st.success(f"✅ Added {new_staff_name} ({new_staff_role})")
+                    if add_staff_member(new_staff_first_name, new_staff_last_name, new_staff_email, new_staff_role):
+                        st.success(f"✅ Added {new_staff_first_name} {new_staff_last_name}")
                         st.rerun()
                 except (ValidationError, AppError) as e:
                     st.error(e.user_message)
@@ -1447,28 +1599,32 @@ def render_student_management():
     
     st.markdown("### Add New Student")
     
-    col_add1, col_add2, col_add3, col_add4 = st.columns([2, 1.5, 1, 1])
+    col_add1, col_add2, col_add3, col_add4, col_add5 = st.columns([2, 2, 1.5, 1, 1])
     
     with col_add1:
-        new_student_name = st.text_input("Student Name", key="new_student_name", placeholder="Enter full name")
+        new_student_first_name = st.text_input("First Name", key="new_student_first_name", placeholder="First name")
     
     with col_add2:
+        new_student_last_name = st.text_input("Last Name", key="new_student_last_name", placeholder="Last name")
+    
+    with col_add3:
         new_student_dob = st.date_input(
-            "Date of Birth",
+            "Date of Birth (DD/MM/YYYY)",
             key="new_student_dob",
             min_value=datetime(1990, 1, 1).date(),
             max_value=datetime.now().date(),
-            value=datetime(2015, 1, 1).date()
+            value=datetime(2015, 1, 1).date(),
+            format="DD/MM/YYYY"
         )
     
-    with col_add3:
+    with col_add4:
         new_student_program = st.selectbox(
             "Program",
             options=["--- Select Program ---"] + PROGRAM_OPTIONS,
             key="new_student_program"
         )
     
-    with col_add4:
+    with col_add5:
         # Dynamic grade options based on selected program
         if new_student_program and new_student_program != "--- Select Program ---":
             grade_options = ["--- Select Grade ---"] + GRADE_OPTIONS.get(new_student_program, [])
@@ -1496,13 +1652,14 @@ def render_student_management():
         if st.button("➕ Add Student", type="primary", use_container_width=True):
             try:
                 if add_student(
-                    new_student_name,
+                    new_student_first_name,
+                    new_student_last_name,
                     new_student_dob,
                     new_student_program,
                     new_student_grade,
                     new_student_edid
                 ):
-                    st.success(f"✅ Added {new_student_name} to {new_student_program} Program")
+                    st.success(f"✅ Added {new_student_first_name} {new_student_last_name} to {new_student_program} Program")
                     st.rerun()
             except (ValidationError, AppError) as e:
                 st.error(e.user_message)
@@ -1625,12 +1782,12 @@ def generate_student_report(student: Dict[str, Any], incidents: List[Dict[str, A
         fig.write_image(f"{chart_dir}/timeline.png", width=800, height=400)
         chart_files['timeline'] = f"{chart_dir}/timeline.png"
         
-        # 2. Behavior frequency chart
-        behavior_counts = pd.DataFrame(incidents)['behavior_type'].value_counts().reset_index()
-        behavior_counts.columns = ['Behavior', 'Count']
-        fig = px.bar(behavior_counts, x='Count', y='Behavior', orientation='h', title='Behavior Frequency')
-        fig.write_image(f"{chart_dir}/behaviors.png", width=800, height=400)
-        chart_files['behaviors'] = f"{chart_dir}/behaviors.png"
+        # 2. behaviour frequency chart
+        behaviour_counts = pd.DataFrame(incidents)['behaviour_type'].value_counts().reset_index()
+        behaviour_counts.columns = ['behaviour', 'Count']
+        fig = px.bar(behaviour_counts, x='Count', y='behaviour', orientation='h', title='behaviour Frequency')
+        fig.write_image(f"{chart_dir}/behaviours.png", width=800, height=400)
+        chart_files['behaviours'] = f"{chart_dir}/behaviours.png"
         
         # 3. Day of week chart
         day_counts = pd.DataFrame(incidents)['day'].value_counts().reset_index()
@@ -1654,9 +1811,9 @@ def generate_student_report(student: Dict[str, Any], incidents: List[Dict[str, A
         critical_count = len([inc for inc in incidents if inc.get('is_critical', False)])
         critical_rate = (critical_count / len(incidents) * 100) if len(incidents) > 0 else 0
         
-        behavior_counts_dict = pd.DataFrame(incidents)['behavior_type'].value_counts()
-        top_behavior = behavior_counts_dict.index[0] if len(behavior_counts_dict) > 0 else "N/A"
-        top_behavior_count = behavior_counts_dict.iloc[0] if len(behavior_counts_dict) > 0 else 0
+        behaviour_counts_dict = pd.DataFrame(incidents)['behaviour_type'].value_counts()
+        top_behaviour = behaviour_counts_dict.index[0] if len(behaviour_counts_dict) > 0 else "N/A"
+        top_behaviour_count = behaviour_counts_dict.iloc[0] if len(behaviour_counts_dict) > 0 else 0
         
         antecedent_counts = pd.DataFrame(incidents)['antecedent'].value_counts()
         top_antecedent = antecedent_counts.index[0] if len(antecedent_counts) > 0 else "N/A"
@@ -1670,7 +1827,7 @@ def generate_student_report(student: Dict[str, Any], incidents: List[Dict[str, A
         session_counts = pd.DataFrame(incidents)['session'].value_counts()
         top_session = session_counts.index[0] if len(session_counts) > 0 else "N/A"
         
-        behavior_pct = (top_behavior_count/len(incidents)*100) if len(incidents) > 0 else 0
+        behaviour_pct = (top_behaviour_count/len(incidents)*100) if len(incidents) > 0 else 0
         
         # Note: Full docx generation code omitted for brevity
         # Would require Node.js with docx library installed
@@ -1773,7 +1930,7 @@ def render_direct_log_form():
         col1, col2 = st.columns(2)
         
         with col1:
-            incident_date = st.date_input("Date of Incident", value=datetime.now())
+            incident_date = st.date_input("Date of Incident (DD/MM/YYYY)", value=datetime.now(), format="DD/MM/YYYY")
             incident_time = st.time_input("Time of Incident", value=datetime.now().time())
             location = st.selectbox("Location", options=LOCATIONS)
         
@@ -1786,14 +1943,14 @@ def render_direct_log_form():
                 include_special_options=True
             )
         
-        st.markdown("### Behavior Information")
+        st.markdown("### behaviour Information")
         
         col3, col4 = st.columns(2)
         
         with col3:
-            behavior_type = st.selectbox(
-                "Behavior Type",
-                options=["--- Select Behavior ---"] + BEHAVIORS_FBA
+            behaviour_type = st.selectbox(
+                "behaviour Type",
+                options=["--- Select behaviour ---"] + behaviourS_FBA
             )
             antecedent = st.selectbox("Antecedent", options=ANTECEDENTS_NEW)
         
@@ -1820,7 +1977,7 @@ def render_direct_log_form():
                 
                 # Validate form
                 validate_incident_form(
-                    location, reported_by, behavior_type,
+                    location, reported_by, behaviour_type,
                     severity_level, incident_date, incident_time
                 )
                 
@@ -1839,7 +1996,7 @@ def render_direct_log_form():
                     'reported_by_id': reported_by['id'] if not reported_by.get('is_special', False) else None,
                     'reported_by_role': reported_by['role'],
                     'is_special_staff': reported_by.get('is_special', False),
-                    'behavior_type': behavior_type,
+                    'behaviour_type': behaviour_type,
                     'antecedent': antecedent,
                     'intervention': intervention,
                     'support_type': support_type,
@@ -1962,9 +2119,16 @@ def main():
         # Initialize session state
         initialize_session_state()
         
+        # Check if user is logged in
+        if not st.session_state.get('logged_in', False):
+            render_login_page()
+            return
+        
         current_page = st.session_state.get('current_page', 'landing')
         
-        if current_page == 'landing':
+        if current_page == 'login':
+            render_login_page()
+        elif current_page == 'landing':
             render_landing_page()
         elif current_page == 'program_students':
             render_program_students()
