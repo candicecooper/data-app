@@ -333,11 +333,16 @@ def add_staff_member(first_name: str, last_name: str, email: str, role: str) -> 
         if existing_email:
             raise ValidationError("Duplicate email", "A staff member with this email already exists")
         
+        # Generate unique ID from email
+        email_clean = email.strip().lower()
+        staff_id = 'staff_' + email_clean.replace('@', '_').replace('.', '_')
+        
         new_staff = {
+            'id': staff_id,
             'first_name': first_name.strip(),
             'last_name': last_name.strip(),
             'name': full_name,
-            'email': email.strip().lower(),
+            'email': email_clean,
             'role': role,
             'active': True,
             'archived': False
@@ -451,7 +456,11 @@ def add_student(first_name: str, last_name: str, dob: datetime.date, program: st
         if dob > datetime.now().date():
             raise ValidationError("Invalid date of birth", "Date of birth cannot be in the future")
         
+        # Generate unique ID from EDID
+        student_id = 'student_' + edid.strip().upper().replace(' ', '_')
+        
         new_student = {
+            'id': student_id,
             'first_name': first_name.strip(),
             'last_name': last_name.strip(),
             'name': full_name,
