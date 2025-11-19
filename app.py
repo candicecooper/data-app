@@ -972,9 +972,11 @@ def render_staff_management():
                                     st.caption(f"Added: {staff['created_date']}")
                             
                             with col_staff3:
-                                if st.button("🗄️ Archive", key=f"archive_{staff['id']}", use_container_width=True):
+                                # Use email as fallback if ID is missing
+                                staff_key = staff.get('id') or staff.get('email') or f"staff_{staff['name']}"
+                                if st.button("🗄️ Archive", key=f"archive_{staff_key}", use_container_width=True):
                                     try:
-                                        if archive_staff_member(staff['id']):
+                                        if archive_staff_member(staff.get('id')):
                                             st.success(f"Archived {staff['name']}")
                                             st.rerun()
                                     except AppError as e:
@@ -1002,9 +1004,10 @@ def render_staff_management():
                         if staff.get('archived_date'):
                             st.markdown(f"**Archived:** {staff['archived_date']}")
                     
-                    if st.button("♻️ Restore Staff Member", key=f"restore_{staff['id']}"):
+                    staff_key = staff.get('id') or staff.get('email') or f"staff_{staff['name']}"
+                    if st.button("♻️ Restore Staff Member", key=f"restore_{staff_key}"):
                         try:
-                            if unarchive_staff_member(staff['id']):
+                            if unarchive_staff_member(staff.get('id')):
                                 st.success(f"Restored {staff['name']}")
                                 st.rerun()
                         except AppError as e:
