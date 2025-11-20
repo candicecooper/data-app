@@ -212,6 +212,64 @@ def get_session_from_time(t: time) -> str:
     else:
         return "Afternoon"
 
+# --- BEHAVIOUR FUNCTION (HYPOTHESIS) ---
+
+BEHAVIOUR_FUNCTION_OPTIONS = [
+    "To Get tangible",
+    "To Get activity",
+    "To Get sensory",
+    "To Get attention",
+    "To Avoid tangible",
+    "To Avoid activity",
+    "To Avoid sensory",
+    "To Avoid attention",
+]
+
+def infer_behaviour_function(antecedent: str,
+                             behaviour: str,
+                             description: str) -> str:
+    """
+    Very simple best-guess of behaviour function so staff only need
+    to confirm or tweak it.
+
+    Returns one of BEHAVIOUR_FUNCTION_OPTIONS.
+    """
+
+    text = " ".join([
+        antecedent or "",
+        behaviour or "",
+        description or "",
+    ]).lower()
+
+    # GET vs AVOID
+    if any(w in text for w in ["refuse", "refusal", "avoid", "escape",
+                               "didn’t want", "didnt want", "ran away",
+                               "left area", "elop", "hide", "hiding"]):
+        get_avoid = "Avoid"
+    else:
+        get_avoid = "Get"
+
+    # DOMAIN (tangible / activity / sensory / attention)
+    if any(w in text for w in ["ipad", "laptop", "toy", "food", "drink",
+                               "ball", "item", "object", "phone", "game"]):
+        domain = "tangible"
+    elif any(w in text for w in ["work", "worksheet", "task",
+                                 "writing", "reading", "math",
+                                 "activity", "job"]):
+        domain = "activity"
+    elif any(w in text for w in ["noise", "loud", "crowd", "busy",
+                                 "touch", "lights", "smell",
+                                 "sensory", "overwhelm"]):
+        domain = "sensory"
+    elif any(w in text for w in ["adult", "teacher", "ssa", "sso",
+                                 "peer", "friend", "attention",
+                                 "looked at", "ignored"]):
+        domain = "attention"
+    else:
+        # default to activity if unsure
+        domain = "activity"
+
+    return f"To {get_avoid} {domain}"
 
 # =========================================================
 # 4. LOGIN PAGE
@@ -454,9 +512,23 @@ def render_incident_log():
             placeholder="Brief factual description of what occurred…",
         )
 
-        st.markdown("### Suggested Hypothesis (Editable)")
-        auto_hyp = generate_hypothesis(antecedent, behaviour, intervention, severity)
-        hypothesis = st.text_area("Hypothesis", value=auto_hyp)
+                # --- Simple behaviour function hypothesis (auto + editable) ---
+        st.markdown("### Hypothesis – Best Guess of Behaviour Function")
+
+        auto_function = infer_behaviour_function(
+            antecedent=antecedent,
+            behaviour=behaviour_type,
+            description=description,
+        )
+
+        behaviour_function = st.selectbox(
+            "Best guess of behaviour function",
+            options=BEHAVIOUR_FUNCTION_OPTIONS,
+            index=BEHAVIOUR_FUNCTION_OPTIONS.index(auto_function)
+            if auto_function in BEHAVIOUR_FUNCTION_OPTIONS else 1,  # safe default
+            help="Based on what you've entered, the app suggests a function. "
+                 "You can change it if needed."
+        )
 
         submitted = st.form_submit_button("Submit Incident", type="primary")
 
@@ -475,13 +547,14 @@ def render_incident_log():
                 "location": location,
                 "behaviour_type": behaviour,
                 "antecedent": antecedent,
-                "severity": severity,
+                "severity": severity_level,
                 "support_type": support_type,
                 "reported_by": reporter_name,
                 "additional_staff": additional_staff,
                 "intervention": intervention,
                 "description": description,
                 "hypothesis": hypothesis,
+ 'behaviour_function': behaviour_function,
                 "is_critical": severity >= 3,
             }
 
@@ -502,170 +575,155 @@ def render_incident_log():
 # 9. CRITICAL INCIDENT ABCH FORM
 # =========================================================
 
-def render_critical_incident():
-    inc_id = st.session_state.get("current_incident_id")
-    quick_incident = next(
-        (i for i in st.session_state.incidents if i["id"] == inc_id),
-        None,
-    )
+def render_critical_incident_abch_form():
+    """Critical incident ABCH form with multiple lines per incident."""
+    st.title("🚨 Critical Incident – ABCH Recording")
 
-    if not quick_incident:
-        st.error("No critical incident found in session.")
-        return
+    # --- Get the quick incident that triggered this page (if any) ---
+    # We assume you navigated here with: navigate_to('critical_incident_abch', incident_id=...)
+    incident_id = st.session_state.get("incident_id") or st.session_state.get("selected_incident_id")
+    quick_incident = None
+    if incident_id:
+        for inc in st.session_state.get('incidents', []):
+            if inc.get('id') == incident_id:
+                quick_incident = inc
+                break
 
-    stu = get_student(quick_incident["student_id"])
-    col_title, col_back = st.columns([4, 1])
-    with col_title:
-        st.title("🚨 Critical Incident ABCH Form")
-        if stu:
-            st.caption(
-                f"Student: {stu['name']} | Program: {stu['program']} | Grade: {stu['grade']}"
+    if quick_incident:
+        st.success("Loaded details from quick incident log – you can refine them below.")
+        with st.expander("View quick incident summary"):
+            st.json(quick_incident)
+
+    # --- Initialise ABCH rows in session_state ---
+    if 'abch_rows' not in st.session_state or st.session_state.get('abch_source_incident_id') != incident_id:
+        st.session_state.abch_rows = []
+
+        # pre-populate first row from quick incident if available
+        if quick_incident:
+            auto_function = quick_incident.get(
+                'behaviour_function',
+                infer_behaviour_function(
+                    quick_incident.get('antecedent', ''),
+                    quick_incident.get('behaviour_type', ''),
+                    quick_incident.get('description', '')
+                )
             )
-        st.caption(
-            f"From quick incident on {quick_incident['incident_date']} at {quick_incident['incident_time']} "
-            f"({quick_incident['location']})"
-        )
-    with col_back:
-        if st.button("⬅ Back to Analysis"):
-            go_to("student_analysis", selected_student_id=quick_incident["student_id"])
 
-    with st.expander("Quick Incident Snapshot"):
-        st.json(quick_incident)
+            st.session_state.abch_rows.append({
+                'location': quick_incident.get('location', ''),
+                'context': quick_incident.get('description', ''),
+                'time': quick_incident.get('incident_time', '')[:5],  # HH:MM
+                'behaviour': quick_incident.get('behaviour_type', ''),
+                'consequence': '',
+                'function': auto_function,
+            })
+        else:
+            st.session_state.abch_rows.append({
+                'location': '',
+                'context': '',
+                'time': '',
+                'behaviour': '',
+                'consequence': '',
+                'function': BEHAVIOUR_FUNCTION_OPTIONS[1],  # sensible default
+            })
 
-    st.markdown("## 🧩 ABCH Breakdown (Side-by-Side)")
+        st.session_state.abch_source_incident_id = incident_id
 
-    colA, colB, colC, colH = st.columns(4)
+    rows = st.session_state.abch_rows
 
-    with colA:
-        st.subheader("A — Antecedent")
-        antecedent_A = st.text_area(
-            "What happened before?",
-            value=quick_incident.get("antecedent", ""),
-            key="abch_A",
-        )
-        st.caption(
-            "Consider environmental, relational, and task demands immediately before the incident."
-        )
+    st.markdown("### ABCH Lines")
+    st.caption("Each row represents one part of the incident (like your spreadsheet row).")
 
-    with colB:
-        st.subheader("B — Behaviour")
-        behaviour_B = st.text_area(
-            "What did the student do?",
-            value=quick_incident.get("behaviour_type", ""),
-            key="abch_B",
-        )
-        st.caption("Use CPI: describe observable behaviour only, not assumptions.")
+    # --- Render each ABCH row ---
+    for idx, row in enumerate(rows):
+        st.markdown(f"**Line {idx + 1}**")
+        c1, c2, c3, c4, c5, c6 = st.columns([1.2, 2.2, 1, 2.2, 2.2, 2])
 
-    with colC:
-        st.subheader("C — Consequence")
-        consequence_C = st.text_area(
-            "What happened after (immediate + short-term)?",
-            key="abch_C",
-        )
-        st.caption(
-            "Include what adults did, peer response, and any changes to environment/routines."
-        )
+        with c1:
+            row['location'] = st.text_input(
+                "Location",
+                value=row.get('location', ''),
+                key=f"abch_loc_{idx}"
+            )
 
-    with colH:
-        st.subheader("H — Hypothesis")
-        suggested_h = generate_hypothesis(
-            quick_incident.get("antecedent", ""),
-            quick_incident.get("behaviour_type", ""),
-            quick_incident.get("intervention", ""),
-            quick_incident.get("severity", 3),
-        )
-        st.info(f"Suggested: {suggested_h}")
-        hypothesis_H = st.text_area(
-            "Why did this occur?",
-            value=suggested_h,
-            key="abch_H",
-        )
+        with c2:
+            row['context'] = st.text_area(
+                "Context (what was happening?)",
+                value=row.get('context', ''),
+                key=f"abch_ctx_{idx}",
+                height=80
+            )
 
-    st.markdown("---")
+        with c3:
+            row['time'] = st.text_input(
+                "Time",
+                value=row.get('time', ''),
+                key=f"abch_time_{idx}",
+                placeholder="e.g. 9:00am"
+            )
 
-    st.markdown("## 🛡️ Safety Responses (Non-Restraint, CPI-Aligned)")
-    safety_responses = st.multiselect(
-        "Select safety actions taken:",
-        [
-            "CPI Supportive Stance",
-            "Cleared nearby students",
-            "Student moved to safer location",
-            "Additional staff attended",
-            "Safety plan enacted",
-            "Continued monitoring until regulated",
-            "First aid offered",
-        ],
-    )
+        with c4:
+            row['behaviour'] = st.text_area(
+                "Behaviour (observed)",
+                value=row.get('behaviour', ''),
+                key=f"abch_beh_{idx}",
+                height=80
+            )
 
-    st.markdown("---")
+        with c5:
+            row['consequence'] = st.text_area(
+                "Consequence (what happened after?)",
+                value=row.get('consequence', ''),
+                key=f"abch_consq_{idx}",
+                height=80
+            )
 
-    st.markdown("## 📣 Notifications")
-    notifications = st.multiselect(
-        "Who was notified:",
-        [
-            "Parent/Carer Notified",
-            "Line Manager Notified",
-            "Safety & Wellbeing / SSS Notified",
-            "DCP Notified",
-            "SAPOL Notified",
-            "First Aid Provided",
-            "Injury Report Completed",
-            "Transport Home Required",
-        ],
-    )
+        with c6:
+            # auto-suggest simple function but allow override
+            auto_func = infer_behaviour_function(
+                antecedent=row.get('context', ''),
+                behaviour=row.get('behaviour', ''),
+                description=row.get('consequence', '')
+            )
+            default_option = row.get('function', auto_func)
+            if default_option not in BEHAVIOUR_FUNCTION_OPTIONS:
+                default_option = auto_func
 
-    st.markdown("---")
+            row['function'] = st.selectbox(
+                "Hypothesis (function)",
+                options=BEHAVIOUR_FUNCTION_OPTIONS,
+                index=BEHAVIOUR_FUNCTION_OPTIONS.index(default_option),
+                key=f"abch_func_{idx}"
+            )
 
-    st.markdown("## 🧾 Outcome Actions")
-    removed = st.checkbox("Removed from learning")
-    family_contact = st.checkbox("Family contacted")
-    safety_updated = st.checkbox("Safety plan updated / reviewed")
-    transport_home = st.checkbox("Transport home required")
-    other_actions = st.text_area("Other actions / follow-up")
+        st.markdown("---")
 
-    st.markdown("---")
+    # --- Add another line button ---
+    if st.button("➕ Add another line"):
+        rows.append({
+            'location': '',
+            'context': '',
+            'time': '',
+            'behaviour': '',
+            'consequence': '',
+            'function': BEHAVIOUR_FUNCTION_OPTIONS[1],
+        })
 
-    st.markdown("## 🎯 Trauma-Informed Recommendations")
-    rec_text = (
-        "Based on this pattern, increase proactive co-regulation routines at known trigger times, "
-        "and ensure CPI Supportive stance is used early in the escalation curve. Embed Berry Street Body "
-        "strategies (movement, sensory breaks, rhythmic routines) and Relationship strategies (check-ins, "
-        "predictable adult responses).\n\n"
-        "Explicitly teach emotional literacy, help-seeking, and repair within the Australian Curriculum "
-        "General Capabilities (Personal and Social Capability, Ethical Understanding). Set a SMART goal "
-        "focused on replacement behaviours (e.g., asking for a break, using a visual signal) and rehearse "
-        "these skills during calm moments."
-    )
-    st.info(rec_text)
-    recommendations = st.text_area(
-        "Edit recommendations if needed", value=rec_text
-    )
+    # --- The rest of your critical form (notifications, outcomes, admin etc.) ---
+    # You can leave your existing sections (safety responses, notifications,
+    # outcomes, admin signatures) exactly as they are BELOW this point,
+    # just make sure when you build the final dict you include abch_rows.
 
-    if st.button("💾 Save Critical Incident (Sandbox)"):
-        record = {
-            "id": str(uuid.uuid4()),
-            "created_at": datetime.now().isoformat(),
-            "student_id": quick_incident["student_id"],
-            "quick_incident_id": quick_incident["id"],
-            "antecedent": antecedent_A,
-            "behaviour": behaviour_B,
-            "consequence": consequence_C,
-            "hypothesis": hypothesis_H,
-            "safety_responses": safety_responses,
-            "notifications": notifications,
-            "outcomes": {
-                "removed": removed,
-                "family_contact": family_contact,
-                "safety_updated": safety_updated,
-                "transport_home": transport_home,
-                "other": other_actions,
-            },
-            "recommendations": recommendations,
-        }
-        st.session_state.critical_incidents.append(record)
-        st.success("Critical Incident saved (Sandbox).")
-        with st.expander("View saved record"):
-            st.json(record)
+    st.markdown("### Next Sections")
+    st.caption("Below here, keep your existing Safety / Notifications / Outcomes layout.")
+
+    # e.g. at the very end when you build your record dict:
+    # record = {
+    #     ...
+    #     'abch_rows': rows,
+    #     ...
+    # }
+
 
 
 # =========================================================
@@ -893,6 +951,11 @@ def render_student_analysis():
     )
     st.success(rec_text)
 
+    record = {
+        ...
+        'abch_rows': st.session_state.abch_rows,
+        ...
+    }
 
 # =========================================================
 # 11. ROUTER
