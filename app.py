@@ -952,9 +952,9 @@ def render_student_analysis():
     st.success(rec_text)
 
     record = {
-        ...
+    
         'abch_rows': st.session_state.abch_rows,
-        ...
+    
     }
 
 # =========================================================
