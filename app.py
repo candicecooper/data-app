@@ -10,7 +10,7 @@ def render_student_analysis_page():
     st.markdown(f"## 📊 Data Analysis — {student['name']}")
     st.caption(f"{student['program']} program | Grade {student['grade']}")
 
-    # --- Pull incidents for this student ---
+    # --- Collect student records ---
     quick = [i for i in st.session_state.incidents if i["student_id"] == student_id]
     crit = [c for c in st.session_state.critical_incidents if c["student_id"] == student_id]
 
@@ -20,33 +20,31 @@ def render_student_analysis_page():
             go_to("incident_log", selected_student_id=student_id)
         return
 
-    # ---------- Build unified dataframe ----------
+    # --- Build unified dataframe safely ---
     quick_df = pd.DataFrame(quick) if quick else pd.DataFrame()
     crit_df = pd.DataFrame(crit) if crit else pd.DataFrame()
 
     if not quick_df.empty:
         quick_df["incident_type"] = "Quick"
-        quick_df["date_parsed"] = pd.to_datetime(quick_df["date"])
+        quick_df["date_parsed"] = pd.to_datetime(quick_df["date"], errors="coerce")
 
     if not crit_df.empty:
         crit_df["incident_type"] = "Critical"
-        # Use created_at if present, otherwise now
-        if "created_at" in crit_df.columns:
-            crit_df["date_parsed"] = pd.to_datetime(crit_df["created_at"])
-        else:
-            crit_df["date_parsed"] = pd.to_datetime(datetime.now().isoformat())
-
-        # Criticals default to severity 5 if not otherwise set
+        crit_df["date_parsed"] = pd.to_datetime(
+            crit_df.get("created_at", datetime.now()), errors="coerce"
+        )
         crit_df["severity"] = 5
 
-        # Align some key columns for graphs
-        crit_df["antecedent"] = crit_df["ABCH_primary"].apply(
-            lambda d: d.get("A") if isinstance(d, dict) else ""
-        )
-        crit_df["behaviour_type"] = crit_df["ABCH_primary"].apply(
-            lambda d: d.get("B") if isinstance(d, dict) else ""
-        )
-        # Give criticals a location/session from last quick if available
+        # Extract ABCH
+        def safe_ABCH(d, key):
+            if isinstance(d, dict) and key in d:
+                return d[key]
+            return ""
+
+        crit_df["antecedent"] = crit_df["ABCH_primary"].apply(lambda d: safe_ABCH(d, "A"))
+        crit_df["behaviour_type"] = crit_df["ABCH_primary"].apply(lambda d: safe_ABCH(d, "B"))
+
+        # Use last quick data for graph alignment
         if not quick_df.empty:
             crit_df["location"] = quick_df["location"].iloc[0]
             crit_df["session"] = quick_df["session"].iloc[0]
@@ -56,169 +54,138 @@ def render_student_analysis_page():
 
     full_df = pd.concat([quick_df, crit_df], ignore_index=True)
 
-    # ---------- Summary metrics ----------
+    # --- Required columns with fallback ---
+    def safe_mode(col):
+        try:
+            return full_df[col].dropna().mode().iloc[0]
+        except Exception:
+            return "Unknown"
+
+    def safe_mean(col):
+        try:
+            return float(full_df[col].dropna().astype(float).mean())
+        except Exception:
+            return 0
+
+    # Summary
+    total = len(full_df)
+    crit_total = len(full_df[full_df["incident_type"] == "Critical"])
+    quick_total = total - crit_total
+    avg_sev = safe_mean("severity")
+
+    # Safe mode values
+    top_ant = safe_mode("antecedent")
+    top_beh = safe_mode("behaviour_type")
+    top_loc = safe_mode("location")
+    top_session = safe_mode("session")
+
+    # Date span
+    try:
+        days_span = (full_df["date_parsed"].max() - full_df["date_parsed"].min()).days + 1
+    except Exception:
+        days_span = "Unknown"
+
+    crit_rate = (crit_total / total * 100) if total > 0 else 0
+
+    # --- Summary metrics ---
     col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Total incidents", len(full_df))
-    with col2:
-        st.metric(
-            "Critical incidents",
-            len(full_df[full_df["incident_type"] == "Critical"]),
-        )
-    with col3:
-        st.metric("Average severity", round(full_df["severity"].mean(), 1))
-    with col4:
-        days_span = (
-            full_df["date_parsed"].max() - full_df["date_parsed"].min()
-        ).days + 1
-        st.metric("Days tracked", days_span)
+    col1.metric("Total incidents", total)
+    col2.metric("Critical incidents", crit_total)
+    col3.metric("Avg severity", round(avg_sev, 1))
+    col4.metric("Days tracked", days_span)
 
     st.markdown("---")
 
-    # =====================================================
-    # GRAPHS
-    # =====================================================
+    # ==================================================
+    # VISUALISATIONS
+    # ==================================================
 
-    # Timeline
-    st.markdown("### ⏱️ Severity over time (Quick vs Critical)")
+    st.markdown("### ⏱️ Severity Over Time")
     fig = px.scatter(
         full_df,
         x="date_parsed",
         y="severity",
         color="incident_type",
-        hover_data=["behaviour_type", "antecedent", "location"],
-        labels={"date_parsed": "Date", "severity": "Severity"},
+        hover_data=["antecedent", "behaviour_type", "location"],
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    # Antecedent frequency
-    st.markdown("### 🔥 Antecedent frequency")
+    st.markdown("### 🔥 Antecedent Frequency")
     ant_counts = full_df["antecedent"].value_counts().reset_index()
     ant_counts.columns = ["Antecedent", "Count"]
-    fig2 = px.bar(ant_counts, x="Count", y="Antecedent", orientation="h")
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(px.bar(ant_counts, x="Count", y="Antecedent", orientation="h"), use_container_width=True)
 
-    # Location hotspots
-    st.markdown("### 📍 Location hotspots")
+    st.markdown("### 📍 Location Hotspots")
     loc_counts = full_df["location"].value_counts().reset_index()
     loc_counts.columns = ["Location", "Count"]
-    fig3 = px.bar(loc_counts, x="Count", y="Location", orientation="h")
-    st.plotly_chart(fig3, use_container_width=True)
+    st.plotly_chart(px.bar(loc_counts, x="Count", y="Location", orientation="h"), use_container_width=True)
 
-    # Behaviour types
-    st.markdown("### ⚠️ Behaviour types")
+    st.markdown("### ⚠ Behaviour Types")
     beh_counts = full_df["behaviour_type"].value_counts().reset_index()
     beh_counts.columns = ["Behaviour", "Count"]
-    fig4 = px.bar(beh_counts, x="Count", y="Behaviour", orientation="h")
-    st.plotly_chart(fig4, use_container_width=True)
+    st.plotly_chart(px.bar(beh_counts, x="Count", y="Behaviour", orientation="h"), use_container_width=True)
 
-    # Session patterns
-    st.markdown("### 🕒 Session patterns")
+    st.markdown("### 🕒 Session Patterns")
     sess_counts = full_df["session"].value_counts().reset_index()
     sess_counts.columns = ["Session", "Count"]
-    fig5 = px.bar(sess_counts, x="Session", y="Count")
-    st.plotly_chart(fig5, use_container_width=True)
+    st.plotly_chart(px.bar(sess_counts, x="Session", y="Count"), use_container_width=True)
 
-    # =====================================================
-    # CLINICAL INTERPRETATION & NEXT STEPS
-    # =====================================================
-    if not full_df.empty:
-        # Key patterns for use in summary / narrative
-        top_ant = full_df["antecedent"].mode()[0]
-        top_beh = full_df["behaviour_type"].mode()[0]
-        top_loc = full_df["location"].mode()[0]
-        top_session = full_df["session"].mode()[0]
+    st.markdown("---")
 
-        total = len(full_df)
-        crit_total = len(full_df[full_df["incident_type"] == "Critical"])
-        quick_total = total - crit_total
-        crit_rate = (crit_total / total) * 100 if total > 0 else 0
+    # ==================================================
+    # CLINICAL INTERPRETATION
+    # ==================================================
 
-        # Trend in severity (first vs last)
-        full_sorted = full_df.sort_values("date_parsed")
-        if len(full_sorted) >= 2:
-            first_sev = full_sorted["severity"].iloc[0]
-            last_sev = full_sorted["severity"].iloc[-1]
-            if last_sev > first_sev:
-                severity_trend = "increasing over time"
-            elif last_sev < first_sev:
-                severity_trend = "decreasing over time"
-            else:
-                severity_trend = "relatively stable over time"
-        else:
-            severity_trend = "unable to determine (limited data)"
+    st.markdown("## 🧠 Clinical Interpretation & Next Steps")
+    st.markdown("### 1. Summary of Findings")
 
-        st.markdown("---")
-        st.markdown("## 🧠 Clinical Interpretation & Next Steps")
+    st.markdown(
+        f"""
+- **Primary behaviour:** **{top_beh}**  
+- **Most common trigger:** **{top_ant}**  
+- **Hotspot location:** **{top_loc}**  
+- **Most challenging session:** **{top_session}**  
+- **Critical incidents:** {crit_total} of {total} (**{crit_rate:.1f}%**)  
+- **Severity trend:** Based on data over {days_span} day(s)
+"""
+    )
 
-        # ---------- 1. Summary of Data Findings ----------
-        st.markdown("### 1. Summary of Data Findings")
+    st.markdown("### 2. Trauma-Informed Interpretation")
+    st.info(
+        f"""
+Patterns indicate that **{student['name']}** is most vulnerable during **{top_session}**
+and when **{top_ant}** occurs. These conditions likely narrow their *window of tolerance*, 
+increasing the chance of a survival-based response (fight/flight/freeze).
 
-        st.markdown(
-            f"- **Primary concern:** **{top_beh}** is the most frequently recorded "
-            f"behaviour of concern."
-        )
-        st.markdown(
-            f"- **Key triggers:** The most common antecedent is **{top_ant}**, "
-            f"indicating this context regularly precedes dysregulation."
-        )
-        st.markdown(
-            f"- **Hotspot locations:** Incidents most often occur in **{top_loc}**, "
-            f"particularly during the **{top_session}** session."
-        )
-        st.markdown(
-            f"- **Incident profile:** {quick_total} quick incidents and {crit_total} "
-            f"critical incidents have been recorded (critical incidents = "
-            f"**{crit_rate:.1f}%** of all incidents)."
-        )
-        st.markdown(
-            f"- **Severity trend:** Overall severity appears **{severity_trend}**."
-        )
+- CPI emphasises early **Supportive Stance** to prevent escalation.  
+- Berry Street Education Model highlights predictable routines, relational safety, 
+  and co-regulation as protective factors.  
+- SMART trauma principles suggest reducing cognitive load, providing cues, and 
+  maximising predictability during known trigger times.
+"""
+    )
 
-        # ---------- 2. Clinical interpretation (trauma-informed) ----------
-        st.markdown("### 2. Clinical Interpretation (Trauma-Informed)")
+    st.markdown("### 3. Recommendations (BSEM, CPI, SMART, ACARA)")
 
-        clinical_text = (
-            f"Patterns suggest that {student['name']} is most vulnerable when **{top_ant}** "
-            f"occurs, often in the **{top_loc}** during **{top_session}**. These moments "
-            "likely narrow the student's window of tolerance, increasing the risk of "
-            "fight/flight responses such as the identified behaviour.\n\n"
-            "Through a **trauma-informed lens**, this behaviour is understood as a safety "
-            "strategy rather than wilful defiance. CPI emphasises staying in the **Supportive** "
-            "phase as early as possible — calm body language, non-threatening stance and "
-            "minimal verbal load.\n\n"
-            "The **Berry Street Education Model** (Body, Relationship, Stamina, Engagement) "
-            "points towards strengthening **Body** (regulation routines, predictable transitions) "
-            "and **Relationship** (connection before correction). SMART trauma principles "
-            "highlight the importance of predictability, relational safety and reducing cognitive "
-            "load during known trigger times."
-        )
-        st.info(clinical_text)
+    st.success(
+        f"""
+**A. Proactive Support (BSEM Body & Stamina)**  
+- Use short regulation breaks before **{top_ant}**.  
+- Provide movement/sensory options in **{top_loc}**.  
 
-        # ---------- 3. Next Steps & Recommendations ----------
-        st.markdown("### 3. Next Steps & Recommendations")
+**B. Co-Regulation (CPI)**  
+- Use calm tone and body position.  
+- Reduce audience, maintain connection with one adult.  
 
-        next_steps = (
-            "1. **Proactive regulation around key triggers**  \n"
-            f"   - Provide a brief check-in and clear visual cue before **{top_ant}**.  \n"
-            "   - Offer a regulated start (breathing, movement, sensory tool) before the "
-            f"high-risk **{top_session}** session.\n\n"
-            "2. **Co-regulation & staff responses (CPI aligned)**  \n"
-            "   - Use CPI Supportive stance, low slow voice and minimal language when early "
-            "signs of escalation appear.  \n"
-            "   - Reduce audience by moving peers where possible and maintain connection with "
-            "one key adult.\n\n"
-            "3. **Teaching replacement skills (Australian Curriculum – General Capabilities)**  \n"
-            "   - Link goals to **Personal and Social Capability** (self-management & "
-            "social management).  \n"
-            "   - Explicitly teach and rehearse a help-seeking routine the student can use "
-            "in place of the behaviour (e.g., card, phrase, movement to a safe space).\n\n"
-            "4. **SMART-style goal example**  \n"
-            "   - *Over the next 5 weeks, during identified trigger times, the student will "
-            "use an agreed help-seeking strategy instead of the behaviour of concern in "
-            "4 out of 5 opportunities, with co-regulation support from staff.*"
-        )
-        st.success(next_steps)
+**C. Skills Teaching (Australian Curriculum – General Capabilities)**  
+- Teach help-seeking scripts linked to self-management.  
+- Use visuals, choice boards, reduced verbal load.  
+
+**D. SMART Goal Example**  
+- *Over 5 weeks, when faced with {top_ant}, {student['name']} will use a help-seeking strategy  
+  in 4/5 opportunities with co-regulation support.*
+"""
+    )
 
     if st.button("⬅ Back to students"):
         go_to("program_students", selected_program=student["program"])
