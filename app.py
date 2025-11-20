@@ -139,6 +139,8 @@ def init_state():
         ss.selected_student_id = None
     if "current_incident_id" not in ss:
         ss.current_incident_id = None
+    if "abch_rows" not in ss:
+        ss.abch_rows = []  # for extra ABCH lines
 
 
 def login_user(email: str) -> bool:
@@ -209,7 +211,7 @@ def calculate_age(dob_str: str):
 
 def generate_mock_incidents(n: int = 40):
     """Create random quick incidents so the analysis page has something to show."""
-    incidents = []
+    incidents = [];
     for _ in range(n):
         stu = random.choice(MOCK_STUDENTS)
         beh = random.choice(BEHAVIOUR_TYPES)
@@ -266,7 +268,7 @@ def generate_simple_function(antecedent: str, behaviour: str) -> str:
     if any(k in ant for k in ["instruction", "demand", "work", "task"]):
         get_avoid = "To avoid"
         fn = "request / activity"
-    elif any(k in ant for k in ["transition"]):
+    elif "transition" in ant:
         get_avoid = "To avoid"
         fn = "transition / activity"
     elif any(k in ant for k in ["denied", "access", "item", "object"]):
@@ -551,7 +553,7 @@ def render_critical_incident_page():
         with c3:
             row["C"] = st.text_input("C", value=row["C"], key=f"rowC_{idx}")
         with c4:
-            row["H"] = st.textinput("H", value=row["H"], key=f"rowH_{idx}")
+            row["H"] = st.text_input("H", value=row["H"], key=f"rowH_{idx}")
 
     st.markdown("---")
 
