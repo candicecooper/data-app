@@ -37,13 +37,22 @@ MOCK_STAFF = [
     {"id": "s6", "name": "Jessica Williams", "role": "PY", "email": "jessica.williams@example.com"},
 ]
 
-# --- Mock Students ---
+# --- EXPANDED Mock Students (3 per program = 9 total) ---
 MOCK_STUDENTS = [
-    {"id": "stu_001", "name": "Izack N.", "grade": "7", "dob": "2012-03-15", "edid": "ED12345", "program": "SY"},
-    {"id": "stu_002", "name": "Mia K.", "grade": "8", "dob": "2011-07-22", "edid": "ED12346", "program": "PY"},
-    {"id": "stu_003", "name": "Liam B.", "grade": "9", "dob": "2010-11-08", "edid": "ED12347", "program": "SY"},
-    {"id": "stu_004", "name": "Emma T.", "grade": "R", "dob": "2017-05-30", "edid": "ED12348", "program": "JP"},
-    {"id": "stu_005", "name": "Oliver S.", "grade": "Y2", "dob": "2015-09-12", "edid": "ED12349", "program": "JP"},
+    # JP - 3 students
+    {"id": "stu_jp1", "name": "Emma T.", "grade": "R", "dob": "2018-05-30", "edid": "ED12348", "program": "JP"},
+    {"id": "stu_jp2", "name": "Oliver S.", "grade": "Y1", "dob": "2017-09-12", "edid": "ED12349", "program": "JP"},
+    {"id": "stu_jp3", "name": "Sophie M.", "grade": "Y2", "dob": "2016-03-20", "edid": "ED12350", "program": "JP"},
+    
+    # PY - 3 students  
+    {"id": "stu_py1", "name": "Liam C.", "grade": "Y3", "dob": "2015-06-15", "edid": "ED12351", "program": "PY"},
+    {"id": "stu_py2", "name": "Ava R.", "grade": "Y4", "dob": "2014-11-08", "edid": "ED12352", "program": "PY"},
+    {"id": "stu_py3", "name": "Noah B.", "grade": "Y6", "dob": "2012-02-28", "edid": "ED12353", "program": "PY"},
+    
+    # SY - 3 students
+    {"id": "stu_sy1", "name": "Isabella G.", "grade": "Y7", "dob": "2011-04-17", "edid": "ED12354", "program": "SY"},
+    {"id": "stu_sy2", "name": "Ethan D.", "grade": "Y9", "dob": "2009-12-03", "edid": "ED12355", "program": "SY"},
+    {"id": "stu_sy3", "name": "Mia A.", "grade": "Y11", "dob": "2007-08-20", "edid": "ED12356", "program": "SY"},
 ]
 
 PROGRAM_NAMES = {"JP": "Junior Primary", "PY": "Primary Years", "SY": "Senior Years"}
@@ -61,27 +70,33 @@ BEHAVIOUR_TYPES = [
     "Property Destruction",
     "Aggression (Peer)",
     "Aggression (Adult)",
+    "Self-Harm",
+    "Verbal Aggression",
     "Other",
 ]
 
 ANTECEDENTS = [
     "Requested to transition activity",
-    "Given instruction / demand",
+    "Given instruction / demand (Academic)",
     "Peer conflict / teasing",
     "Staff attention shifted away",
-    "Unstructured free time",
+    "Unstructured free time (Recess/Lunch)",
     "Sensory overload (noise / lights)",
     "Access to preferred item denied",
+    "Change in routine or expectation",
+    "Difficult task presented",
 ]
 
 INTERVENTIONS = [
-    "Used calm tone and supportive stance",
+    "Used calm tone and supportive stance (CPI)",
     "Offered a break / time away",
     "Reduced task demand / chunked task",
     "Provided choices",
     "Removed audience / peers",
     "Used visual supports",
     "Co-regulated with breathing / grounding",
+    "Prompted use of coping skill",
+    "Redirection to preferred activity",
 ]
 
 LOCATIONS = [
@@ -109,6 +124,7 @@ VALID_PAGES = [
     "incident_log",
     "critical_incident",
     "student_analysis",
+    "program_overview",  # NEW
 ]
 
 # =========================================
@@ -130,7 +146,7 @@ def init_state():
     if "staff" not in ss:
         ss.staff = MOCK_STAFF
     if "incidents" not in ss:
-        ss.incidents = generate_mock_incidents(40)
+        ss.incidents = generate_mock_incidents(70)  # More incidents
     if "critical_incidents" not in ss:
         ss.critical_incidents = []
     if "selected_program" not in ss:
@@ -176,7 +192,7 @@ def go_to(page: str, **kwargs):
     st.session_state.current_page = page
     for k, v in kwargs.items():
         setattr(st.session_state, k, v)
-    st.experimental_rerun()
+    st.rerun()
 
 
 def get_student(student_id: str):
@@ -209,21 +225,42 @@ def calculate_age(dob_str: str):
         return None
 
 
-def generate_mock_incidents(n: int = 40):
+def generate_mock_incidents(n: int = 70):
     """Create random quick incidents so the analysis page has something to show."""
     incidents = []
+    
+    # Weight certain students to have more incidents for realistic patterns
+    student_weights = {
+        "stu_jp1": 8,
+        "stu_jp2": 5, 
+        "stu_jp3": 3,
+        "stu_py1": 10,
+        "stu_py2": 7,
+        "stu_py3": 4,
+        "stu_sy1": 12,
+        "stu_sy2": 9,
+        "stu_sy3": 6,
+    }
+    
+    student_pool = []
+    for stu in MOCK_STUDENTS:
+        weight = student_weights.get(stu["id"], 5)
+        student_pool.extend([stu] * weight)
+    
     for _ in range(n):
-        stu = random.choice(MOCK_STUDENTS)
+        stu = random.choice(student_pool)
         beh = random.choice(BEHAVIOUR_TYPES)
         ant = random.choice(ANTECEDENTS)
         loc = random.choice(LOCATIONS)
         support = random.choice(SUPPORT_TYPES)
         interv = random.choice(INTERVENTIONS)
-        sev = random.randint(1, 5)
+        
+        # More realistic severity distribution
+        sev = random.choices([1, 2, 3, 4, 5], weights=[20, 35, 25, 15, 5])[0]
 
-        dt = datetime.now() - timedelta(days=random.randint(0, 40))
-        t_hour = random.randint(9, 15)
-        dt = dt.replace(hour=t_hour, minute=0, second=0)
+        dt = datetime.now() - timedelta(days=random.randint(0, 90))
+        t_hour = random.choices([9, 10, 11, 12, 13, 14, 15], weights=[10, 15, 12, 8, 12, 18, 10])[0]
+        dt = dt.replace(hour=t_hour, minute=random.randint(0, 59), second=0)
 
         incidents.append(
             {
@@ -243,8 +280,9 @@ def generate_mock_incidents(n: int = 40):
                 "reported_by": random.choice(MOCK_STAFF)["name"],
                 "additional_staff": [],
                 "description": "Auto-generated mock incident.",
-                "hypothesis": "To get attention.",
-                "is_critical": sev >= 3,
+                "hypothesis": generate_simple_function(ant, beh),
+                "is_critical": sev >= 4,
+                "duration_minutes": random.randint(2, 25),
             }
         )
     return incidents
@@ -265,16 +303,16 @@ def generate_simple_function(antecedent: str, behaviour: str) -> str:
     beh = (behaviour or "").lower()
 
     # Decide get vs avoid and function
-    if any(k in ant for k in ["instruction", "demand", "work", "task"]):
+    if any(k in ant for k in ["instruction", "demand", "work", "task", "academic"]):
         get_avoid = "To avoid"
         fn = "request / activity"
     elif "transition" in ant:
         get_avoid = "To avoid"
         fn = "transition / activity"
-    elif any(k in ant for k in ["denied", "access", "item", "object"]):
+    elif any(k in ant for k in ["denied", "access", "item", "object", "preferred"]):
         get_avoid = "To get"
         fn = "tangible"
-    elif any(k in ant for k in ["sensory", "noise", "lights"]):
+    elif any(k in ant for k in ["sensory", "noise", "lights", "overload"]):
         get_avoid = "To avoid"
         fn = "sensory"
     elif any(k in ant for k in ["peer", "attention", "staff"]):
@@ -295,11 +333,15 @@ def generate_simple_function(antecedent: str, behaviour: str) -> str:
 def render_login_page():
     st.markdown("## 🔐 Staff Login (Sandbox)")
     st.caption(
-        "Use any email address. If it matches a mock staff email, you’ll log in as them; "
-        "otherwise you’ll be 'Demo User'."
+        "Use any email address. If it matches a mock staff email, you'll log in as them; "
+        "otherwise you'll be 'Demo User'."
     )
+    
+    with st.expander("📧 Demo Staff Emails"):
+        for staff in MOCK_STAFF:
+            st.code(staff["email"])
 
-    email = st.text_input("Email address")
+    email = st.text_input("Email address", placeholder="emily.jones@example.com")
 
     if st.button("Login", type="primary"):
         if not email:
@@ -307,7 +349,7 @@ def render_login_page():
         else:
             login_user(email)
             st.success(f"Logged in as {st.session_state.current_user['name']}")
-            st.experimental_rerun()
+            st.rerun()
 
 
 def render_landing_page():
@@ -318,60 +360,86 @@ def render_landing_page():
     )
     st.caption(f"Email: {user.get('email', 'N/A')}")
 
-    if st.button("Logout"):
-        st.session_state.logged_in = False
-        st.session_state.current_user = None
-        st.session_state.current_page = "login"
-        st.experimental_rerun()
+    col1, col2 = st.columns([4, 1])
+    with col2:
+        if st.button("Logout", use_container_width=True):
+            st.session_state.logged_in = False
+            st.session_state.current_user = None
+            st.session_state.current_page = "login"
+            st.rerun()
 
     st.markdown("---")
 
-    st.markdown(
-        """
-    ### 📚 Select Program
+    # Quick stats
+    total_incidents = len(st.session_state.incidents)
+    total_students = len(st.session_state.students)
+    critical_count = len([i for i in st.session_state.incidents if i.get("is_critical")])
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("📚 Total Students", total_students)
+    with col2:
+        st.metric("📊 Total Incidents", total_incidents)
+    with col3:
+        st.metric("🚨 Critical Incidents", critical_count)
 
-    Choose a program to see students, log incidents, and view analysis.
-    """
-    )
+    st.markdown("---")
+    st.markdown("### 📚 Select Program")
 
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown("#### Junior Primary")
-        if st.button("Enter JP", key="enter_jp"):
+        jp_students = len([s for s in st.session_state.students if s["program"] == "JP"])
+        st.caption(f"{jp_students} students")
+        if st.button("Enter JP", key="enter_jp", use_container_width=True, type="primary"):
             go_to("program_students", selected_program="JP")
+            
     with col2:
         st.markdown("#### Primary Years")
-        if st.button("Enter PY", key="enter_py"):
+        py_students = len([s for s in st.session_state.students if s["program"] == "PY"])
+        st.caption(f"{py_students} students")
+        if st.button("Enter PY", key="enter_py", use_container_width=True, type="primary"):
             go_to("program_students", selected_program="PY")
+            
     with col3:
         st.markdown("#### Senior Years")
-        if st.button("Enter SY", key="enter_sy"):
+        sy_students = len([s for s in st.session_state.students if s["program"] == "SY"])
+        st.caption(f"{sy_students} students")
+        if st.button("Enter SY", key="enter_sy", use_container_width=True, type="primary"):
             go_to("program_students", selected_program="SY")
 
     st.markdown("---")
 
-    st.markdown("### ⚡ Quick Incident Log")
-    all_students = [s for s in st.session_state.students]
-    if not all_students:
-        st.info("No students in mock list.")
-        return
+    st.markdown("### ⚡ Quick Actions")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("#### Quick Incident Log")
+        all_students = [s for s in st.session_state.students]
+        selected = st.selectbox(
+            "Select student",
+            options=all_students,
+            format_func=lambda s: f"{s['name']} ({s['program']} - Grade {s['grade']})",
+        )
 
-    selected = st.selectbox(
-        "Select student",
-        options=all_students,
-        format_func=lambda s: f"{s['name']} ({s['program']})",
-    )
-
-    if st.button("Start Quick Log", type="primary", key="quick_log_btn"):
-        go_to("incident_log", selected_student_id=selected["id"])
+        if st.button("Start Quick Log", type="primary", key="quick_log_btn", use_container_width=True):
+            go_to("incident_log", selected_student_id=selected["id"])
+    
+    with col2:
+        st.markdown("#### Program Overview")
+        st.caption("View cross-program analytics")
+        if st.button("View Program Analytics", use_container_width=True):
+            go_to("program_overview")
 
 
 def render_program_students_page():
     program = st.session_state.get("selected_program", "JP")
     st.markdown(f"## {PROGRAM_NAMES.get(program, program)} Program — Students")
 
-    if st.button("⬅ Back to landing"):
-        go_to("landing")
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        if st.button("⬅ Back to landing"):
+            go_to("landing")
 
     students = [s for s in st.session_state.students if s["program"] == program]
 
@@ -379,22 +447,29 @@ def render_program_students_page():
         st.info("No students in this program (mock).")
         return
 
-    cols = st.columns(3)
-    for i, stu in enumerate(students):
-        col = cols[i % 3]
-        with col:
-            st.markdown(f"**{stu['name']}**")
-            st.caption(f"Grade {stu['grade']} | EDID {stu['edid']}")
-            age = calculate_age(stu["dob"])
-            if age is not None:
-                st.caption(f"Age: {age}")
-
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("Log Incident", key=f"log_{stu['id']}"):
+    # Student cards with incident counts
+    for stu in students:
+        stu_incidents = [i for i in st.session_state.incidents if i["student_id"] == stu["id"]]
+        critical = [i for i in stu_incidents if i.get("is_critical")]
+        
+        with st.container(border=True):
+            col1, col2, col3 = st.columns([3, 2, 2])
+            
+            with col1:
+                st.markdown(f"### {stu['name']}")
+                st.caption(f"Grade {stu['grade']} | EDID {stu['edid']}")
+                age = calculate_age(stu["dob"])
+                if age is not None:
+                    st.caption(f"Age: {age} years")
+            
+            with col2:
+                st.metric("Incidents", len(stu_incidents))
+                st.caption(f"Critical: {len(critical)}")
+            
+            with col3:
+                if st.button("📝 Log Incident", key=f"log_{stu['id']}", use_container_width=True):
                     go_to("incident_log", selected_student_id=stu["id"])
-            with c2:
-                if st.button("Analysis", key=f"ana_{stu['id']}"):
+                if st.button("📊 Analysis", key=f"ana_{stu['id']}", use_container_width=True):
                     go_to("student_analysis", selected_student_id=stu["id"])
 
 
@@ -408,6 +483,7 @@ def render_incident_log_page():
         return
 
     st.markdown(f"## 📝 Quick Incident Log — {student['name']}")
+    st.caption(f"{student['program']} Program | Grade {student['grade']}")
 
     with st.form("incident_form"):
         col1, col2 = st.columns(2)
@@ -434,6 +510,8 @@ def render_incident_log_page():
             "Adult action / de-escalation strategy",
             INTERVENTIONS,
         )
+        
+        duration = st.number_input("Duration (minutes)", min_value=1, max_value=60, value=5)
 
         severity = st.slider("Severity (1 = low, 5 = high)", 1, 5, 2)
 
@@ -466,18 +544,25 @@ def render_incident_log_page():
             "additional_staff": additional_staff,
             "intervention": intervention,
             "severity": severity,
+            "duration_minutes": duration,
             "description": description,
             "hypothesis": hypothesis,
-            "is_critical": severity >= 3,
+            "is_critical": severity >= 4,
         }
         st.session_state.incidents.append(rec)
-        st.success("Incident saved (sandbox).")
+        st.success("✅ Incident saved (sandbox).")
 
-        if severity >= 3:
-            st.warning("Severity ≥ 3 → Critical incident ABCH form.")
-            go_to("critical_incident", current_incident_id=new_id)
+        if severity >= 4:
+            st.warning("⚠️ Severity ≥ 4 → Proceed to Critical Incident ABCH form?")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("📋 Complete ABCH Form", type="primary"):
+                    go_to("critical_incident", current_incident_id=new_id)
+            with col2:
+                if st.button("↩️ Back to students"):
+                    go_to("program_students", selected_program=student["program"])
         else:
-            if st.button("Back to students"):
+            if st.button("↩️ Back to students"):
                 go_to("program_students", selected_program=student["program"])
 
 
@@ -609,7 +694,7 @@ def render_critical_incident_page():
 
     st.markdown("### Recommendations (auto-generated, editable)")
     rec_text = generate_critical_recommendations(quick_inc)
-    recommendations = st.text_area("Recommendations", value=rec_text)
+    recommendations = st.text_area("Recommendations", value=rec_text, height=200)
 
     if st.button("Save critical incident", type="primary"):
         record = {
@@ -631,10 +716,15 @@ def render_critical_incident_page():
             "recommendations": recommendations,
         }
         st.session_state.critical_incidents.append(record)
-        st.success("Critical incident saved (sandbox).")
+        st.success("✅ Critical incident saved (sandbox).")
 
-        if st.button("Go to student analysis"):
-            go_to("student_analysis", selected_student_id=quick_inc["student_id"])
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("📊 Go to student analysis"):
+                go_to("student_analysis", selected_student_id=quick_inc["student_id"])
+        with col2:
+            if st.button("↩️ Back to students"):
+                go_to("program_students", selected_program=get_student(quick_inc["student_id"])["program"])
 
 
 # =========================================
@@ -731,6 +821,7 @@ def render_student_analysis_page():
         color="incident_type",
         hover_data=["behaviour_type", "antecedent", "location"],
         labels={"date_parsed": "Date", "severity": "Severity"},
+        color_discrete_map={"Quick": "#3b82f6", "Critical": "#ef4444"}
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -738,28 +829,28 @@ def render_student_analysis_page():
     st.markdown("### 🔥 Antecedent frequency")
     ant_counts = full_df["antecedent"].value_counts().reset_index()
     ant_counts.columns = ["Antecedent", "Count"]
-    fig2 = px.bar(ant_counts, x="Count", y="Antecedent", orientation="h")
+    fig2 = px.bar(ant_counts, x="Count", y="Antecedent", orientation="h", color_discrete_sequence=["#10b981"])
     st.plotly_chart(fig2, use_container_width=True)
 
     # Location hotspots
     st.markdown("### 📍 Location hotspots")
     loc_counts = full_df["location"].value_counts().reset_index()
     loc_counts.columns = ["Location", "Count"]
-    fig3 = px.bar(loc_counts, x="Count", y="Location", orientation="h")
+    fig3 = px.bar(loc_counts, x="Count", y="Location", orientation="h", color_discrete_sequence=["#f59e0b"])
     st.plotly_chart(fig3, use_container_width=True)
 
     # Behaviour types
     st.markdown("### ⚠️ Behaviour types")
     beh_counts = full_df["behaviour_type"].value_counts().reset_index()
     beh_counts.columns = ["Behaviour", "Count"]
-    fig4 = px.bar(beh_counts, x="Count", y="Behaviour", orientation="h")
+    fig4 = px.bar(beh_counts, x="Count", y="Behaviour", orientation="h", color_discrete_sequence=["#ef4444"])
     st.plotly_chart(fig4, use_container_width=True)
 
     # Session patterns
     st.markdown("### 🕒 Session patterns")
     sess_counts = full_df["session"].value_counts().reset_index()
     sess_counts.columns = ["Session", "Count"]
-    fig5 = px.bar(sess_counts, x="Session", y="Count")
+    fig5 = px.bar(sess_counts, x="Session", y="Count", color_discrete_sequence=["#8b5cf6"])
     st.plotly_chart(fig5, use_container_width=True)
 
     # =====================================================
@@ -767,10 +858,10 @@ def render_student_analysis_page():
     # =====================================================
     if not full_df.empty:
         # Key patterns for use in summary / narrative
-        top_ant = full_df["antecedent"].mode()[0]
-        top_beh = full_df["behaviour_type"].mode()[0]
-        top_loc = full_df["location"].mode()[0]
-        top_session = full_df["session"].mode()[0]
+        top_ant = full_df["antecedent"].mode()[0] if len(full_df["antecedent"]) > 0 else "Unknown"
+        top_beh = full_df["behaviour_type"].mode()[0] if len(full_df["behaviour_type"]) > 0 else "Unknown"
+        top_loc = full_df["location"].mode()[0] if len(full_df["location"]) > 0 else "Unknown"
+        top_session = full_df["session"].mode()[0] if len(full_df["session"]) > 0 else "Unknown"
 
         total = len(full_df)
         crit_total = len(full_df[full_df["incident_type"] == "Critical"])
@@ -867,6 +958,68 @@ def render_student_analysis_page():
         go_to("program_students", selected_program=student["program"])
 
 
+# NEW: Program Overview Page
+def render_program_overview_page():
+    st.markdown("## 📈 Cross-Program Analytics")
+    st.caption("Incident patterns across all programs")
+    
+    if st.button("⬅ Back to landing"):
+        go_to("landing")
+    
+    incidents = st.session_state.incidents
+    if not incidents:
+        st.info("No incidents recorded yet.")
+        return
+    
+    df = pd.DataFrame(incidents)
+    df["date_parsed"] = pd.to_datetime(df["date"])
+    
+    # Get student program info
+    df["program"] = df["student_id"].apply(
+        lambda sid: next((s["program"] for s in st.session_state.students if s["id"] == sid), "Unknown")
+    )
+    
+    # Summary metrics
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Incidents", len(df))
+    with col2:
+        st.metric("Critical Incidents", len(df[df["is_critical"] == True]))
+    with col3:
+        st.metric("Average Severity", round(df["severity"].mean(), 2))
+    
+    st.markdown("---")
+    
+    # Program comparison
+    st.markdown("### 📚 Incidents by Program")
+    prog_counts = df["program"].value_counts().reset_index()
+    prog_counts.columns = ["Program", "Count"]
+    fig1 = px.bar(prog_counts, x="Program", y="Count", color="Program")
+    st.plotly_chart(fig1, use_container_width=True)
+    
+    # Behaviour types across programs
+    st.markdown("### ⚠️ Behaviour Types by Program")
+    beh_by_prog = df.groupby(["program", "behaviour_type"]).size().reset_index(name="count")
+    fig2 = px.bar(beh_by_prog, x="behaviour_type", y="count", color="program", barmode="group")
+    fig2.update_xaxes(tickangle=-45)
+    st.plotly_chart(fig2, use_container_width=True)
+    
+    # Time trends
+    st.markdown("### 📅 Incident Trends Over Time")
+    df["week"] = df["date_parsed"].dt.to_period("W").astype(str)
+    weekly = df.groupby(["week", "program"]).size().reset_index(name="count")
+    fig3 = px.line(weekly, x="week", y="count", color="program")
+    fig3.update_xaxes(tickangle=-45)
+    st.plotly_chart(fig3, use_container_width=True)
+    
+    # Location hotspots
+    st.markdown("### 📍 Location Hotspots (All Programs)")
+    loc_counts = df["location"].value_counts().head(10).reset_index()
+    loc_counts.columns = ["Location", "Count"]
+    fig4 = px.bar(loc_counts, x="Count", y="Location", orientation="h")
+    st.plotly_chart(fig4, use_container_width=True)
+
+
 # =========================================
 # MAIN APP ROUTER
 # =========================================
@@ -890,6 +1043,8 @@ def main():
         render_critical_incident_page()
     elif page == "student_analysis":
         render_student_analysis_page()
+    elif page == "program_overview":
+        render_program_overview_page()
     elif page == "login":
         render_login_page()
     else:
