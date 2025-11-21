@@ -12,8 +12,6 @@ from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from io import BytesIO
-import tempfile
-import os
 
 # =========================================
 # CONFIG + CONSTANTS
@@ -27,7 +25,7 @@ st.set_page_config(
 )
 
 # =========================================
-# REFINED MODERN STYLING - SLICK & READABLE
+# SLEEK MODERN STYLING
 # =========================================
 
 st.markdown("""
@@ -40,231 +38,150 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
     
-    /* Refined dark background - much more sophisticated */
+    /* Main background gradient - purple/blue */
     .stApp {
-        background: linear-gradient(135deg, #1a1d29 0%, #2d3748 50%, #1a202c 100%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
     
-    /* Custom buttons - refined navy/teal */
+    /* Custom buttons - sleek blue/purple */
     .stButton>button {
-        background: linear-gradient(135deg, #2c5282 0%, #2b6cb0 100%) !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
         color: white !important;
         border: none !important;
-        border-radius: 8px !important;
+        border-radius: 10px !important;
         padding: 0.6rem 1.5rem !important;
         font-weight: 500 !important;
         transition: all 0.3s ease !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
     }
     
     .stButton>button:hover {
-        background: linear-gradient(135deg, #2b6cb0 0%, #3182ce 100%) !important;
-        transform: translateY(-1px) !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6) !important;
     }
     
-    /* Primary button - refined teal */
+    /* Primary button - cyan gradient */
     button[kind="primary"] {
-        background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%) !important;
-        box-shadow: 0 2px 8px rgba(13, 148, 136, 0.4) !important;
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+        box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4) !important;
     }
     
     button[kind="primary"]:hover {
-        background: linear-gradient(135deg, #14b8a6 0%, #2dd4bf 100%) !important;
-        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.5) !important;
+        box-shadow: 0 6px 20px rgba(79, 172, 254, 0.6) !important;
     }
     
-    /* Containers with excellent readability */
+    /* Containers with white background */
     [data-testid="stVerticalBlock"] > div[style*="border"] {
-        background: rgba(255, 255, 255, 0.98) !important;
-        border-radius: 12px !important;
+        background: rgba(255, 255, 255, 0.95) !important;
+        border-radius: 15px !important;
         padding: 2rem !important;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
     }
     
-    /* Metrics - refined colors */
+    /* Metrics - gradient text */
     [data-testid="stMetricValue"] {
         font-size: 2rem !important;
         font-weight: 700 !important;
-        color: #2c5282 !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
     }
     
-    [data-testid="stMetricLabel"] {
-        color: #4a5568 !important;
-        font-weight: 500 !important;
-    }
-    
-    /* Input fields - clean and readable */
+    /* Input fields - rounded with border */
     .stTextInput>div>div>input,
     .stSelectbox>div>div>select,
     .stTextArea>div>div>textarea,
     .stDateInput>div>div>input,
-    .stTimeInput>div>div>input,
-    .stNumberInput>div>div>input {
-        border-radius: 8px !important;
-        border: 2px solid #cbd5e0 !important;
-        background: white !important;
-        color: #2d3748 !important;
+    .stTimeInput>div>div>input {
+        border-radius: 10px !important;
+        border: 2px solid #e0e7ff !important;
         transition: all 0.3s ease !important;
     }
     
     .stTextInput>div>div>input:focus,
     .stSelectbox>div>div>select:focus,
     .stTextArea>div>div>textarea:focus {
-        border-color: #2c5282 !important;
-        box-shadow: 0 0 0 3px rgba(44, 82, 130, 0.1) !important;
+        border-color: #667eea !important;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
     }
     
-    /* Headers - white text with shadow for contrast */
+    /* Headers - white text */
     h1, h2, h3 {
         color: white !important;
         font-weight: 700 !important;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
     }
     
-    /* Subheaders in containers - dark text */
-    [data-testid="stVerticalBlock"] h1,
-    [data-testid="stVerticalBlock"] h2,
-    [data-testid="stVerticalBlock"] h3,
-    [data-testid="stVerticalBlock"] h4 {
-        color: #2d3748 !important;
-        text-shadow: none !important;
-    }
-    
-    /* Expanders - refined dark glass */
+    /* Expanders - glass effect */
     .streamlit-expanderHeader {
         background: rgba(255, 255, 255, 0.1) !important;
-        border-radius: 8px !important;
+        border-radius: 10px !important;
         backdrop-filter: blur(10px) !important;
-        color: white !important;
     }
     
-    /* Success/info boxes - better contrast */
-    .stSuccess {
-        background: rgba(236, 253, 245, 0.98) !important;
-        border-radius: 8px !important;
-        border-left: 4px solid #059669 !important;
-        color: #065f46 !important;
+    /* Success/info boxes */
+    .stSuccess, .stInfo {
+        background: rgba(255, 255, 255, 0.95) !important;
+        border-radius: 10px !important;
+        border-left: 4px solid #4facfe !important;
     }
     
-    .stInfo {
-        background: rgba(239, 246, 255, 0.98) !important;
-        border-radius: 8px !important;
-        border-left: 4px solid #2563eb !important;
-        color: #1e40af !important;
-    }
-    
-    .stWarning {
-        background: rgba(254, 252, 232, 0.98) !important;
-        border-radius: 8px !important;
-        border-left: 4px solid #d97706 !important;
-        color: #92400e !important;
-    }
-    
-    .stError {
-        background: rgba(254, 242, 242, 0.98) !important;
-        border-radius: 8px !important;
-        border-left: 4px solid #dc2626 !important;
-        color: #991b1b !important;
-    }
-    
-    /* Download buttons - refined green */
+    /* Download buttons - green gradient */
     .stDownloadButton>button {
-        background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%) !important;
         color: white !important;
-        border-radius: 8px !important;
+        border-radius: 10px !important;
         border: none !important;
-        box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3) !important;
+        box-shadow: 0 4px 15px rgba(17, 153, 142, 0.4) !important;
     }
     
     .stDownloadButton>button:hover {
-        background: linear-gradient(135deg, #10b981 0%, #34d399 100%) !important;
-        transform: translateY(-1px) !important;
-        box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(17, 153, 142, 0.6) !important;
     }
     
-    /* Tabs - refined styling */
+    /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
         background: rgba(255, 255, 255, 0.1) !important;
-        border-radius: 8px !important;
+        border-radius: 10px !important;
         padding: 0.5rem !important;
     }
     
     .stTabs [data-baseweb="tab"] {
-        color: rgba(255, 255, 255, 0.7) !important;
-        border-radius: 6px !important;
-        font-weight: 500 !important;
+        color: white !important;
+        border-radius: 8px !important;
     }
     
     .stTabs [aria-selected="true"] {
         background: rgba(255, 255, 255, 0.2) !important;
-        color: white !important;
-    }
-    
-    /* Captions - better readability */
-    .stCaption {
-        color: rgba(255, 255, 255, 0.8) !important;
-    }
-    
-    [data-testid="stVerticalBlock"] .stCaption {
-        color: #718096 !important;
-    }
-    
-    /* Sliders */
-    .stSlider [data-baseweb="slider"] {
-        background: rgba(255, 255, 255, 0.1) !important;
-    }
-    
-    /* Checkbox and Radio */
-    .stCheckbox, .stRadio {
-        color: white !important;
-    }
-    
-    [data-testid="stVerticalBlock"] .stCheckbox label,
-    [data-testid="stVerticalBlock"] .stRadio label {
-        color: #2d3748 !important;
-    }
-    
-    /* Code blocks */
-    .stCodeBlock {
-        background: rgba(255, 255, 255, 0.95) !important;
-        border-radius: 8px !important;
-    }
-    
-    /* Dataframe */
-    .stDataFrame {
-        background: white !important;
-        border-radius: 8px !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- Refined Sandbox banner ---
+# --- Sandbox banner ---
 st.markdown("""
 <div style='background: rgba(255, 255, 255, 0.95); 
             padding: 1.5rem; 
-            border-radius: 12px; 
+            border-radius: 15px; 
             margin-bottom: 2rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            border-left: 5px solid #2c5282;'>
-    <h3 style='color: #2c5282; margin: 0; font-size: 1.2rem; text-shadow: none;'>
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid #667eea;'>
+    <h3 style='color: #667eea; margin: 0; font-size: 1.2rem;'>
         🎭 SANDBOX MODE
     </h3>
-    <p style='color: #4a5568; margin: 0.5rem 0 0 0;'>
+    <p style='color: #666; margin: 0.5rem 0 0 0;'>
         This demonstration uses synthetic data only. No real student information is included.
     </p>
 </div>
 """, unsafe_allow_html=True)
 
-# --- Mock Staff (with emails AND passwords) ---
+# --- Mock Staff (with emails so login "works") ---
 MOCK_STAFF = [
-    {"id": "s1", "name": "Emily Jones", "role": "JP", "email": "emily.jones@example.com", "password": "demo123"},
-    {"id": "s2", "name": "Daniel Lee", "role": "PY", "email": "daniel.lee@example.com", "password": "demo123"},
-    {"id": "s3", "name": "Sarah Chen", "role": "SY", "email": "sarah.chen@example.com", "password": "demo123"},
-    {"id": "s4", "name": "Admin User", "role": "ADM", "email": "admin.user@example.com", "password": "admin123"},
-    {"id": "s5", "name": "Michael Torres", "role": "JP", "email": "michael.torres@example.com", "password": "demo123"},
-    {"id": "s6", "name": "Jessica Williams", "role": "PY", "email": "jessica.williams@example.com", "password": "demo123"},
+    {"id": "s1", "name": "Emily Jones", "role": "JP", "email": "emily.jones@example.com"},
+    {"id": "s2", "name": "Daniel Lee", "role": "PY", "email": "daniel.lee@example.com"},
+    {"id": "s3", "name": "Sarah Chen", "role": "SY", "email": "sarah.chen@example.com"},
+    {"id": "s4", "name": "Admin User", "role": "ADM", "email": "admin.user@example.com"},
+    {"id": "s5", "name": "Michael Torres", "role": "JP", "email": "michael.torres@example.com"},
+    {"id": "s6", "name": "Jessica Williams", "role": "PY", "email": "jessica.williams@example.com"},
 ]
 
 # --- EXPANDED Mock Students (3 per program = 9 total) ---
@@ -389,41 +306,29 @@ def init_state():
         ss.abch_rows = []
 
 
-def login_user(email: str, password: str) -> bool:
+def login_user(email: str) -> bool:
     """
-    Login with email AND password verification.
+    Very forgiving login for sandbox:
+    - If email matches a mock staff email: log in as that staff.
+    - Otherwise: log in as 'Demo User (JP)' so you can test.
     """
     email = (email or "").strip().lower()
-    password = (password or "").strip()
-    
-    if not email or not password:
+    if not email:
         return False
 
-    # Check against mock staff
     for staff in st.session_state.staff:
-        if staff.get("email", "").lower() == email and staff.get("password", "") == password:
+        if staff.get("email", "").lower() == email:
             st.session_state.logged_in = True
             st.session_state.current_user = staff
             st.session_state.current_page = "landing"
             return True
-    
-    # For demo purposes, also allow "demo" as universal password
-    if password == "demo":
-        for staff in st.session_state.staff:
-            if staff.get("email", "").lower() == email:
-                st.session_state.logged_in = True
-                st.session_state.current_user = staff
-                st.session_state.current_page = "landing"
-                return True
-        
-        # Fallback demo user if email not found but password is "demo"
-        demo = {"id": "demo_staff", "name": "Demo User", "role": "JP", "email": email}
-        st.session_state.logged_in = True
-        st.session_state.current_user = demo
-        st.session_state.current_page = "landing"
-        return True
 
-    return False
+    # fallback demo user
+    demo = {"id": "demo_staff", "name": "Demo User", "role": "JP", "email": email}
+    st.session_state.logged_in = True
+    st.session_state.current_user = demo
+    st.session_state.current_page = "landing"
+    return True
 
 
 def go_to(page: str, **kwargs):
@@ -568,28 +473,12 @@ def generate_simple_function(antecedent: str, behaviour: str) -> str:
 
 
 # =========================================
-# WORD DOCUMENT GENERATION WITH GRAPHS
+# WORD DOCUMENT GENERATION
 # =========================================
 
 
-def save_plotly_as_image(fig, width=6, height=4):
-    """Save a plotly figure as an image and return the path"""
-    try:
-        # Create a temporary file
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-        temp_path = temp_file.name
-        temp_file.close()
-        
-        # Save the figure
-        fig.write_image(temp_path, width=width*100, height=height*100, scale=2)
-        return temp_path
-    except Exception as e:
-        st.warning(f"Could not save graph: {e}")
-        return None
-
-
 def generate_behaviour_analysis_plan_docx(student, full_df, top_ant, top_beh, top_loc, top_session, risk_score, risk_level):
-    """Generate a Word document for Behaviour Analysis Plan with embedded graphs"""
+    """Generate a Word document for Behaviour Analysis Plan"""
     doc = Document()
     
     # Title
@@ -623,108 +512,6 @@ def generate_behaviour_analysis_plan_docx(student, full_df, top_ant, top_beh, to
     summary_para.add_run(f"{full_df['severity'].mean():.2f}\n")
     summary_para.add_run(f"Risk Level: ").bold = True
     summary_para.add_run(f"{risk_level} ({risk_score}/100)")
-    
-    doc.add_paragraph()
-    
-    # ===== GRAPH 1: Incident Frequency Over Time =====
-    doc.add_heading('Incident Patterns Over Time', 1)
-    
-    try:
-        daily_counts = full_df.groupby(full_df["date_parsed"].dt.date).size().reset_index(name="count")
-        fig1 = go.Figure()
-        fig1.add_trace(go.Scatter(
-            x=daily_counts["date_parsed"],
-            y=daily_counts["count"],
-            mode='lines+markers',
-            name='Incidents per day',
-            line=dict(color='#2c5282', width=2),
-            fill='tozeroy',
-            fillcolor='rgba(44, 82, 130, 0.2)'
-        ))
-        fig1.update_layout(
-            title="Daily Incident Frequency",
-            xaxis_title="Date",
-            yaxis_title="Number of Incidents",
-            template="plotly_white",
-            height=350
-        )
-        
-        img_path = save_plotly_as_image(fig1, width=6, height=3.5)
-        if img_path:
-            doc.add_picture(img_path, width=Inches(6))
-            os.unlink(img_path)
-    except Exception as e:
-        doc.add_paragraph(f"[Graph unavailable: {str(e)}]")
-    
-    doc.add_paragraph()
-    
-    # ===== GRAPH 2: Day-of-Week Heatmap =====
-    doc.add_heading('High-Risk Times Analysis', 1)
-    
-    try:
-        full_df["hour"] = pd.to_datetime(full_df["time"], format="%H:%M:%S", errors="coerce").dt.hour
-        full_df["day_of_week"] = full_df["date_parsed"].dt.day_name()
-        
-        day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-        pivot = full_df.pivot_table(
-            values="severity",
-            index="day_of_week",
-            columns="hour",
-            aggfunc="count",
-            fill_value=0
-        )
-        pivot = pivot.reindex([d for d in day_order if d in pivot.index], fill_value=0)
-        
-        fig2 = go.Figure(data=go.Heatmap(
-            z=pivot.values,
-            x=pivot.columns,
-            y=pivot.index,
-            colorscale='Blues',
-            showscale=True
-        ))
-        fig2.update_layout(
-            title="Incident Frequency by Day & Hour",
-            xaxis_title="Hour of Day",
-            yaxis_title="Day of Week",
-            template="plotly_white",
-            height=350
-        )
-        
-        img_path = save_plotly_as_image(fig2, width=6, height=3.5)
-        if img_path:
-            doc.add_picture(img_path, width=Inches(6))
-            os.unlink(img_path)
-    except Exception as e:
-        doc.add_paragraph(f"[Graph unavailable: {str(e)}]")
-    
-    doc.add_paragraph()
-    
-    # ===== GRAPH 3: Behaviour Type Distribution =====
-    doc.add_heading('Behaviour Type Analysis', 1)
-    
-    try:
-        beh_counts = full_df["behaviour_type"].value_counts()
-        
-        fig3 = go.Figure(data=[go.Bar(
-            x=beh_counts.index,
-            y=beh_counts.values,
-            marker=dict(color='#2c5282')
-        )])
-        fig3.update_layout(
-            title="Distribution of Behaviour Types",
-            xaxis_title="Behaviour Type",
-            yaxis_title="Frequency",
-            template="plotly_white",
-            height=350
-        )
-        fig3.update_xaxes(tickangle=-45)
-        
-        img_path = save_plotly_as_image(fig3, width=6, height=3.5)
-        if img_path:
-            doc.add_picture(img_path, width=Inches(6))
-            os.unlink(img_path)
-    except Exception as e:
-        doc.add_paragraph(f"[Graph unavailable: {str(e)}]")
     
     doc.add_paragraph()
     
@@ -788,7 +575,6 @@ def generate_behaviour_analysis_plan_docx(student, full_df, top_ant, top_beh, to
     )
     
     doc.add_paragraph()
-    doc.add_paragraph()
     
     # Footer
     footer_para = doc.add_paragraph()
@@ -811,36 +597,32 @@ def generate_behaviour_analysis_plan_docx(student, full_df, top_ant, top_beh, to
 
 
 def render_login_page():
-    st.markdown("## 🔐 Staff Login")
-    st.caption("Enter your email and password to access the system")
+    st.markdown("## 🔐 Staff Login (Sandbox)")
+    st.caption(
+        "Use any email address. If it matches a mock staff email, you'll log in as them; "
+        "otherwise you'll be 'Demo User'."
+    )
     
-    with st.expander("📧 Demo Credentials"):
-        st.markdown("**Staff Accounts:**")
-        for staff in MOCK_STAFF[:3]:
-            st.code(f"Email: {staff['email']}\nPassword: demo123")
-        st.markdown("**Admin Account:**")
-        st.code(f"Email: admin.user@example.com\nPassword: admin123")
-        st.info("💡 You can also use 'demo' as a universal password for any staff email")
+    with st.expander("📧 Demo Staff Emails"):
+        for staff in MOCK_STAFF:
+            st.code(staff["email"])
 
     email = st.text_input("Email address", placeholder="emily.jones@example.com")
-    password = st.text_input("Password", type="password", placeholder="Enter password")
 
     if st.button("Login", type="primary"):
-        if not email or not password:
-            st.error("⚠️ Please enter both email and password")
+        if not email:
+            st.warning("Please enter an email.")
         else:
-            if login_user(email, password):
-                st.success(f"✅ Logged in as {st.session_state.current_user['name']}")
-                st.rerun()
-            else:
-                st.error("❌ Invalid email or password. Please try again.")
+            login_user(email)
+            st.success(f"Logged in as {st.session_state.current_user['name']}")
+            st.rerun()
 
 
 def render_landing_page():
     user = st.session_state.current_user or {}
     st.markdown(
         f"### 👋 Welcome, **{user.get('name', 'User')}** "
-        f"({user.get('role', 'Role unknown')})"
+        f"({user.get('role', 'Role unknown')}) — SANDBOX VERSION"
     )
     st.caption(f"Email: {user.get('email', 'N/A')}")
 
@@ -1309,16 +1091,15 @@ def render_student_analysis_page():
         y=daily_counts["count"],
         mode='lines+markers',
         name='Incidents per day',
-        line=dict(color='#2c5282', width=2),
+        line=dict(color='#3b82f6', width=2),
         fill='tozeroy',
-        fillcolor='rgba(44, 82, 130, 0.2)'
+        fillcolor='rgba(59, 130, 246, 0.2)'
     ))
     fig1.update_layout(
         title="Daily Incident Count",
         xaxis_title="Date",
         yaxis_title="Number of Incidents",
-        hovermode='x unified',
-        template="plotly_white"
+        hovermode='x unified'
     )
     st.plotly_chart(fig1, use_container_width=True)
 
@@ -1342,13 +1123,12 @@ def render_student_analysis_page():
             y=daily["7d_avg"],
             mode='lines',
             name='7-day average',
-            line=dict(color='#dc2626', width=3)
+            line=dict(color='#ef4444', width=3)
         ))
         fig2.update_layout(
             title="Trend Analysis (7-Day Moving Average)",
             xaxis_title="Date",
             yaxis_title="Incidents",
-            template="plotly_white"
         )
         st.plotly_chart(fig2, use_container_width=True)
 
@@ -1366,7 +1146,7 @@ def render_student_analysis_page():
             y=quick_only["severity"],
             mode='markers',
             name='Quick Incident',
-            marker=dict(size=10, color='#2c5282', opacity=0.6),
+            marker=dict(size=10, color='#3b82f6', opacity=0.6),
             hovertemplate='%{y} - %{text}<extra></extra>',
             text=quick_only["behaviour_type"]
         ))
@@ -1377,7 +1157,7 @@ def render_student_analysis_page():
             y=crit_only["severity"],
             mode='markers',
             name='Critical Incident',
-            marker=dict(size=15, color='#dc2626', symbol='star'),
+            marker=dict(size=15, color='#ef4444', symbol='star'),
             hovertemplate='CRITICAL: %{text}<extra></extra>',
             text=crit_only["behaviour_type"]
         ))
@@ -1386,8 +1166,7 @@ def render_student_analysis_page():
         title="Severity Over Time (Quick vs Critical)",
         xaxis_title="Date",
         yaxis_title="Severity Level",
-        yaxis=dict(range=[0, 6]),
-        template="plotly_white"
+        yaxis=dict(range=[0, 6])
     )
     st.plotly_chart(fig3, use_container_width=True)
 
@@ -1418,14 +1197,13 @@ def render_student_analysis_page():
         z=pivot.values,
         x=pivot.columns,
         y=pivot.index,
-        colorscale='Blues',
+        colorscale='Reds',
         hovertemplate='%{y}, %{x}:00<br>Incidents: %{z}<extra></extra>'
     ))
     fig4.update_layout(
         title="Incident Frequency by Day & Hour",
         xaxis_title="Hour of Day",
-        yaxis_title="Day of Week",
-        template="plotly_white"
+        yaxis_title="Day of Week"
     )
     st.plotly_chart(fig4, use_container_width=True)
 
@@ -1443,14 +1221,13 @@ def render_student_analysis_page():
         z=loc_sess_pivot.values,
         x=loc_sess_pivot.columns,
         y=loc_sess_pivot.index,
-        colorscale='Teal',
+        colorscale='YlOrRd',
         hovertemplate='%{y} during %{x}<br>Incidents: %{z}<extra></extra>'
     ))
     fig5.update_layout(
         title="Location Hotspots by Session",
         xaxis_title="Session",
-        yaxis_title="Location",
-        template="plotly_white"
+        yaxis_title="Location"
     )
     st.plotly_chart(fig5, use_container_width=True)
 
@@ -1474,14 +1251,13 @@ def render_student_analysis_page():
         orientation='h',
         marker=dict(
             color=ant_beh_counts["count"],
-            colorscale='Teal'
+            colorscale='Viridis'
         )
     )])
     fig6.update_layout(
         title="Top 15 Antecedent → Behaviour Pairs",
         xaxis_title="Frequency",
-        yaxis_title="Pattern",
-        template="plotly_white"
+        yaxis_title="Pattern"
     )
     st.plotly_chart(fig6, use_container_width=True)
 
@@ -1493,12 +1269,9 @@ def render_student_analysis_page():
         labels=beh_counts.index,
         values=beh_counts.values,
         hole=0.3,
-        marker=dict(colors=['#2c5282', '#0d9488', '#059669', '#2563eb', '#7c3aed', '#db2777'])
+        marker=dict(colors=['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'])
     )])
-    fig7.update_layout(
-        title="Behaviour Type Breakdown",
-        template="plotly_white"
-    )
+    fig7.update_layout(title="Behaviour Type Breakdown")
     st.plotly_chart(fig7, use_container_width=True)
 
     # 4.3 Behaviour chains (sequences)
@@ -1517,13 +1290,12 @@ def render_student_analysis_page():
             x=seq_counts.values,
             y=seq_counts.index,
             orientation='h',
-            marker=dict(color='#7c3aed')
+            marker=dict(color='#8b5cf6')
         )])
         fig8.update_layout(
             title="Top 10 Behaviour Sequences",
             xaxis_title="Frequency",
-            yaxis_title="Sequence",
-            template="plotly_white"
+            yaxis_title="Sequence"
         )
         st.plotly_chart(fig8, use_container_width=True)
 
@@ -1564,8 +1336,7 @@ def render_student_analysis_page():
         title="Average Severity by Intervention Type (Lower = More Effective)",
         xaxis_title="Average Severity",
         yaxis_title="Intervention",
-        xaxis=dict(range=[0, 5.5]),
-        template="plotly_white"
+        xaxis=dict(range=[0, 5.5])
     )
     st.plotly_chart(fig9, use_container_width=True)
 
@@ -1577,13 +1348,12 @@ def render_student_analysis_page():
         fig10.add_trace(go.Box(
             y=full_df["duration_minutes"],
             x=full_df["behaviour_type"],
-            marker=dict(color='#2c5282')
+            marker=dict(color='#3b82f6')
         ))
         fig10.update_layout(
             title="Duration Distribution by Behaviour Type",
             xaxis_title="Behaviour Type",
-            yaxis_title="Duration (minutes)",
-            template="plotly_white"
+            yaxis_title="Duration (minutes)"
         )
         fig10.update_xaxes(tickangle=-45)
         st.plotly_chart(fig10, use_container_width=True)
@@ -1630,7 +1400,7 @@ def render_student_analysis_page():
         (risk_factors["Escalation trend"] * 20)
     ))
     
-    risk_color = "#059669" if risk_score < 30 else "#d97706" if risk_score < 60 else "#dc2626"
+    risk_color = "#10b981" if risk_score < 30 else "#f59e0b" if risk_score < 60 else "#ef4444"
     risk_level = "LOW" if risk_score < 30 else "MODERATE" if risk_score < 60 else "HIGH"
     
     col1, col2, col3 = st.columns([2, 1, 1])
@@ -1662,14 +1432,13 @@ def render_student_analysis_page():
             y=functions.index,
             orientation='h',
             marker=dict(
-                color=['#dc2626', '#d97706', '#059669', '#2c5282', '#7c3aed'][:len(functions)]
+                color=['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'][:len(functions)]
             )
         )])
         fig12.update_layout(
             title="Behavioural Function Distribution",
             xaxis_title="Frequency",
-            yaxis_title="Function",
-            template="plotly_white"
+            yaxis_title="Function"
         )
         st.plotly_chart(fig12, use_container_width=True)
 
@@ -1791,23 +1560,18 @@ def render_student_analysis_page():
         )
     
     with col2:
-        # Generate Word document with graphs
-        with st.spinner("Generating report with graphs... This may take a moment."):
-            try:
-                docx_file = generate_behaviour_analysis_plan_docx(
-                    student, full_df, top_ant, top_beh, top_loc, top_session, risk_score, risk_level
-                )
-                
-                if docx_file:
-                    st.download_button(
-                        label="📄 Download Behaviour Analysis Plan (Word + Graphs)",
-                        data=docx_file,
-                        file_name=f"Behaviour_Analysis_Plan_{student['name'].replace(' ', '_')}.docx",
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    )
-            except Exception as e:
-                st.error(f"Error generating document: {e}")
-                st.info("Note: Graph embedding requires kaleido package. Install with: pip install kaleido")
+        # Generate Word document
+        docx_file = generate_behaviour_analysis_plan_docx(
+            student, full_df, top_ant, top_beh, top_loc, top_session, risk_score, risk_level
+        )
+        
+        if docx_file:
+            st.download_button(
+                label="📄 Download Behaviour Analysis Plan (Word)",
+                data=docx_file,
+                file_name=f"Behaviour_Analysis_Plan_{student['name'].replace(' ', '_')}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
 
     st.markdown("---")
     if st.button("⬅ Back to Students", type="primary"):
@@ -1847,34 +1611,26 @@ def render_program_overview_page():
     st.markdown("### 📚 Incidents by Program")
     prog_counts = df["program"].value_counts().reset_index()
     prog_counts.columns = ["Program", "Count"]
-    fig1 = px.bar(prog_counts, x="Program", y="Count", color="Program", 
-                  color_discrete_map={"JP": "#2c5282", "PY": "#0d9488", "SY": "#7c3aed"},
-                  template="plotly_white")
+    fig1 = px.bar(prog_counts, x="Program", y="Count", color="Program")
     st.plotly_chart(fig1, use_container_width=True)
     
     st.markdown("### ⚠️ Behaviour Types by Program")
     beh_by_prog = df.groupby(["program", "behaviour_type"]).size().reset_index(name="count")
-    fig2 = px.bar(beh_by_prog, x="behaviour_type", y="count", color="program", barmode="group",
-                  color_discrete_map={"JP": "#2c5282", "PY": "#0d9488", "SY": "#7c3aed"},
-                  template="plotly_white")
+    fig2 = px.bar(beh_by_prog, x="behaviour_type", y="count", color="program", barmode="group")
     fig2.update_xaxes(tickangle=-45)
     st.plotly_chart(fig2, use_container_width=True)
     
     st.markdown("### 📅 Incident Trends Over Time")
     df["week"] = df["date_parsed"].dt.to_period("W").astype(str)
     weekly = df.groupby(["week", "program"]).size().reset_index(name="count")
-    fig3 = px.line(weekly, x="week", y="count", color="program",
-                   color_discrete_map={"JP": "#2c5282", "PY": "#0d9488", "SY": "#7c3aed"},
-                   template="plotly_white")
+    fig3 = px.line(weekly, x="week", y="count", color="program")
     fig3.update_xaxes(tickangle=-45)
     st.plotly_chart(fig3, use_container_width=True)
     
     st.markdown("### 📍 Location Hotspots (All Programs)")
     loc_counts = df["location"].value_counts().head(10).reset_index()
     loc_counts.columns = ["Location", "Count"]
-    fig4 = px.bar(loc_counts, x="Count", y="Location", orientation="h", 
-                  color_discrete_sequence=["#2c5282"],
-                  template="plotly_white")
+    fig4 = px.bar(loc_counts, x="Count", y="Location", orientation="h")
     st.plotly_chart(fig4, use_container_width=True)
 
 
